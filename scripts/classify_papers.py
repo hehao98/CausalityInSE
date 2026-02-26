@@ -23,8 +23,9 @@ from litellm.exceptions import RateLimitError, APIError
 
 from log_utils import setup_logging
 
-INPUT_FILE = os.path.join("data", "se_papers_metadata.csv")
-OUTPUT_FILE = os.path.join("data", "se_papers_classified.csv")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INPUT_FILE = os.path.join(PROJECT_ROOT, "data", "se_papers_metadata.csv")
+OUTPUT_FILE = os.path.join(PROJECT_ROOT, "data", "se_papers_classified.csv")
 
 MODEL = "anthropic/claude-4-opus-20250514"
 MAX_RETRIES = 5
@@ -137,7 +138,7 @@ def main():
     )
     args = parser.parse_args()
 
-    load_dotenv()
+    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
     if not os.environ.get("ANTHROPIC_API_KEY"):
         log.error("ANTHROPIC_API_KEY not set in .env or environment.")

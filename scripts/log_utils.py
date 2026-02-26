@@ -15,7 +15,8 @@ import os
 import sys
 from datetime import datetime
 
-LOG_DIR = "log"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOG_DIR = os.path.join(PROJECT_ROOT, "log")
 
 
 def setup_logging(script_name: str | None = None, level: int = logging.INFO) -> logging.Logger:

@@ -19,7 +19,8 @@ from log_utils import setup_logging
 
 log = setup_logging()
 
-OUTPUT_DIR = "data"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "data")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "se_papers_metadata.csv")
 
 S2_BULK_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
