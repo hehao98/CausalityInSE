@@ -1,0 +1,90 @@
+---
+title: "Causality in Software Engineering – Literature Review"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r load-data}
+papers <- read_csv("../data/se_papers_metadata.csv") |>
+  mutate(year = as.integer(str_extract(venue, "\\d{4}")))
+```
+
+## Taxonomy of Causal Methods
+
+The table below defines each causal-method category we assign to
+papers tagged `causal_type ∈ {method, both}` (column `causal_method_class`
+in the CSV).  A paper's *primary* category is the first match in
+taxonomy order; multi-label assignments are stored semicolon-separated.
+
+```{r taxonomy-table}
+taxonomy <- tribble(
+  ~Category,                            ~Definition,                                                                                                         ~N,
+  "Randomized Controlled Experiment",   "Participants or units are randomly assigned to treatment / control groups to isolate the causal effect of an intervention.",   37L,
+  "Quasi-/Natural Experiment",          "Exploits naturally occurring variation or non-randomized designs (e.g., case-control, panel data, before-after) to approximate causal inference.",  7L,
+  "Causal Graph / DAG",                 "Explicitly constructs a directed acyclic graph encoding assumed causal relationships among variables.",                          7L,
+  "Causal Discovery",                   "Algorithmically learns the causal structure (graph) from observational or mixed data.",                                          3L,
+  "Counterfactual Analysis",            "Reasons about outcomes under hypothetical alternative conditions (\"what if X had been different?\").",                          6L,
+  "Interventional / do-Calculus",       "Estimates the effect of setting a variable to a value using Pearl's do-operator or explicit interventions (e.g., fault injection).", 4L,
+  "Granger Causality",                  "Tests whether past values of one time series improve prediction of another, establishing temporal precedence.",                  2L,
+  "Structural Equation Modeling",       "Specifies a system of equations with observed/latent variables to estimate direct and indirect causal effects.",                 2L,
+  "Causal Impact Analysis",             "Uses Bayesian structural time-series models to estimate the causal effect of an event on a time-series outcome.",                1L,
+  "Propensity Score Methods",           "Balances treatment and control groups on observed covariates via matching or weighting to reduce selection bias.",                1L,
+  "Survival / Hazard Modeling",         "Applies time-to-event models (e.g., Cox proportional hazards) with a causal interpretation of covariates.",                      2L,
+  "Causal Fault Localization",          "Applies causal reasoning (causal testing, causal contribution scores, causal debugging) to localize bugs, root causes, or fairness defects.", 17L,
+  "Regression-based Causal Inference",  "Uses regression or observational analysis with explicit causal intent (e.g., controlling for confounders, causal-adjacent language).", 11L,
+)
+
+taxonomy <- taxonomy |> arrange(desc(N))
+
+knitr::kable(taxonomy,
+             col.names = c("Category", "Definition", "Papers (n)"),
+             caption   = "Taxonomy of causal methods applied in SE papers (ASE + FSE + ICSE, 2015–2025). N = 100 papers with causal_type ∈ {method, both}.")
+```
+
+```{r taxonomy-bar, fig.width=9, fig.height=5}
+taxonomy |>
+  mutate(Category = fct_reorder(Category, N)) |>
+  ggplot(aes(N, Category)) +
+  geom_col(fill = "#0072B2") +
+  geom_text(aes(label = N), hjust = -0.3, size = 3.5) +
+  labs(title = "Causal Methods Used in SE Papers",
+       subtitle = "Primary classification of 100 papers (ASE + FSE + ICSE, 2015–2025)",
+       x = "Number of papers", y = NULL) +
+  theme_minimal(base_size = 13) +
+  xlim(0, 42)
+```
+
+```{r causal-trends, fig.width=9, fig.height=5.5}
+summary_by_year <- papers |>
+  group_by(year) |>
+  summarise(
+    `All papers`             = n(),
+    `Empirical SE`           = sum(is_empirical == TRUE, na.rm = TRUE),
+    `Asking causal RQs`      = sum(causal_type %in% c("claim", "both"), na.rm = TRUE),
+    `Claiming causal methods` = sum(causal_type %in% c("method", "both"), na.rm = TRUE),
+  ) |>
+  pivot_longer(-year, names_to = "category", values_to = "count") |>
+  mutate(category = factor(category,
+    levels = c("All papers", "Empirical SE",
+               "Asking causal RQs", "Claiming causal methods")))
+
+ggplot(summary_by_year, aes(year, count, colour = category, shape = category)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2.5) +
+  scale_x_continuous(breaks = seq(2015, 2025, 1)) +
+  scale_colour_manual(values = c("All papers" = "grey40",
+                                 "Empirical SE" = "#0072B2",
+                                 "Asking causal RQs" = "#E69F00",
+                                 "Claiming causal methods" = "#D55E00")) +
+  labs(
+    title = "Papers Published vs. Papers Making Causal Claims",
+    subtitle = "ASE + FSE + ICSE, 2015–2025",
+    x = NULL, y = "Number of papers", colour = NULL, shape = NULL
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "bottom")
+```
