@@ -20,7 +20,7 @@ import pandas as pd
 from dotenv import load_dotenv
 import litellm
 from litellm import completion
-from litellm.exceptions import RateLimitError, APIError
+from litellm.exceptions import RateLimitError, APIError, InternalServerError
 
 from log_utils import setup_logging
 
@@ -125,6 +125,10 @@ def classify_paper(title: str, abstract: str) -> dict:
                     "causal_reason": f"PARSE_ERROR: {e}",
                 }
             time.sleep(2)
+        except InternalServerError as e:
+            wait = min(2 ** (attempt + 3), 120)
+            log.warning("Server overloaded (attempt %d): %s, retrying in %ds …", attempt + 1, e, wait)
+            time.sleep(wait)
         except APIError as e:
             wait = 5 * (attempt + 1)
             log.warning("API error (attempt %d): %s, retrying in %ds …", attempt + 1, e, wait)
