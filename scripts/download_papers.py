@@ -8,11 +8,10 @@ and deduplicates by paper ID.
 Output: data/se_papers_metadata.csv  (columns: venue, title, abstract)
 """
 
-import csv
 import os
 import time
-from collections import Counter
 
+import pandas as pd
 import requests
 
 from log_utils import setup_logging
@@ -153,20 +152,17 @@ def main():
             status = "OK" if year_added > 0 else "MISSING"
             log.info("  %s %d: %4d papers  [%s]", venue_label, year, year_added, status)
 
-    all_rows.sort(key=lambda r: r["venue"])
+    df = pd.DataFrame(all_rows, columns=["venue", "title", "abstract"])
+    df.sort_values("venue", inplace=True)
+    df.to_csv(OUTPUT_FILE, index=False)
 
-    with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["venue", "title", "abstract"])
-        writer.writeheader()
-        writer.writerows(all_rows)
-
-    venue_counts = Counter(r["venue"] for r in all_rows)
     log.info("%s", "=" * 60)
     log.info("  Summary")
     log.info("%s", "=" * 60)
-    for v in sorted(venue_counts):
-        log.info("  %s: %4d papers", v, venue_counts[v])
-    log.info("  Total: %d papers", len(all_rows))
+    venue_counts = df["venue"].value_counts().sort_index()
+    for venue, count in venue_counts.items():
+        log.info("  %s: %4d papers", venue, count)
+    log.info("  Total: %d papers", len(df))
     log.info("  Saved to %s", OUTPUT_FILE)
 
 
