@@ -53,4 +53,15 @@ def setup_logging(script_name: str | None = None, level: int = logging.INFO) -> 
     logger.addHandler(console_handler)
 
     logger.info("Logging to %s", log_path)
+
+    def _excepthook(exc_type, exc_value, exc_tb):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_tb)
+            return
+        logger.critical(
+            "Unhandled exception", exc_info=(exc_type, exc_value, exc_tb),
+        )
+
+    sys.excepthook = _excepthook
+
     return logger
