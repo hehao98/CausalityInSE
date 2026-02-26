@@ -1,17 +1,31 @@
 #!/usr/bin/env python3
-"""Download ICSE/FSE/ASE paper metadata (2015-2025) from Semantic Scholar API.
+"""Download main-track ICSE/FSE/ASE paper metadata (2015-2025).
 
-Queries each venue+year individually (S2 year ranges don't work reliably
-with venue filters), tries multiple venue name variants per conference,
-and deduplicates by paper ID.
+Strategy:
+  1. Fetch paper lists from DBLP proceedings pages (XML) to restrict to
+     the main research track — excludes companion, workshop, and satellite
+     proceedings.
+  2. Batch-query Semantic Scholar for abstracts using DOIs.
+  3. Write venue, title, abstract to CSV.
 
-Output: data/se_papers_metadata.csv  (columns: venue, title, abstract)
+Proceedings mapping:
+  ICSE  2015      → conf/icse/icse2015-1  (Volume 1 = research track)
+  ICSE  2016-2025 → conf/icse/icse{year}
+  FSE   2015-2023 → conf/sigsoft/fse{year}
+  FSE   2024      → journals/pacmse/pacmse1  (journal-first, all FSE)
+  FSE   2025      → journals/pacmse/pacmse2  (filter <number>FSE</number>)
+  ASE   2015-2025 → conf/kbse/ase{year}
+
+Output: data/se_papers_metadata.csv
 """
 
+import csv
 import os
+import re
+import sys
 import time
+from collections import Counter
 
-import pandas as pd
 import requests
 
 from log_utils import setup_logging
@@ -22,147 +36,184 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "data")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "se_papers_metadata.csv")
 
-S2_BULK_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
-S2_FIELDS = "title,abstract,venue,year,publicationVenue"
+DBLP_BASE = "https://dblp.org/db"
+S2_BATCH_URL = "https://api.semanticscholar.org/graph/v1/paper/batch"
+S2_BATCH_SIZE = 400
+S2_FIELDS = "title,abstract"
 
 YEAR_MIN = 2015
 YEAR_MAX = 2025
 
-VENUE_CONFIG = {
-    "ICSE": [
-        "ICSE",
-        "International Conference on Software Engineering",
-    ],
-    "FSE": [
-        "ESEC/SIGSOFT FSE",
-        "SIGSOFT FSE",
-        "Proc. ACM Softw. Eng.",
-    ],
-    "ASE": [
-        "ASE",
-        "International Conference on Automated Software Engineering",
-    ],
-}
-
-REQUEST_DELAY = 3.0
-MAX_RETRIES = 5
+MAX_RETRIES = 8
+DBLP_DELAY = 1.0
+S2_DELAY = 3.0
 
 
-def fetch_papers(venue_query, year, max_retries=MAX_RETRIES):
-    """Fetch all papers for a single venue query and year via S2 bulk search."""
-    params = {
-        "query": "",
-        "venue": venue_query,
-        "year": str(year),
-        "fields": S2_FIELDS,
-    }
+def _dblp_proceedings_path(venue: str, year: int) -> str:
+    """Return the DBLP XML path (relative to DBLP_BASE) for the main proceedings."""
+    if venue == "ICSE":
+        key = "icse2015-1" if year == 2015 else f"icse{year}"
+        return f"conf/icse/{key}.xml"
+    if venue == "FSE":
+        if year <= 2023:
+            return f"conf/sigsoft/fse{year}.xml"
+        if year == 2024:
+            return "journals/pacmse/pacmse1.xml"
+        return "journals/pacmse/pacmse2.xml"
+    if venue == "ASE":
+        return f"conf/kbse/ase{year}.xml"
+    raise ValueError(f"Unknown venue: {venue}")
 
-    all_papers = []
-    token = None
-    page = 0
 
-    while True:
-        req_params = dict(params)
-        if token:
-            req_params["token"] = token
+def fetch_dblp_page(url: str) -> str | None:
+    """Fetch a DBLP page with retries."""
+    for attempt in range(MAX_RETRIES):
+        try:
+            resp = requests.get(url, timeout=30)
+            if resp.status_code == 200 and resp.text.strip():
+                return resp.text
+            if resp.status_code == 404:
+                log.warning("  DBLP 404: %s", url)
+                return None
+        except requests.RequestException as e:
+            log.warning("  DBLP attempt %d: %s", attempt + 1, e)
+        wait = min(2 ** (attempt + 1), 30)
+        time.sleep(wait)
+    log.error("  DBLP failed after %d retries: %s", MAX_RETRIES, url)
+    return None
 
-        success = False
-        for attempt in range(max_retries):
-            try:
-                resp = requests.get(S2_BULK_URL, params=req_params, timeout=60)
 
-                if resp.status_code == 429:
-                    wait = min(2 ** (attempt + 3), 120)
-                    log.warning("Rate limited, waiting %ds …", wait)
-                    time.sleep(wait)
-                    continue
+def parse_dblp_entries(xml_text: str, venue: str, year: int) -> list[dict]:
+    """Extract paper title and DOI from DBLP XML.
 
-                resp.raise_for_status()
-                success = True
+    For FSE 2025 (PACMSE Vol 2), only entries with <number>FSE</number>
+    are included.
+    """
+    entries_inproc = re.findall(r"<inproceedings[^>]*>.*?</inproceedings>", xml_text, re.DOTALL)
+    entries_article = re.findall(r"<article[^>]*>.*?</article>", xml_text, re.DOTALL)
+    raw_entries = entries_inproc if entries_inproc else entries_article
+
+    papers = []
+    for entry in raw_entries:
+        if venue == "FSE" and year == 2025:
+            if "<number>FSE</number>" not in entry:
+                continue
+
+        title_m = re.search(r"<title>(.*?)</title>", entry, re.DOTALL)
+        if not title_m:
+            continue
+        title = re.sub(r"\s+", " ", title_m.group(1)).strip().rstrip(".")
+
+        doi = None
+        for ee in re.findall(r"<ee[^>]*>(.*?)</ee>", entry):
+            doi_m = re.search(r"doi\.org/(.+)", ee)
+            if doi_m:
+                doi = doi_m.group(1).strip()
                 break
 
-            except requests.exceptions.RequestException as e:
-                if attempt == max_retries - 1:
-                    log.error("Failed after %d retries: %s", max_retries, e)
-                    return all_papers
-                wait = 5 * (attempt + 1)
-                log.warning("Retry %d/%d in %ds: %s", attempt + 1, max_retries, wait, e)
-                time.sleep(wait)
+        papers.append({"title": title, "doi": doi})
 
-        if not success:
-            break
+    return papers
 
-        data = resp.json()
-        papers = data.get("data", [])
-        all_papers.extend(papers)
-        page += 1
 
-        token = data.get("token")
-        if not token or not papers:
-            break
+def fetch_abstracts_batch(dois: list[str]) -> dict[str, str]:
+    """Batch-query Semantic Scholar for abstracts keyed by DOI."""
+    result: dict[str, str] = {}
+    ids = [f"DOI:{d}" for d in dois if d]
+    if not ids:
+        return result
 
-        time.sleep(REQUEST_DELAY)
+    for i in range(0, len(ids), S2_BATCH_SIZE):
+        batch = ids[i : i + S2_BATCH_SIZE]
 
-    return all_papers
+        for attempt in range(MAX_RETRIES):
+            try:
+                resp = requests.post(
+                    S2_BATCH_URL,
+                    params={"fields": S2_FIELDS},
+                    json={"ids": batch},
+                    timeout=60,
+                )
+                if resp.status_code == 429:
+                    wait = min(2 ** (attempt + 3), 120)
+                    log.warning("  S2 rate-limited, waiting %ds", wait)
+                    time.sleep(wait)
+                    continue
+                resp.raise_for_status()
+                break
+            except requests.RequestException as e:
+                if attempt == MAX_RETRIES - 1:
+                    log.error("  S2 batch failed: %s", e)
+                    break
+                time.sleep(5 * (attempt + 1))
+        else:
+            continue
+
+        for paper, doi_id in zip(resp.json(), batch):
+            if paper is None:
+                continue
+            doi_key = doi_id.removeprefix("DOI:")
+            abstract = (paper.get("abstract") or "").strip()
+            if abstract:
+                result[doi_key] = abstract
+
+        time.sleep(S2_DELAY)
+
+    return result
 
 
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    all_rows = []
-    seen_ids = set()
+    all_rows: list[dict] = []
 
-    for venue_label, venue_queries in VENUE_CONFIG.items():
+    for venue in ("ICSE", "FSE", "ASE"):
         log.info("%s", "=" * 60)
-        log.info("  %s  (%d-%d)", venue_label, YEAR_MIN, YEAR_MAX)
+        log.info("  %s  (%d–%d)", venue, YEAR_MIN, YEAR_MAX)
         log.info("%s", "=" * 60)
 
         for year in range(YEAR_MIN, YEAR_MAX + 1):
-            year_added = 0
+            path = _dblp_proceedings_path(venue, year)
+            url = f"{DBLP_BASE}/{path}"
 
-            for vq in venue_queries:
-                papers = fetch_papers(vq, year)
+            xml = fetch_dblp_page(url)
+            if not xml:
+                log.warning("  %s %d: SKIPPED (page unavailable)", venue, year)
+                continue
 
-                added = 0
-                for p in papers:
-                    pid = p.get("paperId")
-                    if not pid or pid in seen_ids:
-                        continue
-                    seen_ids.add(pid)
+            papers = parse_dblp_entries(xml, venue, year)
+            log.info("  %s %d: %d papers from DBLP", venue, year, len(papers))
 
-                    title = (p.get("title") or "").strip()
-                    abstract = (p.get("abstract") or "").strip()
-                    p_year = p.get("year")
+            dois = [p["doi"] for p in papers if p["doi"]]
+            log.info("    Fetching abstracts for %d papers with DOIs …", len(dois))
+            abstracts = fetch_abstracts_batch(dois)
+            log.info("    Got %d abstracts from S2", len(abstracts))
 
-                    if not title or not p_year:
-                        continue
-                    if p_year < YEAR_MIN or p_year > YEAR_MAX:
-                        continue
+            for p in papers:
+                abstract = abstracts.get(p["doi"], "") if p["doi"] else ""
+                all_rows.append({
+                    "venue": f"{venue} {year}",
+                    "title": p["title"],
+                    "abstract": abstract,
+                })
 
-                    all_rows.append({
-                        "venue": f"{venue_label} {p_year}",
-                        "title": title,
-                        "abstract": abstract,
-                    })
-                    added += 1
+            time.sleep(DBLP_DELAY)
 
-                year_added += added
-                time.sleep(REQUEST_DELAY)
+    all_rows.sort(key=lambda r: r["venue"])
 
-            status = "OK" if year_added > 0 else "MISSING"
-            log.info("  %s %d: %4d papers  [%s]", venue_label, year, year_added, status)
+    with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["venue", "title", "abstract"])
+        writer.writeheader()
+        writer.writerows(all_rows)
 
-    df = pd.DataFrame(all_rows, columns=["venue", "title", "abstract"])
-    df.sort_values("venue", inplace=True)
-    df.to_csv(OUTPUT_FILE, index=False)
-
+    venue_counts = Counter(r["venue"] for r in all_rows)
+    with_abstract = sum(1 for r in all_rows if r["abstract"])
     log.info("%s", "=" * 60)
     log.info("  Summary")
     log.info("%s", "=" * 60)
-    venue_counts = df["venue"].value_counts().sort_index()
-    for venue, count in venue_counts.items():
-        log.info("  %s: %4d papers", venue, count)
-    log.info("  Total: %d papers", len(df))
+    for v in sorted(venue_counts):
+        print(f"  {v}: {venue_counts[v]:>4} papers")
+    log.info("  Total: %d papers (%d with abstracts)", len(all_rows), with_abstract)
     log.info("  Saved to %s", OUTPUT_FILE)
 
 
