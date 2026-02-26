@@ -32,7 +32,7 @@ MAX_RETRIES = 5
 
 CLASSIFICATION_PROMPT = """\
 You are a research paper classifier. Given a paper's title and abstract, \
-answer three questions with structured JSON output.
+answer three questions.
 
 **Question 1 – Empirical SE paper?**
 Is this an empirical software engineering paper? Empirical SE papers collect \
@@ -60,18 +60,32 @@ This includes:
 - Implied causal language / claims: statements like "X causes Y", "X leads to Y", \
   "the effect of X on Y", "X increases/decreases Y" regardless of whether the paper \
    claims to use a causal inference method.
-
-Respond ONLY with a JSON object (no markdown fences, no commentary):
-{
-  "is_empirical": true/false,
-  "empirical_reason": "<one-sentence justification>",
-  "is_msr": true/false,
-  "msr_reason": "<one-sentence justification>",
-  "has_causal": true/false,
-  "causal_type": "method" | "claim" | "both" | "none",
-  "causal_reason": "<one-sentence justification>"
-}
 """
+
+CLASSIFICATION_SCHEMA = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "paper_classification",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "is_empirical": {"type": "boolean"},
+                "empirical_reason": {"type": "string", "description": "One-sentence justification"},
+                "is_msr": {"type": "boolean"},
+                "msr_reason": {"type": "string", "description": "One-sentence justification"},
+                "has_causal": {"type": "boolean"},
+                "causal_type": {"type": "string", "enum": ["method", "claim", "both", "none"]},
+                "causal_reason": {"type": "string", "description": "One-sentence justification"},
+            },
+            "required": [
+                "is_empirical", "empirical_reason",
+                "is_msr", "msr_reason",
+                "has_causal", "causal_type", "causal_reason",
+            ],
+            "additionalProperties": False,
+        },
+    },
+}
 
 CLASSIFICATION_FIELDS = [
     "is_empirical", "empirical_reason",
@@ -95,6 +109,7 @@ def classify_paper(title: str, abstract: str) -> dict:
                 model=MODEL,
                 max_tokens=400,
                 temperature=0,
+                response_format=CLASSIFICATION_SCHEMA,
                 messages=[
                     {"role": "system", "content": CLASSIFICATION_PROMPT},
                     {"role": "user", "content": user_msg},
@@ -107,8 +122,6 @@ def classify_paper(title: str, abstract: str) -> dict:
             token_usage["total_tokens"] += usage.total_tokens
 
             text = resp.choices[0].message.content.strip()
-            if text.startswith("```"):
-                text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
             return json.loads(text)
 
         except RateLimitError:
