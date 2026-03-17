@@ -1,2 +1,191 @@
-# CausalityInSE
-Work-in-progress paper about how to make causal claims in software engineering
+# Causal Inference for Software Engineering: A Tutorial
+
+**Target Venue:** ACM Transactions on Software Engineering and Methodology (TOSEM)
+
+**Status:** Planning phase — literature review and framing in progress.
+
+## Paper Vision
+
+This tutorial paper aims to provide an accessible introduction to causal inference and causal claim assessment for software engineering researchers. Using the longstanding programming language vs. defect proneness debate as a worked example, the paper walks readers through:
+
+1. The intellectual landscape of causal inference (potential outcomes, graphical causal models, design-based approaches) and why it matters for SE,
+2. A four-step causal credibility assessment framework (derive causal theory → define estimand and identifying assumptions → acknowledge limitations → navigate alternative explanations),
+3. A diagnostic application of the framework to an existing, widely-known SE debate (Ray et al. 2014 and subsequent controversy), and
+4. A constructive demonstration showing how the framework guides the design of improved studies (panel fixed effects analysis exploiting within-developer and within-repository variation).
+
+The paper should be self-contained and pedagogically oriented so that an SE researcher with no prior exposure to causal inference can (a) understand the state of the art, (b) critically evaluate causal claims in existing work, and (c) apply the framework to their own research.
+
+## Planned Paper Structure (Tentative)
+
+1. **Introduction** — Motivate the problem: SE practice is driven by folklore and contested conventional wisdom; empirical SE research produces voluminous but often inconclusive evidence because of methodological limitations (descriptive/correlational evidence, qualitative opinion synthesis). Causal inference offers a principled path forward.
+
+2. **Background & Related Work**
+   - 2.1 Existing tutorials and methodological guides in SE (positioning our contribution)
+   - 2.2 The intellectual traditions of causal inference (potential outcomes, graphical causal models, design-based credibility revolution, Bradford Hill viewpoints, sensitivity analysis frameworks)
+   - 2.3 Causal inference adoption in SE to date
+   - 2.4 The PL vs. defect proneness debate (comprehensive review of all related work)
+
+3. **A Primer on Causal Inference for SE Researchers** — Self-contained, accessible introduction:
+   - 3.1 Why correlation does not imply causation (confounding, reverse causality, selection bias — illustrated with PL example)
+   - 3.2 Why multivariate regression usually does not suffice (omitted variable bias, bad controls, when regression *can* support causal claims)
+   - 3.3 The potential outcomes framework (notation, estimands, identification)
+   - 3.4 Graphical causal models and DAGs (back-door criterion, connecting DAGs to potential outcomes)
+   - 3.5 Overview of identification methods (RCTs, DiD, IV, RDD, panel FE, synthetic control) with assumptions and estimands
+   - 3.6 The internal–external validity trade-off and the hierarchy of evidence
+
+4. **The Four-Step Causal Credibility Assessment Framework**
+   - 4.1 Step 1: Derive an explicit causal theory from domain knowledge
+   - 4.2 Step 2: Define the causal estimate of interest and specify the identifying assumption
+   - 4.3 Step 3: Honestly acknowledge and mitigate limitations and known caveats
+   - 4.4 Step 4: Thoughtfully navigate alternative explanations
+
+5. **Worked Example: The Programming Language and Defect Proneness Debate**
+   - 5.1 Applying the four steps to Ray et al. (2014) and subsequent work
+   - 5.2 Downstream causal misinterpretation analysis (citation analysis showing correlational findings reinterpreted as causal)
+   - 5.3 Assessment summary: ambiguous interpretation, limited identification, unproductive debate
+
+6. **From Assessment to Improved Design: A Panel Fixed Effects Analysis**
+   - 6.1 Research design (exploiting within-developer and within-repository variation)
+   - 6.2 Data construction
+   - 6.3 Results and interpretation
+   - 6.4 Limitations and remaining threats
+
+7. **Discussion** — Implications for SE research practices, when and how to apply the framework, relationship to other methodological reform efforts (pre-registration, registered reports, replication)
+
+8. **Conclusion**
+
+## Literature Review Plan
+
+Three systematic literature review efforts are needed to accurately frame the contribution and ensure comprehensive coverage. These reviews should be conducted before finalizing the paper framing and contribution statement.
+
+### LR1: Existing Tutorials and Methodological Guides in SE
+
+**Goal:** Identify all existing tutorial papers, methodological primers, and guideline papers in SE venues that touch on causal inference, research methodology, statistical methods, or evidence-based SE. This is critical for positioning our contribution and demonstrating the gap our paper fills.
+
+**Search strategy:**
+- Venues to search: ICSE, FSE/ESEC-FSE, ASE, MSR, EMSE, TSE, TOSEM, IST, JSS, and key methodological venues (e.g., EASE, ESEM)
+- Search terms: "tutorial" OR "primer" OR "guidelines" OR "causal inference" OR "causal" OR "quasi-experiment" OR "research methodology" in SE venues
+- Also search for methodological papers by known advocates of empirical rigor in SE (e.g., work by Shull, Singer, Basili, Kitchenham, Wohlin, Stol & Fitzgerald, Ralph, etc.)
+
+**Key questions to answer:**
+1. Are there any existing tutorials specifically on causal inference for SE? If so, what do they cover and what gaps remain?
+2. What tutorials exist on adjacent topics (e.g., controlled experiments in SE, survey methodology, case studies, mining software repositories methodology)?
+3. How do existing SE methodology papers treat causal claims — do they discuss identification strategies, or do they remain at the level of statistical testing?
+4. What is the state of adoption of causal inference methods in empirical SE research? (Are there papers surveying this?)
+5. Are there tutorial papers from adjacent fields (e.g., HCI, information systems, management) that we should reference as models?
+
+**Expected deliverable:** A table mapping existing tutorials/guides by topic, venue, and the extent to which they address causal reasoning. A clear articulation of the gap our paper fills.
+
+### LR2: Intellectual Traditions of Causal Inference and Causal Claim Assessment
+
+**Goal:** Ensure comprehensive and accurate coverage of the different intellectual traditions and frameworks for causal inference, so that the tutorial provides SE researchers with a faithful map of the state of the art. We must not inadvertently present one tradition (e.g., the econometrics/design-based approach) as the only approach while neglecting others.
+
+**Search strategy:**
+- Textbooks and foundational references: Pearl (2009), Rubin (1974), Angrist & Pischke (2009, 2014), Cunningham (2021), Hernán & Robins (2020), Rosenbaum (2002), Imbens & Rubin (2015), Morgan & Winship (2015), Hansen (2022)
+- Key methodological papers on specific methods: DiD (Card & Krueger 1993, Callaway & Sant'Anna 2021, Roth et al. 2023), IV (Angrist & Imbens 1996), RDD (Thistlethwaite & Campbell 1960, Calonico et al. 2014), matching (Rosenbaum & Rubin 1983), synthetic control (Abadie et al. 2010)
+- Bradford Hill criteria and epidemiological tradition (Hill 1965, Rothman & Greenland)
+- Sensitivity analysis (Rosenbaum 2002, VanderWeele & Ding 2017, Oster 2019, Cinelli & Hazlett 2020)
+- Philosophy of causation (Hume, Lewis, Woodward, Cartwright) — lighter coverage for context
+- Debates within the causal inference community (e.g., Pearl vs. Rubin, DAGs vs. potential outcomes, structural vs. design-based)
+- Bayesian approaches to causal inference
+- Recent developments: double/debiased machine learning (Chernozhukov et al.), causal forests (Athey & Imbens), targeted learning (van der Laan)
+
+**Key questions to answer:**
+1. What are the major intellectual traditions and how do they relate to each other? Where do they agree and disagree?
+2. Which traditions are most relevant and accessible for SE researchers? Which are currently underrepresented in SE?
+3. How should we position the "four-step framework" relative to existing frameworks (e.g., Bradford Hill viewpoints, GRADE framework in medicine, the credibility revolution in economics)?
+4. What sensitivity analysis methods exist and which are most applicable to SE settings?
+5. Are there recent developments (e.g., ML-based causal inference methods) that we should cover, at least at a high level?
+
+**Expected deliverable:** A structured overview of the landscape, a mapping of how our framework draws from each tradition, and a clear pedagogical path through the material that respects the nuances without overwhelming SE readers.
+
+### LR3: The Programming Language vs. Defect Proneness Debate
+
+**Goal:** Compile a comprehensive bibliography of all papers related to the question of whether programming language choice affects software quality / defect proneness. This includes the core debate papers, all papers citing them, independent studies on the topic, and related work on PL effects on other outcomes (productivity, security, maintainability).
+
+**Core papers in the debate:**
+- Ray et al., FSE 2014: "A Large Scale Study of Programming Languages and Code Quality in GitHub" (and the CACM 2017 extended version)
+- Berger et al., TOPLAS 2019: "On the Impact of Programming Languages on Code Quality"
+- Ray et al., arXiv 2019: rebuttal
+- Berger et al., arXiv 2019: counter-rebuttal
+- Furia et al., TOSEM 2024: structural causal model analysis of the PL-defect question
+
+**Search strategy:**
+- Forward citation search from the core papers (Google Scholar, Semantic Scholar)
+- Search for papers on "programming language" AND ("defect" OR "bug" OR "fault" OR "quality" OR "reliability" OR "safety") in SE venues
+- Search for papers using causal methods (DiD, IV, RDD, fixed effects, matching) in SE that study PL effects
+- Search for the broader PL effectiveness literature (not just defects — also productivity, security, maintainability)
+- Search for related controlled experiments on PL effects (e.g., lab studies comparing developer performance across languages)
+
+**Key questions to answer:**
+1. What is the complete set of empirical studies examining PL effects on defect proneness or code quality?
+2. How have downstream papers cited Ray et al. — correlationally or causally? (Extends the citation analysis from the thesis)
+3. Have any studies used causal inference methods (beyond correlational regression) to study PL effects? If so, what did they find?
+4. What do controlled experiments (e.g., developer studies) say about PL effects, and how do their findings compare with observational studies?
+5. What does the PL research community (as opposed to the SE community) say about this question?
+6. How does Furia et al. (2024) relate to our work, and how should we position ourselves relative to it?
+
+**Expected deliverable:** A comprehensive annotated bibliography, a narrative synthesis of the state of the debate, and a clear articulation of what our worked example adds beyond what is already known.
+
+## Task Backlog
+
+### Phase 0: Literature Review and Framing (Current Phase)
+
+- [ ] **LR1:** Conduct literature review on existing SE tutorials and methodological guides
+- [ ] **LR2:** Conduct literature review on intellectual traditions of causal inference
+- [ ] **LR3:** Conduct literature review on the PL vs. defect proneness debate
+- [ ] Synthesize findings from LR1–LR3 to finalize paper framing and contribution statement
+- [ ] Revise paper structure based on literature review findings
+- [ ] Write a 1-page "positioning statement" articulating the novelty relative to existing work (especially Furia et al. 2024)
+
+### Phase 1: Tutorial Drafting
+
+- [ ] Write Introduction (Section 1)
+- [ ] Write Background & Related Work (Section 2), informed by LR1–LR3
+- [ ] Write the Causal Inference Primer (Section 3), drawing from thesis Chapter 2 but adapted for a standalone tutorial format
+- [ ] Write the Four-Step Framework (Section 4)
+- [ ] Write the Worked Example (Section 5): apply four-step assessment to Ray et al. and the debate
+- [ ] Conduct and write up the downstream citation analysis (Section 5.2)
+
+### Phase 2: Empirical Study
+
+- [ ] Construct panel dataset from GHArchive (identify polyglot developers and repositories)
+- [ ] Operationalize language assignment at the commit level
+- [ ] Compute defect metrics across multiple operationalizations
+- [ ] Implement panel fixed effects analysis
+- [ ] Assess within-developer variation and statistical power
+- [ ] Conduct specification tests and robustness checks
+- [ ] Write up findings (Section 6)
+
+### Phase 3: Integration and Submission
+
+- [ ] Write Discussion (Section 7)
+- [ ] Write Conclusion (Section 8)
+- [ ] Full paper revision and internal review
+- [ ] Submit to TOSEM
+
+## Key Risks and Open Questions
+
+1. **Positioning relative to Furia et al. (2024):** They have already applied structural causal models to the PL-defect question. How do we differentiate? Our contribution is broader (a general tutorial framework, not just one application) and includes an empirical component (panel FE analysis), but we need to clearly articulate this.
+
+2. **Scope management:** The tutorial could easily become a textbook chapter. We need to balance comprehensiveness with accessibility and stay within TOSEM page norms. The primer (Section 3) needs to be self-contained but not exhaustive.
+
+3. **Empirical study feasibility:** The panel FE analysis depends on sufficient within-developer language variation in the data. If most developers are single-language, the estimator will lack power. Mitigation: assess variation early; fall back to within-repository variation or developer random effects if needed.
+
+4. **Framing the contribution:** Is this primarily a tutorial paper (methodological contribution) or an empirical paper with a tutorial component? The framing affects the review criteria. For TOSEM, a tutorial/survey paper category may be most appropriate if available.
+
+5. **Audience calibration:** The paper must be accessible to SE researchers with no causal inference background while also being rigorous enough to satisfy methodologists. This is a difficult balance to strike.
+
+## References (Key)
+
+- Ray, D., Posnett, D., Filkov, V., & Devanbu, P. (2014). A Large Scale Study of Programming Languages and Code Quality in GitHub. FSE 2014.
+- Ray, D., Posnett, D., Filkov, V., & Devanbu, P. (2017). A Large-Scale Study of Programming Languages and Code Quality in GitHub. CACM 2017.
+- Berger, E. D., Hollenbeck, C., Maj, P., Vitek, O., & Vitek, J. (2019). On the Impact of Programming Languages on Code Quality. TOPLAS 2019.
+- Furia, C. A., Torchiano, M., & Tempero, E. (2024). Structural causal models analysis of PL and defects. TOSEM 2024.
+- Pearl, J. (2009). Causality: Models, Reasoning, and Inference. Cambridge University Press.
+- Rubin, D. B. (1974). Estimating Causal Effects of Treatments in Randomized and Nonrandomized Studies. Journal of Educational Psychology.
+- Angrist, J. D., & Pischke, J.-S. (2009). Mostly Harmless Econometrics. Princeton University Press.
+- Cunningham, S. (2021). Causal Inference: The Mixtape. Yale University Press.
+- Hernán, M. A., & Robins, J. M. (2020). Causal Inference: What If. Chapman & Hall/CRC.
+- Rosenbaum, P. R. (2002). Observational Studies. Springer.
+- Hill, A. B. (1965). The Environment and Disease: Association or Causation? Proceedings of the Royal Society of Medicine.
