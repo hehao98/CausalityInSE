@@ -26,7 +26,8 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
      - Taxonomy of causal methods actually used (RCTs, quasi-experiments, causal graphs, causal discovery, counterfactual analysis, Granger causality, SEM, propensity scores, causal fault localization, regression-based causal inference, etc.)
      - Trend analysis: volume of empirical SE papers vs. papers asking causal RQs vs. papers employing causal methods — quantifying the gap between causal ambition and methodological rigor
      - Summary of findings: which methods dominate (RCTs and causal fault localization), which are underrepresented (quasi-/natural experiments, IV, DiD, RDD), and what this implies for the field
-   - 2.4 The PL vs. defect proneness debate (comprehensive review of all related work)
+   - 2.4 Parallel causal inference challenges in psychology and health research (cross-disciplinary context: the causal language taboo, the gap between causal ambition and methodology, reform efforts and lessons for SE)
+   - 2.5 The PL vs. defect proneness debate (comprehensive review of all related work)
 
 3. **A Primer on Causal Inference for SE Researchers** — Self-contained, accessible introduction:
    - 3.1 Why correlation does not imply causation (confounding, reverse causality, selection bias — illustrated with PL example)
@@ -59,7 +60,7 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 
 ## Literature Review Plan
 
-Three systematic literature review efforts are needed to accurately frame the contribution and ensure comprehensive coverage. These reviews should be conducted before finalizing the paper framing and contribution statement.
+Four systematic literature review efforts are needed to accurately frame the contribution and ensure comprehensive coverage. These reviews should be conducted before finalizing the paper framing and contribution statement.
 
 ### LR1: Existing Tutorials and Methodological Guides in SE
 
@@ -132,6 +133,28 @@ Three systematic literature review efforts are needed to accurately frame the co
 
 **Expected deliverable:** A comprehensive annotated bibliography, a narrative synthesis of the state of the debate, and a clear articulation of what our worked example adds beyond what is already known.
 
+### LR4: Revisiting Similar Problems in Psychology and Health Research
+
+**Goal:** Document how psychology and health research have confronted the same causal inference gap that we identify in SE---the disconnect between causal ambition and methodological practice in observational research. This cross-disciplinary review strengthens the motivation for our tutorial by showing that the SE community's struggle is part of a broader pattern across empirical sciences, and that solutions emerging in adjacent fields can inform SE's methodological reform.
+
+**Search strategy:**
+- Key papers on the causal language problem in health research (Hernán 2018, Haber et al. 2022)
+- Papers documenting the "taboo" against causal inference in psychology (Grosz, Rohrer & Thoemmes 2020)
+- Methodological reform efforts introducing causal tools to psychology (Rohrer 2018, 2024; Wysocki et al. 2022)
+- Estimand-first frameworks in social science (Lundberg, Johnson & Stewart 2021)
+- Systematic reviews of causal methodology adoption in health research (Tennant et al. 2021 on DAG usage)
+- Editorial guidance on causal inference reporting in clinical journals (Lederer et al. 2019)
+- High-profile case studies where causal assumptions in observational research were contested (Killingsworth, Kahneman & Mellers 2023; Rohrer & Wenz 2024)
+
+**Key questions to answer:**
+1. How do psychology and health research parallel SE in their gap between causal ambition and methodological practice?
+2. What institutional responses (editorial policies, reporting guidelines) have emerged in health research that SE venues have not yet adopted?
+3. Which pedagogical models from psychology (e.g., Rohrer 2024) and epidemiology (e.g., Hernán's target trial framework) can inform our tutorial's approach?
+4. What are the consequences of the causal language taboo across disciplines, and how does the SE community exhibit the same patterns?
+5. How do high-profile observational debates in psychology (income-happiness) mirror the PL-defect debate in SE?
+
+**Expected deliverable:** A cross-disciplinary narrative showing that SE's causal inference gap is systemic across observational empirical sciences, with specific lessons from psychology and health research that inform our four-step framework and motivate its adoption in SE.
+
 ## Task Backlog
 
 ### Phase 0: Literature Review and Framing (Current Phase)
@@ -141,14 +164,15 @@ Three systematic literature review efforts are needed to accurately frame the co
 - [ ] **LR1c:** Refine taxonomy and trend analysis for paper-ready figures (polish labels, add confidence intervals to trends, compute inter-rater reliability if double-coded)
 - [ ] **LR2:** Conduct literature review on intellectual traditions of causal inference
 - [ ] **LR3:** Conduct literature review on the PL vs. defect proneness debate
-- [ ] Synthesize findings from LR1–LR3 to finalize paper framing and contribution statement
+- [ ] **LR4:** Conduct literature review on parallel causal inference problems in psychology and health research
+- [ ] Synthesize findings from LR1–LR4 to finalize paper framing and contribution statement
 - [ ] Revise paper structure based on literature review findings
 - [ ] Write a 1-page "positioning statement" articulating the novelty relative to existing work (especially Furia et al. 2024)
 
 ### Phase 1: Tutorial Drafting
 
 - [ ] Write Introduction (Section 1)
-- [ ] Write Background & Related Work (Section 2), informed by LR1–LR3
+- [ ] Write Background & Related Work (Section 2), informed by LR1–LR4
 - [ ] Write the Causal Inference Primer (Section 3), drawing from thesis Chapter 2 but adapted for a standalone tutorial format
 - [ ] Write the Four-Step Framework (Section 4)
 - [ ] Write the Worked Example (Section 5): apply four-step assessment to Ray et al. and the debate
