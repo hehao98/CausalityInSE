@@ -64,14 +64,14 @@
 \email{vasilescu@cmu.edu}
 
 \begin{abstract}
-Empirical software engineering research frequently investigates causal questions---does adopting a new language reduce defects? does code review improve quality?---yet rarely employs the identification strategies necessary to support causal conclusions.
+Empirical software engineering (SE) research frequently investigates causal questions---does adopting a new language reduce defects? does code review improve quality?---yet rarely employs the identification strategies necessary to support causal conclusions.
 This disconnect between causal ambition and methodological practice mirrors a well-documented crisis in psychology and health research, but the SE community lacks an accessible, unified introduction to the causal inference toolkit.
 This tutorial paper addresses that gap.
-We provide a self-contained primer on causal inference for software engineering researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies (difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects).
-We then introduce a four-step causal credibility assessment framework that we found particularly useful in the SE con: (1)~derive an explicit causal theory from domain knowledge, (2)~define the causal estimand and specify identifying assumptions, (3)~honestly acknowledge limitations, and (4)~thoughtfully navigate alternative explanations.
-We demonstrate the framework's diagnostic and constructive power through two worked examples drawn from the programming language and code quality debate.
-In Example~A, we apply the four steps to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study, showing how the cross-sectional design limits causal interpretation and how panel fixed effects on the same data would strengthen identification by absorbing time-invariant confounders.
-In Example~B, we diagnose the selection bias in \citeauthor{DBLP:conf/msr/BognerM22}'s cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
+We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies (difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects).
+Taking the stance that no causal inquiry is perfect by design, we introduce a four-step framework for \emph{assessing} the credibility of causal claims in SE research: (1)~derive an explicit causal theory from domain knowledge, (2)~define the causal estimand and specify identifying assumptions, (3)~honestly acknowledge limitations, and (4)~thoughtfully navigate alternative explanations.
+We demonstrate the framework's diagnostic and constructive power through two worked examples drawn from the programming-language and code-quality debate.
+In the first example, we apply the four steps to diagnose the identification failures in Ray et al.'s landmark GitHub study and show how panel fixed effects, applied to the same data, would provide stronger identification by absorbing time-invariant confounders.
+In the second example, we diagnose the selection bias in Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
 Both examples illustrate how the framework systematically upgrades research designs by sharpening causal questions and guiding researchers toward identification strategies that exploit the variation structure of their data.
 \end{abstract}
 
