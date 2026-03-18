@@ -65,14 +65,15 @@
 
 \begin{abstract}
 Empirical software engineering (SE) research frequently investigates causal questions---does adopting a new language reduce defects? does code review improve quality?---yet rarely employs the identification strategies necessary to support causal conclusions.
-This disconnect between causal ambition and methodological practice mirrors a well-documented crisis in psychology and health research, but the SE community lacks an accessible, unified introduction to the causal inference toolkit.
+This disconnect between causal ambition and methodological practice mirrors a well-documented crisis in psychology and health research, but the SE community lacks an accessible, unified introduction to the causal inference toolkit for substantiating causal claims.
 This tutorial paper addresses that gap.
 We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies (difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects).
-Taking the stance that no causal inquiry is perfect by design, we introduce a four-step framework for \emph{assessing} the credibility of causal claims in SE research: (1)~derive an explicit causal theory from domain knowledge, (2)~define the causal estimand and specify identifying assumptions, (3)~honestly acknowledge limitations, and (4)~thoughtfully navigate alternative explanations.
+Taking the stance that no causal inquiry is perfect by design, we introduce a four-step framework for \emph{assessing} the credibility of causal claims for SE research: (1)~derive an explicit causal theory from SE domain knowledge, (2)~define the causal estimand and specify identifying assumptions for causal interpretation, (3)~honestly acknowledge and mitigate limitations, and (4)~thoughtfully navigate alternative explanations.
 We demonstrate the framework's diagnostic and constructive power through two worked examples drawn from the programming-language and code-quality debate.
-In the first example, we apply the four steps to diagnose the identification failures in Ray et al.'s landmark GitHub study and show how panel fixed effects, applied to the same data, would provide stronger identification by absorbing time-invariant confounders.
+In the first example, we apply the four steps to diagnose the identification controversy in \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, yield identification more robust to common unobserved confounders in the SE context.
 In the second example, we diagnose the selection bias in Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
-Both examples illustrate how the framework systematically upgrades research designs by sharpening causal questions and guiding researchers toward identification strategies that exploit the variation structure of their data.
+Both examples illustrate how the framework systematically improves prior research designs.
+As a result, we hope this paper will provide a methodological blueprint for future empirical SE research, illustrating how to balance rigor with practicality to generate actionable, trustworthy evidence for important empirical SE questions.
 \end{abstract}
 
 \begin{CCSXML}
@@ -111,13 +112,14 @@ Both examples illustrate how the framework systematically upgrades research desi
 Software engineering is among the most consequential engineering disciplines of the modern era, yet its practice is characterized more by folklore, intuition, and contested conventional wisdom than by empirically validated guidance~\cite{DBLP:conf/icse/Devanbu0B16}.
 When practitioners ask whether adopting a strongly typed language reduces defects, whether code review improves maintainability, or whether test-driven development increases productivity, they are asking \emph{causal} questions---questions about what would happen if a practice were adopted or abandoned, holding all else constant.
 Empirical software engineering research has generated thousands of studies addressing such questions, yet this substantial body of work has largely failed to provide definitive answers.
-The problem lies not in the quantity of research but in its methodological limitations: the field's pervasive reliance on descriptive and correlational evidence from software repository data cannot distinguish genuine causal effects from the selection biases and confounding factors that drive the adoption of practices.
+The problem lies not in the quantity of research, but in its methodological limitations, specifically the field's pervasive reliance on descriptive and correlational evidence from software repository data that cannot distinguish genuine causal effects from selection biases and confounding factors.
 
 The programming language and code quality debate illustrates this crisis.
 \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} analyzed millions of commits across thousands of GitHub projects, reporting that language design has a ``modest'' effect on defect proneness.
 Although the authors were careful to frame their findings as correlational, many downstream works cited the study as evidence that certain languages \emph{cause} fewer bugs~\cite{DBLP:journals/corr/abs-1911-11894}.
-A subsequent reproduction~\cite{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, prompting the observation that ``an analysis of GitHub is necessarily measuring correlation and not establishing causation, as it does not constitute an experiment''~\cite{DBLP:journals/corr/abs-1911-11894}---though the two groups continue to disagree on specific measurement choices.
-This exchange exposes a deeper methodological impasse: the field's dominant analytical approach---large-scale regression on observational data---cannot credibly answer the causal questions that motivate the research.
+A subsequent reproduction~\cite{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, prompting the observation that \emph{``an analysis of GitHub is necessarily measuring correlation and not establishing causation, as it does not constitute an experiment''}~\cite{DBLP:journals/corr/abs-1911-11894}---though the two groups continue to disagree on specific measurement choices.
+This exchange exposes a deeper methodological impasse: The field's dominant analytical approach---large-scale analysis of observational software-repository data---cannot credibly answer the causal questions that practitioners care about and that motivate the empirical SE research.
+
 
 Modern causal inference methods, developed primarily in econometrics and epidemiology over the past several decades, offer a principled path forward~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}.
 The value of these methods lies not in any claim to methodological perfection but in their insistence on \emph{transparency}: every causal design rests on assumptions that must be explicitly stated, examined, and debated.
