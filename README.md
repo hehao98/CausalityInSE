@@ -21,7 +21,7 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 
 2. **Background & Related Work**
    - 2.1 Existing tutorials and methodological guides in SE (positioning our contribution)
-   - 2.2 The intellectual traditions of causal inference (potential outcomes, graphical causal models, design-based credibility revolution, Bradford Hill viewpoints, sensitivity analysis frameworks)
+   - 2.2 The intellectual traditions of causal inference (from Snow and the early formalization by Neyman, Fisher, and Rubin through the graphical causal models of Pearl, the design-based credibility revolution, and modern sensitivity analysis)
    - 2.3 Causal inference adoption in SE to date — *empirical analysis of top-venue SE papers (ASE + FSE + ICSE, 2015–2025)*
      - Taxonomy of causal methods actually used (RCTs, quasi-experiments, causal graphs, causal discovery, counterfactual analysis, Granger causality, SEM, propensity scores, causal fault localization, regression-based causal inference, etc.)
      - Trend analysis: volume of empirical SE papers vs. papers asking causal RQs vs. papers employing causal methods — quantifying the gap between causal ambition and methodological rigor
@@ -84,17 +84,18 @@ Four systematic literature review efforts are needed to accurately frame the con
 
 ### LR2: Intellectual Traditions of Causal Inference and Causal Claim Assessment
 
-**Goal:** Ensure comprehensive and accurate coverage of the different intellectual traditions and frameworks for causal inference, so that the tutorial provides SE researchers with a faithful map of the state of the art. We must not inadvertently present one tradition (e.g., the econometrics/design-based approach) as the only approach while neglecting others.
+**Goal:** Trace the historical development of causal inference from its origins through to the modern state of the art, ensuring comprehensive coverage of the different intellectual traditions and frameworks. The review should tell a concise story of how the field evolved---from early epidemiological reasoning through the formalization of experimental and counterfactual frameworks to the credibility revolution and its modern extensions---so that SE researchers can understand not just the current toolkit but how and why it came to be.
 
 **Search strategy:**
-- Textbooks and foundational references: Pearl (2009), Rubin (1974), Angrist & Pischke (2009, 2014), Cunningham (2021), Hernán & Robins (2020), Rosenbaum (2002), Imbens & Rubin (2015), Morgan & Winship (2015), Hansen (2022)
-- Key methodological papers on specific methods: DiD (Card & Krueger 1993, Callaway & Sant'Anna 2021, Roth et al. 2023), IV (Angrist & Imbens 1996), RDD (Thistlethwaite & Campbell 1960, Calonico et al. 2014), matching (Rosenbaum & Rubin 1983), synthetic control (Abadie et al. 2010)
-- Bradford Hill criteria and epidemiological tradition (Hill 1965, Rothman & Greenland)
-- Sensitivity analysis (Rosenbaum 2002, VanderWeele & Ding 2017, Oster 2019, Cinelli & Hazlett 2020)
-- Philosophy of causation (Hume, Lewis, Woodward, Cartwright) — lighter coverage for context
+- Historical foundations: Snow (1855, the origin of epidemiological causal reasoning), Neyman (1923, potential outcomes), Fisher (1935, randomized experiments), Hill (1965, observational causal assessment)
+- Formalization of the counterfactual framework: Rubin (1974, potential outcomes for observational studies), Rosenbaum & Rubin (1983, propensity scores)
+- The design-based tradition and credibility revolution: Card & Krueger (1994, landmark DiD), Angrist, Imbens & Rubin (1996, IV/LATE), Angrist & Pischke (2010, the credibility revolution manifesto)
+- Graphical causal models: Pearl (2009, DAGs and do-calculus)
+- Integrative treatments: Shadish, Cook & Campbell (2002), Morgan & Winship (2015), Imbens (2020, PO vs. DAG comparison)
+- Textbooks and pedagogical references: Cunningham (2021), Hernán & Robins (2020), Huntington-Klein (2021), Hansen (2022)
+- Recent methodological advances: DiD (Callaway & Sant'Anna 2021, Roth et al. 2023), double/debiased ML (Chernozhukov et al. 2018), causal forests (Athey & Imbens)
+- Sensitivity analysis: Rosenbaum (2002), Oster (2019), Cinelli & Hazlett (2020)
 - Debates within the causal inference community (e.g., Pearl vs. Rubin, DAGs vs. potential outcomes, structural vs. design-based)
-- Bayesian approaches to causal inference
-- Recent developments: double/debiased machine learning (Chernozhukov et al.), causal forests (Athey & Imbens), targeted learning (van der Laan)
 
 **Key questions to answer:**
 1. What are the major intellectual traditions and how do they relate to each other? Where do they agree and disagree?
