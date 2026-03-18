@@ -22,7 +22,10 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 2. **Background & Related Work**
    - 2.1 Existing tutorials and methodological guides in SE (positioning our contribution)
    - 2.2 The intellectual traditions of causal inference (potential outcomes, graphical causal models, design-based credibility revolution, Bradford Hill viewpoints, sensitivity analysis frameworks)
-   - 2.3 Causal inference adoption in SE to date
+   - 2.3 Causal inference adoption in SE to date — *empirical analysis of top-venue SE papers (ASE + FSE + ICSE, 2015–2025)*
+     - Taxonomy of causal methods actually used (RCTs, quasi-experiments, causal graphs, causal discovery, counterfactual analysis, Granger causality, SEM, propensity scores, causal fault localization, regression-based causal inference, etc.)
+     - Trend analysis: volume of empirical SE papers vs. papers asking causal RQs vs. papers employing causal methods — quantifying the gap between causal ambition and methodological rigor
+     - Summary of findings: which methods dominate (RCTs and causal fault localization), which are underrepresented (quasi-/natural experiments, IV, DiD, RDD), and what this implies for the field
    - 2.4 The PL vs. defect proneness debate (comprehensive review of all related work)
 
 3. **A Primer on Causal Inference for SE Researchers** — Self-contained, accessible introduction:
@@ -74,7 +77,9 @@ Three systematic literature review efforts are needed to accurately frame the co
 4. What is the state of adoption of causal inference methods in empirical SE research? (Are there papers surveying this?)
 5. Are there tutorial papers from adjacent fields (e.g., HCI, information systems, management) that we should reference as models?
 
-**Expected deliverable:** A table mapping existing tutorials/guides by topic, venue, and the extent to which they address causal reasoning. A clear articulation of the gap our paper fills.
+**Existing analysis:** The notebook `notebooks/literature_review.Rmd` (reading from `data/se_papers_metadata.csv`) already contains a systematic classification of 100 SE papers from ASE, FSE, and ICSE (2015–2025) that engage with causality. Each paper is coded by `causal_type` (claim, method, or both) and, for papers using causal methods, by `causal_method_class` (a 13-category taxonomy). The notebook produces a bar chart of method prevalence and a trend plot of causal claims vs. causal methods over time. These results form the empirical backbone of Section 2.3.
+
+**Expected deliverable:** A table mapping existing tutorials/guides by topic, venue, and the extent to which they address causal reasoning. A clear articulation of the gap our paper fills. The taxonomy and trend analysis from `literature_review.Rmd` should be refined and incorporated into Section 2.3 of the paper.
 
 ### LR2: Intellectual Traditions of Causal Inference and Causal Claim Assessment
 
@@ -131,7 +136,9 @@ Three systematic literature review efforts are needed to accurately frame the co
 
 ### Phase 0: Literature Review and Framing (Current Phase)
 
-- [ ] **LR1:** Conduct literature review on existing SE tutorials and methodological guides
+- [x] **LR1a:** Classify causal methods in top-venue SE papers (ASE + FSE + ICSE, 2015–2025) — taxonomy and trend analysis implemented in `notebooks/literature_review.Rmd`; data in `data/se_papers_metadata.csv`
+- [ ] **LR1b:** Complete literature review on existing SE tutorials and methodological guides (extend beyond top-3 venues to EMSE, TSE, TOSEM, IST, JSS, EASE, ESEM; identify tutorial papers specifically)
+- [ ] **LR1c:** Refine taxonomy and trend analysis for paper-ready figures (polish labels, add confidence intervals to trends, compute inter-rater reliability if double-coded)
 - [ ] **LR2:** Conduct literature review on intellectual traditions of causal inference
 - [ ] **LR3:** Conduct literature review on the PL vs. defect proneness debate
 - [ ] Synthesize findings from LR1–LR3 to finalize paper framing and contribution statement
