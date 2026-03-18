@@ -13,6 +13,26 @@ papers <- read_csv("../data/se_papers_metadata.csv") |>
   mutate(year = as.integer(str_extract(venue, "\\d{4}")))
 ```
 
+## Methods
+
+We collected metadata for all main-research-track papers published at
+three premier SE venues---ICSE, FSE, and ASE---from 2015 to 2025.
+Paper titles and DOIs were obtained from DBLP proceedings pages, and
+abstracts were retrieved via the Semantic Scholar batch API, with
+OpenAlex as a backfill source for missing records. This produced a
+corpus of `r nrow(papers)` papers stored in a single CSV.
+
+Each paper was then independently classified by a large language model
+(Claude Opus 4.6, `temperature = 0`, with structured JSON output) along three
+dimensions: (1) whether the paper is an empirical SE study, (2) whether
+it is a mining software repositories (MSR) study, and (3) whether it
+employs a causal inference method, makes causal claims, or both. For
+papers tagged as using causal methods, a follow-up pass assigned each
+paper to one or more categories in the taxonomy defined below. The
+deterministic decoding and explicit classification schema were chosen to
+maximize reproducibility; all prompts and scripts are available in the
+replication package.
+
 ## Taxonomy of Causal Methods
 
 The table below defines each causal-method category we assign to
