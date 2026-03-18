@@ -10,8 +10,9 @@ This tutorial paper aims to provide an accessible introduction to causal inferen
 
 1. The intellectual landscape of causal inference (potential outcomes, graphical causal models, design-based approaches) and why it matters for SE,
 2. A four-step causal credibility assessment framework (derive causal theory → define estimand and identifying assumptions → acknowledge limitations → navigate alternative explanations),
-3. A diagnostic application of the framework to an existing, widely-known SE debate (Ray et al. 2014 and subsequent controversy), and
-4. A constructive demonstration showing how the framework guides the design of improved studies (panel fixed effects analysis exploiting within-developer and within-repository variation).
+3. Two diagnostic-then-constructive worked examples showing the framework's power to both critically evaluate existing studies and guide improved designs:
+   - **Example A (Ray et al.):** Diagnoses the identification failures in the landmark PL-defect study, then shows how panel fixed effects on the *same GitHub data* would have provided stronger identification by exploiting within-developer and within-repository variation.
+   - **Example B (Bogner & Merkel):** Diagnoses the selection bias in a cross-sectional JavaScript vs. TypeScript comparison, then shows how the framework decomposes the compound "language" treatment into the sharper "type system adoption" question and redesigns the study as a TypeScript migration difference-in-differences on the *same GitHub data*.
 
 The paper should be self-contained and pedagogically oriented so that an SE researcher with no prior exposure to causal inference can (a) understand the state of the art, (b) critically evaluate causal claims in existing work, and (c) apply the framework to their own research.
 
@@ -43,16 +44,36 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
    - 4.3 Step 3: Honestly acknowledge and mitigate limitations and known caveats
    - 4.4 Step 4: Thoughtfully navigate alternative explanations
 
-5. **Worked Example: The Programming Language and Defect Proneness Debate**
-   - 5.1 Applying the four steps to Ray et al. (2014) and subsequent work
+5. **Worked Example A: The PL-Defect Debate (Regression → Panel Fixed Effects)**
+   - 5.1 Diagnostic assessment: Applying the four steps to Ray et al. (2014) and the subsequent debate
+     - Step 1 reveals unmeasured confounders (developer skill, org culture) that regression cannot address
+     - Step 2 reveals an ill-defined estimand: "effect of language" conflates type system, ecosystem, paradigm, and community
+     - Step 3 reveals devastating measurement problems (Berger et al. 2019) and SUTVA violations in polyglot projects (Kochhar et al. 2016)
+     - Step 4 reveals the debate was unproductive because participants argued without explicit causal structures
    - 5.2 Downstream causal misinterpretation analysis (citation analysis showing correlational findings reinterpreted as causal)
-   - 5.3 Assessment summary: ambiguous interpretation, limited identification, unproductive debate
+   - 5.3 Constructive improvement: how the framework guides Ray et al. toward panel FE on their *own data*
+     - Their GitHub data already contains developer IDs, timestamps, and multi-language contributions → panel structure
+     - Panel FE absorbs all time-invariant developer and project confounders that cross-sectional regression cannot
+     - The framework reveals that this is better but still imperfect: time-varying confounders remain, and the compound treatment problem persists
+   - 5.4 Brief empirical demonstration on the Ray et al. dataset (or a comparable GitHub sample)
 
-6. **From Assessment to Improved Design: A Panel Fixed Effects Analysis**
-   - 6.1 Research design (exploiting within-developer and within-repository variation)
-   - 6.2 Data construction
-   - 6.3 Results and interpretation
-   - 6.4 Limitations and remaining threats
+6. **Worked Example B: TypeScript and Code Quality (Cross-Sectional → DiD)**
+   - 6.1 Diagnostic assessment: Applying the four steps to Bogner & Merkel (MSR 2022)
+     - They compared 299 JS projects with 305 TS projects cross-sectionally, finding (surprisingly) that TS projects had *more* bug-fix commits
+     - Step 1 reveals that TypeScript adoption is endogenous: teams that adopt TS likely differ systematically from those that don't (in skill, quality culture, project complexity, and bug-tracking practices)
+     - Step 2 reveals the estimand is confounded: the cross-sectional JS-vs-TS comparison estimates a selection-biased associational quantity, not a causal effect
+     - Step 3: the "surprising" finding that TS has more bug-fix commits likely reflects better bug-tracking practices in TS-adopting teams, not a causal effect of TypeScript on bugs
+     - Step 4: the alternative explanation (selection) is more plausible than the literal interpretation
+   - 6.2 The framework decomposes the question: from compound "language" to specific "type system adoption"
+     - TypeScript adds a type system to the JS ecosystem while holding runtime, packages, and tooling approximately constant → a well-defined intervention in the potential outcomes sense
+     - This connects directly to the controlled experiments (Hanenberg et al. 2014: types help with type errors; Gao et al. 2017: TS catches ~15% of real bugs)
+   - 6.3 Constructive improvement: redesigning as a TypeScript adoption DiD on the *same GitHub data*
+     - Treatment group: JS projects that adopt TS (observable migration events)
+     - Control group: Comparable JS projects that remain in pure JS
+     - DiD identification: compare defect trajectory changes, pre-trend tests assess parallel trends assumption
+     - Connects to modern DiD methods from Roth et al. (2023) for staggered adoption
+   - 6.4 Brief empirical demonstration on GitHub data
+   - 6.5 Synthesis: how the framework systematically upgrades research designs — from cross-sectional to panel FE (Example A) and from cross-sectional to DiD with a sharper treatment (Example B)
 
 7. **Discussion** — Implications for SE research practices, when and how to apply the framework, relationship to other methodological reform efforts (pre-registration, registered reports, replication)
 
@@ -123,6 +144,7 @@ Four systematic literature review efforts are needed to accurately frame the con
 - Search for papers using causal methods (DiD, IV, RDD, fixed effects, matching) in SE that study PL effects
 - Search for the broader PL effectiveness literature (not just defects — also productivity, security, maintainability)
 - Search for controlled experiments on PL effects, especially the Hanenberg research program on type systems (Hanenberg 2010; Mayer et al. 2012; Hanenberg et al. 2014 EMSE) and quasi-experimental studies (Nanz & Furia 2015 via Rosetta Code; Gao, Bird & Barr 2017 via type-checker bug detection on real JavaScript projects)
+- Search for TypeScript vs. JavaScript comparisons (Bogner & Merkel MSR 2022: cross-sectional quality comparison) — these serve as candidates for Worked Example B (redesign as TypeScript adoption DiD)
 
 **Key questions to answer:**
 1. What is the complete set of empirical studies examining PL effects on defect proneness or code quality?
@@ -176,37 +198,48 @@ Four systematic literature review efforts are needed to accurately frame the con
 - [ ] Write Background & Related Work (Section 2), informed by LR1–LR4
 - [ ] Write the Causal Inference Primer (Section 3), drawing from thesis Chapter 2 but adapted for a standalone tutorial format
 - [ ] Write the Four-Step Framework (Section 4)
-- [ ] Write the Worked Example (Section 5): apply four-step assessment to Ray et al. and the debate
+
+### Phase 2: Worked Example A — Ray et al. + Panel FE (Section 5)
+
+- [ ] Write diagnostic assessment of Ray et al. (Section 5.1): walk through all four steps showing identification failures
 - [ ] Conduct and write up the downstream citation analysis (Section 5.2)
+- [ ] Write constructive improvement narrative: how the framework guides from regression to panel FE (Section 5.3)
+- [ ] Construct panel dataset from Ray et al.'s GitHub data (or comparable sample): identify polyglot developers and repositories
+- [ ] Operationalize language assignment at the commit level; compute defect metrics
+- [ ] Implement panel FE analysis; conduct specification tests and robustness checks
+- [ ] Write up brief empirical demonstration (Section 5.4)
 
-### Phase 2: Empirical Study
+### Phase 3: Worked Example B — Bogner & Merkel + TypeScript DiD (Section 6)
 
-- [ ] Construct panel dataset from GHArchive (identify polyglot developers and repositories)
-- [ ] Operationalize language assignment at the commit level
-- [ ] Compute defect metrics across multiple operationalizations
-- [ ] Implement panel fixed effects analysis
-- [ ] Assess within-developer variation and statistical power
-- [ ] Conduct specification tests and robustness checks
-- [ ] Write up findings (Section 6)
+- [ ] Write diagnostic assessment of Bogner & Merkel 2022 (Section 6.1): walk through four steps showing selection bias
+- [ ] Write the treatment decomposition narrative: from "language" to "type system adoption" (Section 6.2)
+- [ ] Write constructive improvement narrative: redesign as TypeScript adoption DiD (Section 6.3)
+- [ ] Identify TypeScript migration events in GitHub data (JS projects that adopted TS)
+- [ ] Construct matched treatment-control sample of JS projects; compute pre/post defect metrics
+- [ ] Implement DiD analysis with event-study plots and pre-trend tests
+- [ ] Write up brief empirical demonstration (Section 6.4)
+- [ ] Write synthesis of both examples: how the framework upgrades designs (Section 6.5)
 
-### Phase 3: Integration and Submission
+### Phase 4: Integration and Submission
 
-- [ ] Write Discussion (Section 7)
+- [ ] Write Discussion (Section 7): implications for SE research practices, how both examples generalize, relationship to methodological reform efforts
 - [ ] Write Conclusion (Section 8)
 - [ ] Full paper revision and internal review
 - [ ] Submit to TOSEM
 
 ## Key Risks and Open Questions
 
-1. **Positioning relative to Furia et al. (2024):** They have already applied structural causal models to the PL-defect question. How do we differentiate? Our contribution is broader (a general tutorial framework, not just one application) and includes an empirical component (panel FE analysis), but we need to clearly articulate this.
+1. **Positioning relative to Furia et al. (2024):** They applied structural causal models (DAG-based adjustment) to coding competition data. Our contribution differs on three dimensions: (a) we provide a general tutorial framework, not just one application; (b) our Example A uses design-based identification (panel FE) rather than DAG-based adjustment; (c) our Example B uses a different identification strategy (DiD exploiting a natural experiment) on real-world project data. The two-example structure demonstrates that the framework generates *different* improved designs depending on the data structure and question.
 
-2. **Scope management:** The tutorial could easily become a textbook chapter. We need to balance comprehensiveness with accessibility and stay within TOSEM page norms. The primer (Section 3) needs to be self-contained but not exhaustive.
+2. **Scope management:** Two worked examples plus a tutorial primer is ambitious. The empirical demonstrations in Sections 5.4 and 6.4 should be brief and pedagogical (not full empirical papers) — enough to show feasibility and illustrate the framework's output, not to definitively answer the causal questions.
 
-3. **Empirical study feasibility:** The panel FE analysis depends on sufficient within-developer language variation in the data. If most developers are single-language, the estimator will lack power. Mitigation: assess variation early; fall back to within-repository variation or developer random effects if needed.
+3. **Empirical feasibility — Example A (Panel FE):** Depends on sufficient within-developer language variation in the data. Mitigation: assess variation early; even a null or weak result is pedagogically valuable (it illustrates Step 3's honesty about limitations).
 
-4. **Framing the contribution:** Is this primarily a tutorial paper (methodological contribution) or an empirical paper with a tutorial component? The framing affects the review criteria. For TOSEM, a tutorial/survey paper category may be most appropriate if available.
+4. **Empirical feasibility — Example B (TypeScript DiD):** Depends on identifying enough clean TypeScript migration events (JS projects that adopted TS) with comparable pure-JS controls. Mitigation: TypeScript adoption has been widespread since ~2017; initial scoping on GHArchive should reveal whether the sample is sufficient.
 
-5. **Audience calibration:** The paper must be accessible to SE researchers with no causal inference background while also being rigorous enough to satisfy methodologists. This is a difficult balance to strike.
+5. **Framing the contribution:** This is primarily a tutorial paper whose contribution is the framework and the demonstration of its diagnostic-then-constructive power. The empirical demonstrations are illustrations, not standalone empirical contributions. For TOSEM, a tutorial/survey paper category may be most appropriate.
+
+6. **Audience calibration:** The paper must be accessible to SE researchers with no causal inference background while also being rigorous enough to satisfy methodologists. The two-example structure helps: Example A (regression → panel FE) is a gentler step; Example B (cross-sectional → DiD with treatment decomposition) shows the framework's full power.
 
 ## References (Key)
 
