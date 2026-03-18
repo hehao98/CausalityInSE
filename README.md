@@ -122,7 +122,7 @@ Four systematic literature review efforts are needed to accurately frame the con
 - Search for papers on "programming language" AND ("defect" OR "bug" OR "fault" OR "quality" OR "reliability" OR "safety") in SE venues
 - Search for papers using causal methods (DiD, IV, RDD, fixed effects, matching) in SE that study PL effects
 - Search for the broader PL effectiveness literature (not just defects — also productivity, security, maintainability)
-- Search for related controlled experiments on PL effects (e.g., lab studies comparing developer performance across languages)
+- Search for controlled experiments on PL effects, especially the Hanenberg research program on type systems (Hanenberg 2010; Mayer et al. 2012; Hanenberg et al. 2014 EMSE) and quasi-experimental studies (Nanz & Furia 2015 via Rosetta Code; Gao, Bird & Barr 2017 via type-checker bug detection on real JavaScript projects)
 
 **Key questions to answer:**
 1. What is the complete set of empirical studies examining PL effects on defect proneness or code quality?
