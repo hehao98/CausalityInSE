@@ -1,3 +1,6 @@
 [submodule "Thesis"]
 	path = Thesis
 	url = https://github.com/hehao98/Thesis
+[submodule "data"]
+	path = data
+	url = https://github.com/hehao98/CausalityInSE-Data
