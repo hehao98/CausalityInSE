@@ -1,4 +1,4 @@
-# Causal Inference for Software Engineering: A Tutorial
+# Causal Inference for Empirical Software Engineering: A Tutorial
 
 **Target Venue:** ACM Transactions on Software Engineering and Methodology (TOSEM)
 
@@ -23,12 +23,12 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 2. **Background & Related Work**
    - 2.1 Existing tutorials and methodological guides in SE (positioning our contribution)
    - 2.2 The intellectual traditions of causal inference (from Snow and the early formalization by Neyman, Fisher, and Rubin through the graphical causal models of Pearl, the design-based credibility revolution, and modern sensitivity analysis)
-   - 2.3 Causal inference adoption in SE to date — *empirical analysis of top-venue SE papers (ASE + FSE + ICSE, 2015–2025)*
+   - 2.3 Parallel causal inference challenges in psychology and health research (cross-disciplinary context: the causal language taboo, the gap between causal ambition and methodology, reform efforts and lessons for SE)
+   - 2.4 The PL vs. defect proneness debate (comprehensive review of all related work)
+   - 2.5 Causal inference adoption in SE to date — *empirical analysis of top-venue SE papers (ASE + FSE + ICSE, 2015–2025)*
      - Taxonomy of causal methods actually used (RCTs, quasi-experiments, causal graphs, causal discovery, counterfactual analysis, Granger causality, SEM, propensity scores, causal fault localization, regression-based causal inference, etc.)
      - Trend analysis: volume of empirical SE papers vs. papers asking causal RQs vs. papers employing causal methods — quantifying the gap between causal ambition and methodological rigor
      - Summary of findings: which methods dominate (RCTs and causal fault localization), which are underrepresented (quasi-/natural experiments, IV, DiD, RDD), and what this implies for the field
-   - 2.4 Parallel causal inference challenges in psychology and health research (cross-disciplinary context: the causal language taboo, the gap between causal ambition and methodology, reform efforts and lessons for SE)
-   - 2.5 The PL vs. defect proneness debate (comprehensive review of all related work)
 
 3. **A Primer on Causal Inference for SE Researchers** — Self-contained, accessible introduction:
    - 3.1 Why correlation does not imply causation (confounding, reverse causality, selection bias — illustrated with PL example)
