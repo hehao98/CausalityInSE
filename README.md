@@ -8,7 +8,8 @@
 
 - `paper/`: Contains the LaTeX source code and compiled PDF of the manuscript.
 - `notebooks/`: Contains R Markdown notebooks used for data analysis (e.g., `literature_review.Rmd`).
-- `data/`: A Git submodule pointing to the [CausalityInSE-Data](https://github.com/hehao98/CausalityInSE-Data) repository, which stores large datasets (e.g., `commits.csv.zip`, `se_papers_metadata.csv`). This separation prevents large files from bloating the main repository and causing issues with tools like Overleaf.
+- `data/`: A Git submodule pointing to the [CausalityInSE-Data](https://github.com/hehao98/CausalityInSE-Data) repository, which stores large datasets (e.g., `commits.csv.zip`, `se_papers_metadata.csv`).
+  This separation prevents large files from bloating the main repository and causing issues with tools like Overleaf.
 
 ## Paper Vision
 
