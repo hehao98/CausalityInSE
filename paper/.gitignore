@@ -1,2 +1,8 @@
 main.log
 main.pdf
+main.aux
+main.out
+main.blg
+main.synctex.gz
+comment.cut
+*.bbl

@@ -4,15 +4,15 @@
   \providecommand\BibTeX{{%
     Bib\TeX}}}
 
-\setcopyright{acmlicensed}
-\copyrightyear{2018}
-\acmYear{2018}
-\acmDOI{XXXXXXX.XXXXXXX}
-\acmConference[Conference acronym 'XX]{Make sure to enter the correct
-  conference title from your rights confirmation email}{June 03--05,
-  2018}{Woodstock, NY}
-\acmISBN{978-1-4503-XXXX-X/2018/06}
+\setcopyright{none}
+\acmJournal{TOSEM}
+\acmYear{2026}
+\acmVolume{0}
+\acmNumber{0}
+\acmArticle{0}
+\acmDOI{}
 
+\fancyfoot[C]{\textbf{Under Review}}
 
 \begin{document}
 
@@ -75,10 +75,10 @@ Empirical software engineering research frequently investigates causal questions
          <concept_significance>500</concept_significance>
          </concept>
    </ccs2012>
-  \end{CCSXML}
-  
-  \ccsdesc[500]{Software and its engineering}
-  \ccsdesc[500]{Computing methodologies}
+\end{CCSXML}
+
+\ccsdesc[500]{Software and its engineering}
+\ccsdesc[500]{Computing methodologies}
 
 
 \keywords{causal inference, empirical software engineering, research methodology, quasi-experimental design, programming languages, code quality}
@@ -161,9 +161,9 @@ Independently of the potential outcomes tradition, Pearl~\cite{pearl2009causalit
 Morgan and Winship~\cite{morgan2015counterfactuals} bridged the potential outcomes and graphical traditions for a social science audience, presenting conditioning techniques, instrumental variables, longitudinal methods, and causal mechanisms within a unified counterfactual framework, and emphasizing causal effect heterogeneity throughout. Imbens~\cite{imbens2020potential} later compared the two traditions from an economist's perspective, arguing that the potential outcomes framework is more natural for design-based research while acknowledging that DAGs offer strengths for encoding complex causal structures. These integrative treatments inform our tutorial's approach of presenting the two traditions as complementary rather than competing---a synthesis that neither the graphical community nor the design-based community has offered for SE audiences.
 
 \paragraph{Modern Advances.}
-The methodological frontier has continued to advance on multiple fronts. Chernozhukov et al.~\cite{chernozhukov2018double} introduced double/debiased machine learning (DML), extending design-based identification into high-dimensional settings by combining machine learning for nuisance parameter estimation with Neyman-orthogonal moment conditions and cross-fitting. This framework is relevant to SE because mining software repositories generates high-dimensional feature spaces where traditional regression may be inadequate. Roth et al.~\cite{roth2023whats} synthesized rapid advances in DiD methodology, revealing that the standard two-way fixed effects estimator---the workhorse inherited from the credibility revolution---can produce misleading results under heterogeneous treatment effects and staggered adoption, issues directly relevant to SE panel data where tool or language adoption events occur at different times. Pedagogically, Huntington-Klein~\cite{huntingtonklein2021effect} demonstrated that causal inference can be taught effectively to non-specialist audiences by prioritizing intuition and graphical reasoning over mathematical formalism.
+The methodological frontier has continued to advance on multiple fronts. Chernozhukov et al.~\cite{chernozhukov2018double} introduced double/debiased machine learning (DML), extending design-based identification into high-dimensional settings by combining machine learning for nuisance parameter estimation with Neyman-orthogonal moment conditions and cross-fitting. This framework is relevant to SE because mining software repositories generates high-dimensional feature spaces where traditional regression may be inadequate. Athey and Imbens~\cite{athey2016recursive} introduced tree-based methods for heterogeneous treatment effect estimation (causal forests), enabling discovery of treatment effect variation across subpopulations. Callaway and Sant'Anna~\cite{callaway2021difference} developed robust estimators for DiD with staggered adoption, and Roth et al.~\cite{roth2023whats} synthesized these and other rapid advances in DiD methodology, revealing that the standard two-way fixed effects estimator---the workhorse inherited from the credibility revolution---can produce misleading results under heterogeneous treatment effects and staggered adoption, issues directly relevant to SE panel data where tool or language adoption events occur at different times. Pedagogically, a new generation of textbooks---Angrist and Pischke's~\cite{angrist2009mostly} applied econometrics companion, Hern\'{a}n and Robins'~\cite{hernan2020causal} epidemiological treatment, Cunningham's~\cite{cunningham2021causal} code-driven introduction, and Huntington-Klein's~\cite{huntingtonklein2021effect} intuition-first approach---has demonstrated that causal inference can be taught effectively to non-specialist audiences.
 
-Alongside identification, sensitivity analysis has matured into an essential complement. Oster~\cite{oster2019unobservable} formalized coefficient stability analysis, developing bounds on treatment effects under proportional selection assumptions that assess how much bias from unobserved confounders would be needed to overturn a result. Cinelli and Hazlett~\cite{cinelli2020making} introduced the robustness value and sensitivity contour plots based on partial $R^2$, providing sharper bounds under weaker assumptions. Neither method has been applied in SE research, though both are directly applicable to the regression-based studies that dominate empirical SE.
+Alongside identification, sensitivity analysis has matured into an essential complement. Rosenbaum~\cite{rosenbaum2002observational} developed the foundational framework for assessing how much hidden bias would need to be present to alter an observational study's conclusions. Oster~\cite{oster2019unobservable} formalized coefficient stability analysis, developing bounds on treatment effects under proportional selection assumptions that assess how much bias from unobserved confounders would be needed to overturn a result. Cinelli and Hazlett~\cite{cinelli2020making} introduced the robustness value and sensitivity contour plots based on partial $R^2$, providing sharper bounds under weaker assumptions. Neither method has been applied in SE research, though both are directly applicable to the regression-based studies that dominate empirical SE.
 
 Despite this rich and evolving toolkit---spanning from Snow's empirical reasoning through a century of formalization to modern machine learning-based causal methods and sensitivity analysis---no existing work has synthesized these traditions into a unified, accessible framework tailored to the needs and data structures of software engineering research. Our tutorial addresses this gap by drawing on all of these intellectual currents and translating them into a four-step causal credibility assessment protocol with SE-specific examples and guidance.
 
@@ -338,9 +338,10 @@ Despite the progression from controlled experiments through large-scale observat
 % SECTION 5: WORKED EXAMPLE A --- THE PL-DEFECT DEBATE
 % =============================================================================
 
-\section{Worked Example A: The PL--Defect Debate (Regression $\to$ Panel Fixed Effects)}
+\section{Worked Example A: The PL--Defect Debate}
 \label{sec:example-a}
 
+% (Regression $\to$ Panel Fixed Effects)
 % TODO: Introduction connecting to Section 2.4 and the framework.
 
 \subsection{Diagnostic Assessment: Applying the Four Steps to Ray et al.}
