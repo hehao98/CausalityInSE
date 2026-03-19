@@ -1,0 +1,71 @@
+---
+description: Writing style conventions and formatting rules for LaTeX papers.
+globs: **/*.tex
+alwaysApply: true
+---
+
+# Paper Writing Style and Formatting
+
+## One Sentence Per Line
+
+When writing or editing LaTeX (`.tex`) files or documentation, ensure that each sentence is placed on a new line.
+
+### Why
+This practice greatly facilitates version control (`git diff`). When multiple people edit the same paragraph, line-by-line diffs become much cleaner and easier to review if every sentence is on its own line.
+
+### Rules
+- Place a line break after sentence-ending punctuation (e.g., periods, question marks, exclamation marks) instead of continuing on the same line.
+- Do not wrap lines or break lines in the middle of a sentence simply to enforce a column width limit.
+- Only break mid-sentence if it is dictated by specific formatting constraints (like macros or math formulas that require it).
+- Empty lines are still used to separate paragraphs.
+
+### Examples
+
+#### ❌ BAD
+```latex
+Empirical software engineering research frequently investigates causal questions. This disconnect between causal ambition and methodological practice mirrors a well-documented crisis in psychology and health research, but the SE community lacks an accessible, unified introduction to the causal inference toolkit. This tutorial paper addresses that gap. We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies.
+```
+
+#### ✅ GOOD
+```latex
+Empirical software engineering research frequently investigates causal questions.
+This disconnect between causal ambition and methodological practice mirrors a well-documented crisis in psychology and health research, but the SE community lacks an accessible, unified introduction to the causal inference toolkit.
+This tutorial paper addresses that gap.
+We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies.
+```
+
+## Capitalization After Colons
+
+Capitalize the first letter after a colon when it introduces a complete sentence or independent clause:
+- "The central question becomes: Under what conditions can we use observed data?"
+
+Do **not** capitalize after a colon when it introduces a list, fragment, or math expression:
+- "The methods include: matching, DiD, and IV."
+- "Define the effect as: $Y^1 - Y^0$."
+
+## Tone and Register
+
+- Use a **declarative, measured** academic tone. Write with confidence but without superlatives or enthusiasm markers ("remarkably powerful," "crucially important").
+- Avoid hedging language ("it seems," "perhaps," "it could be argued"). State claims directly and qualify them with precise conditions instead.
+- Prefer precise, neutral verbs: "admits a causal interpretation" over "carries a causal interpretation"; "suffices" over "does the work."
+- Do not use informal phrasing ("plays out," "faith in a model"). Use register-appropriate alternatives ("applies," "plausibility of assumptions").
+
+## Sentence and Paragraph Structure
+
+- Sentences are short to medium length. Most begin with the subject.
+- Use **em-dashes** (`---`) for parenthetical remarks, not parentheses: "When randomization is infeasible---as is common in software engineering---researchers turn to regression."
+- Each `\paragraph{}` follows a **setup-formalism-interpretation** rhythm: motivate with a verbal setup, present the equation, then interpret it in words. Never let an equation stand alone without verbal explanation before and after.
+- Paragraphs open with a clear topic sentence and are dense but not excessively long.
+
+## Technical Writing Conventions
+
+- Introduce technical terms with `\emph{}` on first use: "\emph{selection bias}," "\emph{conditional ignorability}."
+- Use rhetorical questions sparingly as pedagogical devices to motivate new concepts: "Under what conditions can we estimate these quantities from observed data?"
+- Weave **software engineering examples** naturally into the exposition rather than setting them apart in standalone illustrations.
+- After a formal definition or estimand, provide a one-sentence practical interpretation: "The ATE answers: On average across the population, how much does treatment change outcomes?"
+
+## Conciseness
+
+- Avoid saying the same thing twice in different words. If the equation already states a result, do not restate it verbatim in prose.
+- Prefer merging two short sentences into one when they share a logical thread: "Similarly, $E[Y(1) \mid D=1] = E[Y(1)]$, so the ATT equals the ATE, and the naive difference in means identifies the ATE."
+- Omit meta-commentary ("It is worth noting that," "As we shall see"). Get to the point.
