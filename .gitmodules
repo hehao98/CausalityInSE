@@ -1,5 +1,5 @@
 [submodule "Thesis"]
-	path = Thesis
+	path = thesis
 	url = https://github.com/hehao98/Thesis
 [submodule "data"]
 	path = data
