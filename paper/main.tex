@@ -104,10 +104,6 @@ As a result, we hope this paper will provide a methodological blueprint for futu
 
 \maketitle
 
-% =============================================================================
-% SECTION 1: INTRODUCTION
-% =============================================================================
-
 \section{Introduction}
 \label{sec:introduction}
 
@@ -151,36 +147,22 @@ Sections~\ref{sec:example-a} and~\ref{sec:example-b} present the worked examples
 Section~\ref{sec:discussion} discusses implications for SE research practices, and Section~\ref{sec:conclusion} concludes.
 
 
-% =============================================================================
-% SECTION 2: BACKGROUND AND RELATED WORK
-% =============================================================================
-
 \section{Background and Related Work}
 \label{sec:background}
-
-% ---------------------------------------------------------------------------
-% 2.1 Existing Tutorials and Methodological Guides in SE
-% ---------------------------------------------------------------------------
 
 \subsection{Existing Tutorials and Methodological Guides in SE}
 \label{sec:bg-tutorials}
 
-The software engineering community has invested substantially in methodological guidance for empirical research---from \citeauthor{DBLP:books/sp/WohlinRHORW24}'s \emph{Experimentation in Software Engineering}~\cite{DBLP:books/sp/WohlinRHORW24} to the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525}, which provide 19 method-specific checklists, and \citeauthor{DBLP:journals/tosem/RobillardAEGLNNSSS24}'s~\cite{DBLP:journals/tosem/RobillardAEGLNNSSS24} trade-off framing for validity discussions.
-However, this guidance has overwhelmingly focused on controlled experiments, survey methodology, and case study design; none addresses causal inference from observational data, sensitivity analysis, or the hierarchy of evidence for evaluating causal claims.
+The software engineering community has invested substantially in methodological guidance for empirical research---notable efforts include \citeauthor{DBLP:books/sp/WohlinRHORW24}'s \emph{Experimentation in Software Engineering}~\cite{DBLP:books/sp/WohlinRHORW24} textbook, the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} that provides 19 method-specific checklists for each major SE research method, and \citeauthor{DBLP:journals/tosem/RobillardAEGLNNSSS24}'s~\cite{DBLP:journals/tosem/RobillardAEGLNNSSS24} trade-off framing for threats to validity discussions.
+However, existing established guidance is oriented toward the broader enterprise of conducting rigorous empirical research without explicit discussions of how one can substantiate causal claims in an SE research context: e.g., there is no discussion of identification strategies, sensitivity analysis, or criteria for evaluating when correlational evidence can bear a causal interpretation.
 
 The field has gradually begun to address this gap, though contributions remain fragmented.
 On the diagnostic side, systematic reviews have documented the state of practice: \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} mapping study found only 25 SE papers (2010--2022) applying Pearl's graphical framework, while \citet{DBLP:journals/infsof/GiamatteiGPR25} expanded the scope to 86 papers and revealed that ``causal reasoning'' in SE quality assurance often refers loosely to fault localization heuristics rather than formal causal identification.
 A subsequent special issue~\cite{journals/infsof/SiebertTGWKS25} confirmed that causal method use remains ``sporadic,'' and \citet{journals/ese/HulseEM25} raised a cautionary flag by showing that causal graph generators are unstable---with over half the discovered edges changing across minor data perturbations---implicitly strengthening the case for theory-driven DAG construction over data-driven causal discovery.
 These diagnostic efforts focus exclusively on Pearl's graphical paradigm, leaving the design-based credibility revolution and the potential outcomes framework unaddressed.
 
-On the prescriptive side, individual tutorials have introduced specific methods to SE audiences---instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, and causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}---but each addresses a single method without situating it in the broader causal inference landscape.
-No existing SE tutorial spans the potential outcomes framework, graphical causal models, and design-based identification strategies, nor offers a systematic protocol for assessing causal credibility.
-Our tutorial fills this gap with an integrative treatment and a four-step framework applicable across SE research domains.
-
-
-% ---------------------------------------------------------------------------
-% 2.2 The Intellectual Traditions of Causal Inference
-% ---------------------------------------------------------------------------
+On the prescriptive side, individual tutorials have introduced specific methods for causal inference or for strengthning causal credibility to SE audiences---including a tutorial on instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, a discussion of strategies for mitigating omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, and the use of causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}---but each addresses a single method or concern without situating it in the broader causal inference landscape.
+Our tutorial fills this gap with an integrative treatment, covering multiple intellectual traditions of causal inference (potential outcomes, graphical causal models, design-based identification, Section~\ref{sec:primer}) and a practical framework for SE research (Section~\ref{sec:framework}).
 
 \subsection{The Intellectual Traditions of Causal Inference}
 \label{sec:bg-traditions}
