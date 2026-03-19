@@ -36,6 +36,67 @@ deterministic decoding and explicit classification schema were chosen to
 maximize reproducibility; all prompts and scripts are available in the
 replication package.
 
+## Summary Statistics
+
+```{r summary-stats}
+n_total <- nrow(papers)
+
+n_empirical <- sum(papers$is_empirical == TRUE, na.rm = TRUE)
+pct_empirical <- round(100 * n_empirical / n_total, 1)
+
+empirical <- papers |> filter(is_empirical == TRUE)
+
+n_causal_claims <- sum(empirical$causal_type %in% c("claim", "both"), na.rm = TRUE)
+pct_causal_claims <- round(100 * n_causal_claims / n_empirical, 1)
+
+n_causal_methods <- sum(empirical$causal_type %in% c("method", "both"), na.rm = TRUE)
+pct_causal_methods <- round(100 * n_causal_methods / n_empirical, 1)
+
+n_claims_no_method <- sum(empirical$causal_type == "claim", na.rm = TRUE)
+
+ratio_claims_to_methods <- round(n_causal_claims / n_causal_methods, 1)
+
+n_msr <- sum(papers$is_msr == TRUE, na.rm = TRUE)
+pct_msr <- round(100 * n_msr / n_total, 1)
+msr <- papers |> filter(is_msr == TRUE)
+n_msr_claims <- sum(msr$causal_type %in% c("claim", "both"), na.rm = TRUE)
+pct_msr_claims <- round(100 * n_msr_claims / n_msr, 1)
+n_msr_methods <- sum(msr$causal_type %in% c("method", "both"), na.rm = TRUE)
+pct_msr_methods <- round(100 * n_msr_methods / n_msr, 1)
+
+n_method_total <- sum(papers$causal_type %in% c("method", "both"), na.rm = TRUE)
+```
+
+The following statistics are cited in the paper (Section 2.5 and Introduction):
+
+| Statistic | Value |
+|:----------|------:|
+| Total papers in corpus | `r format(n_total, big.mark = ",")` |
+| Empirical SE papers | `r format(n_empirical, big.mark = ",")` (`r pct_empirical`%) |
+| Empirical with causal claims | `r n_causal_claims` (`r pct_causal_claims`% of empirical) |
+| Empirical with causal methods | `r n_causal_methods` (`r pct_causal_methods`% of empirical) |
+| Claims without methods | `r n_claims_no_method` |
+| Claims-to-methods ratio | `r ratio_claims_to_methods` : 1 |
+| MSR papers | `r format(n_msr, big.mark = ",")` (`r pct_msr`% of total) |
+| MSR with causal claims | `r n_msr_claims` (`r pct_msr_claims`% of MSR) |
+| MSR with causal methods | `r n_msr_methods` (`r pct_msr_methods`% of MSR) |
+| Papers employing causal methods (all, not just empirical) | `r n_method_total` |
+
+```{r year-endpoints}
+year_summary_wide <- papers |>
+  group_by(year) |>
+  summarise(
+    total              = n(),
+    empirical          = sum(is_empirical == TRUE, na.rm = TRUE),
+    causal_claims      = sum(causal_type %in% c("claim", "both"), na.rm = TRUE),
+    causal_methods     = sum(causal_type %in% c("method", "both"), na.rm = TRUE),
+  )
+
+knitr::kable(year_summary_wide,
+             col.names = c("Year", "Total", "Empirical", "Causal claims", "Causal methods"),
+             caption = "Per-year breakdown (cited in paper for 2015 and 2025 endpoints).")
+```
+
 ## Taxonomy of Causal Methods
 
 The table below defines each causal-method category we assign to
