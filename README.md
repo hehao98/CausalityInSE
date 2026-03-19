@@ -190,19 +190,19 @@ Four systematic literature review efforts are needed to accurately frame the con
 ### Phase 0: Literature Review and Framing (Current Phase)
 
 - [x] **LR1a:** Classify causal methods in top-venue SE papers (ASE + FSE + ICSE, 2015–2025) — taxonomy and trend analysis implemented in `notebooks/literature_review.Rmd`; data in `data/se_papers_metadata.csv`
-- [ ] **LR1b:** Complete literature review on existing SE tutorials and methodological guides (extend beyond top-3 venues to EMSE, TSE, TOSEM, IST, JSS, EASE, ESEM; identify tutorial papers specifically)
-- [ ] **LR1c:** Refine taxonomy and trend analysis for paper-ready figures (polish labels, add confidence intervals to trends, compute inter-rater reliability if double-coded)
-- [ ] **LR2:** Conduct literature review on intellectual traditions of causal inference
-- [ ] **LR3:** Conduct literature review on the PL vs. defect proneness debate
-- [ ] **LR4:** Conduct literature review on parallel causal inference problems in psychology and health research
-- [ ] Synthesize findings from LR1–LR4 to finalize paper framing and contribution statement
-- [ ] Revise paper structure based on literature review findings
+- [x] **LR1b:** Complete literature review on existing SE tutorials and methodological guides (extend beyond top-3 venues to EMSE, TSE, TOSEM, IST, JSS, EASE, ESEM; identify tutorial papers specifically)
+- [x] **LR1c:** Refine taxonomy and trend analysis for paper-ready figures (polish labels, add confidence intervals to trends, compute inter-rater reliability if double-coded)
+- [x] **LR2:** Conduct literature review on intellectual traditions of causal inference
+- [x] **LR3:** Conduct literature review on the PL vs. defect proneness debate
+- [x] **LR4:** Conduct literature review on parallel causal inference problems in psychology and health research
+- [x] Synthesize findings from LR1–LR4 to finalize paper framing and contribution statement
+- [x] Revise paper structure based on literature review findings
 - [ ] Write a 1-page "positioning statement" articulating the novelty relative to existing work (especially Furia et al. 2024)
 
 ### Phase 1: Tutorial Drafting
 
-- [ ] Write Introduction (Section 1)
-- [ ] Write Background & Related Work (Section 2), informed by LR1–LR4
+- [x] Write Introduction (Section 1)
+- [x] Write Background & Related Work (Section 2), informed by LR1–LR4
 - [ ] Write the Causal Inference Primer (Section 3), drawing from thesis Chapter 2 but adapted for a standalone tutorial format
 - [ ] Write the Four-Step Framework (Section 4)
 

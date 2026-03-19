@@ -94,7 +94,7 @@ As a result, we hope this paper will provide a methodological blueprint for futu
 \ccsdesc[500]{Software and its engineering}
 \ccsdesc[500]{Computing methodologies}
 
-\keywords{causal inference, empirical software engineering, research methodology, quasi-experimental design, programming languages, code quality}
+\keywords{causal inference, empirical software engineering, mining software repositories, research methodology, quasi-experimental design, programming languages, code quality, defect proneness}
 
 \received{18 March, 2026}
 %\received[revised]{12 March 2009}
@@ -109,7 +109,7 @@ As a result, we hope this paper will provide a methodological blueprint for futu
 \section{Introduction}
 \label{sec:introduction}
 
-Software engineering is among the most consequential engineering disciplines of the modern era, yet its practice is characterized more by folklore, intuition, and contested conventional wisdom than by empirically validated guidance~\cite{DBLP:conf/icse/Devanbu0B16}.
+Software engineering is among the most consequential engineering disciplines of the modern era, yet its practice is characterized more by folklore, intuition, and contested conventional wisdom than by empirically validated guidance~\cite{DBLP:conf/icse/Devanbu0B16, DBLP:journals/ese/GarousiBO20, DBLP:journals/ese/ShrikanthNFM21, enoiu2026folklore}.
 When practitioners ask whether adopting a strongly typed language reduces defects, whether code review improves maintainability, or whether test-driven development increases productivity, they are asking \emph{causal} questions---questions about what would happen if a practice were adopted or abandoned, holding all else constant.
 Empirical software engineering research has generated thousands of studies addressing such questions, yet this substantial body of work has largely failed to provide definitive answers.
 The problem lies not in the quantity of research, but in its methodological limitations, specifically the field's pervasive reliance on descriptive and correlational evidence from software repository data that cannot distinguish genuine causal effects from selection biases and confounding factors.
@@ -119,15 +119,15 @@ The programming language and code quality debate illustrates this crisis.
 Although the authors were careful to frame their findings as correlational, many downstream works cited the study as evidence that certain languages \emph{cause} fewer bugs~\cite{DBLP:journals/corr/abs-1911-11894}.
 A subsequent reproduction~\cite{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, prompting the observation that \emph{``an analysis of GitHub is necessarily measuring correlation and not establishing causation, as it does not constitute an experiment''}~\cite{DBLP:journals/corr/abs-1911-11894}---though the two groups continue to disagree on specific measurement choices.
 This exchange exposes a deeper methodological impasse: The field's dominant analytical approach---large-scale analysis of observational software-repository data---cannot credibly answer the causal questions that practitioners care about and that motivate the empirical SE research.
-
+Even worse, when studies have produced contested results, the field may be buried in unproductive discussions over ``correlation vs. causation'' or whether the findings ``seem valid,'' rather than engaging with the more productive question of \emph{under which specific conditions} the observational data \emph{could} support a causal interpretation. %nor does it articulate what specific confounders or alternative causal structures threaten the findings.
 
 Modern causal inference methods, developed primarily in econometrics and epidemiology over the past several decades, offer a principled path forward~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}.
-The value of these methods lies not in any claim to methodological perfection but in their insistence on \emph{transparency}: every causal design rests on assumptions that must be explicitly stated, examined, and debated.
+The value of these methods lies not in any claim to methodological perfection but in their insistence on \emph{transparency}: Every causal design rests on assumptions that must be explicitly stated, examined, and debated.
 When a difference-in-differences study claims a causal effect, it does so under the assumption of parallel trends---an assumption that can be partially tested and openly scrutinized~\cite{roth2023whats}.
 When an instrumental variables analysis identifies an effect, it does so under exclusion restrictions that critics can directly challenge.
-This methodological transparency addresses the core problem: when studies produce contested results, progress requires not endless reanalysis but a shared framework for evaluating whether findings are plausible given the research context.
+This methodological transparency addresses the core problem: With contested study findings, progress requires not endless reanalysis but a shared framework for evaluating whether findings are plausible given the research context.
 
-Yet the SE community lacks an accessible, unified introduction to this toolkit.
+However, the SE community lacks an accessible, unified introduction to this toolkit.
 \TODO{Summarize the key quantitative results of the literature review on causal inference adoption in SE---e.g., percentage of papers asking causal RQs vs.\ employing formal identification strategies---from the analysis of ASE, FSE, and ICSE papers (2015--2025).}
 Recent methodological advances in SE have begun to address specific gaps---instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}---but no existing work spans the potential outcomes framework, graphical causal models, and design-based identification strategies, nor offers a systematic protocol for assessing causal credibility.
 This tutorial paper fills that gap.
@@ -163,17 +163,27 @@ Section~\ref{sec:discussion} discusses implications for SE research practices, a
 \subsection{Existing Tutorials and Methodological Guides in SE}
 \label{sec:bg-tutorials}
 
-SE has invested substantially in methodological guidance---\citeauthor{DBLP:books/sp/WohlinRHORW24}'s \emph{Experimentation in Software Engineering}~\cite{DBLP:books/sp/WohlinRHORW24} is the standard reference for controlled experiments; the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} provide 19 method-specific checklists; and \citet{DBLP:journals/tosem/RobillardAEGLNNSSS24} propose a trade-off framing for design decisions---yet none of these resources addresses causal inference from observational data: there is no guidance on identification strategies, sensitivity analysis, or the hierarchy of evidence for causal claims.
+The software engineering community has invested substantially in methodological guidance for empirical research.
+\citeauthor{DBLP:books/sp/WohlinRHORW24}'s \emph{Experimentation in Software Engineering}~\cite{DBLP:books/sp/WohlinRHORW24}, first published in 2000 and now in its third edition, remains the standard reference for conducting controlled experiments, covering A/B testing, replications, open science, and updated statistical analysis tools.
+The ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525}, developed by Ralph and a large community of contributors, provide 19 method-specific checklists distinguishing essential, desirable, and extraordinary attributes for each research method, representing the most comprehensive community-endorsed effort to raise empirical rigor.
+\citet{DBLP:journals/tosem/RobillardAEGLNNSSS24} complement these standards by proposing a trade-off framing that replaces conventional ``threats to validity'' discussions with documentation of how design benefits outweigh the costs of alternatives---a reframing relevant to causal identification, which inherently involves trade-offs between internal and external validity.
+However, this body of guidance has overwhelmingly focused on controlled experiments, survey methodology, and case study design.
+None of these resources addresses causal inference from observational data: there is no guidance on identification strategies, no discussion of sensitivity analysis, and no hierarchy of evidence for evaluating causal claims.
 
-The field has begun to address this gap, but contributions remain fragmented.
-\citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} mapping study of Pearl's graphical framework in SE found adoption to be recent and fragmented across 25 papers, and a subsequent special issue~\cite{journals/infsof/SiebertTGWKS25} characterized causal method use as ``sporadic.''
-Both focus exclusively on Pearl's graphical paradigm, leaving the design-based credibility revolution and the potential outcomes framework unaddressed.
+The field has gradually begun to awaken to this gap, though contributions remain fragmented across different causal traditions and SE sub-domains.
+\citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} mapping study---the first systematic survey of causal methods in SE---analyzed 25 papers published between 2010 and 2022 that applied Pearl's graphical causal inference framework, finding adoption to be recent, concentrated in software quality analysis, and lacking an established community of practice.
+\citet{DBLP:journals/infsof/GiamatteiGPR25} expanded the scope to a systematic review of 86 papers spanning 20 years, revealing that ``causal reasoning'' in SE quality assurance is often used loosely to include fault localization heuristics and root-cause analysis techniques that do not employ formal causal identification---an important distinction, since these heuristics typically locate correlates of failure rather than identify causes in the counterfactual sense.
+A subsequent special issue co-edited by \citeauthor{DBLP:journals/infsof/Siebert23}~\cite{journals/infsof/SiebertTGWKS25} surveyed five papers spanning Bayesian network construction, causal discovery for software vulnerabilities, and agile principle assessment via structural equation modeling, observing that causal method use in SE remains ``sporadic'' compared to correlation-based machine learning and that navigating causal methods is initially challenging because techniques originate from econometrics, social sciences, and AI\@.
+Both the mapping study and the special issue focus exclusively on Pearl's graphical paradigm, leaving the design-based credibility revolution and the potential outcomes framework---which dominate causal practice in economics and political science---unaddressed.
 
-On the \emph{prescriptive} side, \citet{DBLP:journals/tosem/GrafVlachyW24} introduced instrumental variables to the SE audience, \citet{DBLP:journals/corr/abs-2501-17026} illustrated omitted variable bias with SE examples, and \citet{DBLP:journals/corr/abs-2511-03875} presented the first SE sub-domain tutorial on causal inference for requirements engineering.
-On the \emph{diagnostic} side, \citet{DBLP:journals/infsof/GiamatteiGPR25} found that ``causal reasoning'' in SE quality assurance often refers loosely to fault localization heuristics rather than formal identification, while \citet{journals/ese/HulseEM25} showed that data-driven causal graph generators are fragile on SE datasets---strengthening the case for theory-driven approaches.
+On the prescriptive side, individual tutorials have begun to introduce specific methods to SE audiences.
+\citet{DBLP:journals/tosem/GrafVlachyW24} introduced instrumental variables and two-stage models, providing step-by-step guidance on when and how to apply IV estimation in the presence of endogeneity---making it one of the few SE-venue papers that explicitly teaches a causal identification strategy rather than merely applying one.
+\citet{DBLP:journals/corr/abs-2501-17026} illustrated omitted variable bias with two SE examples and presented methods to investigate, estimate, and mitigate OVB, emphasizing that even with large datasets, more data alone cannot correct for bias if the statistical model is misspecified---a point that directly challenges the ``big data fallacy'' common in mining software repositories research.
+\citet{DBLP:journals/corr/abs-2511-03875} presented the first SE sub-domain tutorial dedicated to causal inference, walking through the construction of causal DAGs for requirements engineering research questions and arguing that demonstrating the causal benefit of RE tools and processes requires more than correlational evidence.
+On the diagnostic side, \citet{journals/ese/HulseEM25} evaluated four causal graph generators (PC, FCI, GES, LiNGAM) on 23 SE datasets across defect prediction, configuration selection, and project management tasks, finding that over half the edges changed across minor perturbations---a cautionary result that implicitly strengthens the case for theory-driven DAG construction and design-based identification over data-driven causal discovery.
 
-No existing SE tutorial spans the potential outcomes framework, graphical causal models, and design-based identification, nor offers a protocol for assessing causal credibility.
-Each contribution addresses a single method~\cite{DBLP:journals/tosem/GrafVlachyW24,DBLP:journals/corr/abs-2501-17026}, a single framework~\cite{DBLP:journals/infsof/Siebert23,DBLP:journals/corr/abs-2511-03875}, or a diagnostic survey~\cite{DBLP:journals/infsof/GiamatteiGPR25,journals/ese/HulseEM25}.
+Despite this growing activity, no existing SE tutorial spans the potential outcomes framework, graphical causal models, and design-based identification strategies, nor offers a systematic protocol for assessing causal credibility.
+Each contribution addresses a single method~\cite{DBLP:journals/tosem/GrafVlachyW24, DBLP:journals/corr/abs-2501-17026}, a single framework~\cite{DBLP:journals/infsof/Siebert23, DBLP:journals/corr/abs-2511-03875}, or a diagnostic survey~\cite{DBLP:journals/infsof/GiamatteiGPR25, journals/ese/HulseEM25}.
 Our tutorial fills this gap with an integrative treatment and a four-step framework applicable across SE research domains.
 
 
