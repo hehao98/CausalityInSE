@@ -18,6 +18,8 @@
 
 \usepackage{tikz}
 \usetikzlibrary{positioning}
+\usepackage{booktabs}
+\graphicspath{{../plots/}}
 
 \begin{document}
 
@@ -68,7 +70,7 @@ Empirical software engineering (SE) research frequently investigates causal ques
 This disconnect between causal ambition and methodological practice mirrors a well-documented crisis in psychology and health research, but the SE community lacks an accessible, unified introduction to the causal inference toolkit for substantiating causal claims.
 This tutorial paper addresses that gap.
 We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies (difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects).
-Taking the stance that no causal inquiry is perfect by design, we introduce a four-step framework for \emph{assessing} the credibility of causal claims for SE research: (1)~derive an explicit causal theory from SE domain knowledge, (2)~define the causal estimand and specify identifying assumptions for causal interpretation, (3)~honestly acknowledge and mitigate limitations, and (4)~thoughtfully navigate alternative explanations.
+Taking the stance that no causal inquiry is perfect by design, we introduce a four-step framework for \emph{assessing} the credibility of causal claims in SE research: (1)~derive an explicit causal theory from SE domain knowledge, (2)~define the causal estimand and specify identifying assumptions for causal interpretation, (3)~honestly acknowledge and mitigate limitations, and (4)~thoughtfully navigate alternative explanations.
 We demonstrate the framework's diagnostic and constructive power through two worked examples drawn from the programming-language and code-quality debate.
 In the first example, we apply the four steps to diagnose the identification controversy in \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, yield identification more robust to common unobserved confounders in the SE context.
 In the second example, we diagnose the selection bias in Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
@@ -115,7 +117,7 @@ Empirical software engineering research has generated thousands of studies addre
 The problem lies not in the quantity of research, but in its methodological limitations, specifically the field's pervasive reliance on descriptive and correlational evidence from software repository data that cannot distinguish genuine causal effects from selection biases and confounding factors.
 
 The programming language and code quality debate illustrates this crisis.
-\citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} analyzed millions of commits across thousands of GitHub projects, reporting that language design has a ``modest'' effect on defect proneness.
+\citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} analyzed millions of commits across thousands of GitHub projects, reporting that language design has a modest but significant correlation on defect proneness.
 Although the authors were careful to frame their findings as correlational, many downstream works cited the study as evidence that certain languages \emph{cause} fewer bugs~\cite{DBLP:journals/corr/abs-1911-11894}.
 A subsequent reproduction~\cite{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, prompting the observation that \emph{``an analysis of GitHub is necessarily measuring correlation and not establishing causation, as it does not constitute an experiment''}~\cite{DBLP:journals/corr/abs-1911-11894}---though the two groups continue to disagree on specific measurement choices.
 This exchange exposes a deeper methodological impasse: The field's dominant analytical approach---large-scale analysis of observational software-repository data---cannot credibly answer the causal questions that practitioners care about and that motivate a substantial body of empirical SE research.
@@ -128,7 +130,7 @@ When an instrumental variables analysis identifies an effect, it does so under e
 This methodological transparency addresses the core problem: With contested study findings, progress requires not endless reanalysis but a shared framework for evaluating whether findings are plausible given the research context.
 
 However, the SE community lacks an accessible, unified introduction to this toolkit.
-\TODO{Summarize the key quantitative results of the literature review on causal inference adoption in SE---e.g., percentage of papers asking causal RQs vs.\ employing formal identification strategies---from the analysis of ASE, FSE, and ICSE papers (2015--2025).}
+Our analysis of 5,341 papers from ICSE, FSE, and ASE (2015--2025) reveals that 29\% of empirical SE papers make causal claims, yet fewer than 4\% employ any recognized causal inference method---and those that do rely overwhelmingly on controlled experiments or causal fault localization rather than the design-based identification strategies suited to the field's observational data (Section~\ref{sec:bg-adoption}).
 Recent methodological advances in SE have begun to address specific gaps---instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}---but no existing work spans the potential outcomes framework, graphical causal models, and design-based identification strategies, nor offers a systematic protocol for assessing causal credibility.
 This tutorial paper fills that gap.
 
@@ -168,7 +170,7 @@ The software engineering community has invested substantially in methodological 
 The ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525}, developed by Ralph and a large community of contributors, provide 19 method-specific checklists distinguishing essential, desirable, and extraordinary attributes for each research method, representing the most comprehensive community-endorsed effort to raise empirical rigor.
 \citet{DBLP:journals/tosem/RobillardAEGLNNSSS24} complement these standards by proposing a trade-off framing that replaces conventional ``threats to validity'' discussions with documentation of how design benefits outweigh the costs of alternatives---a reframing relevant to causal identification, which inherently involves trade-offs between internal and external validity.
 However, this body of guidance has overwhelmingly focused on controlled experiments, survey methodology, and case study design.
-None of these resources addresses causal inference from observational data: there is no guidance on identification strategies, no discussion of sensitivity analysis, and no hierarchy of evidence for evaluating causal claims.
+None of these resources addresses causal inference from observational data: There is no guidance on identification strategies, no discussion of sensitivity analysis, and no hierarchy of evidence for evaluating causal claims.
 
 The field has gradually begun to awaken to this gap, though contributions remain fragmented across different causal traditions and SE sub-domains.
 \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} mapping study---the first systematic survey of causal methods in SE---analyzed 25 papers published between 2010 and 2022 that applied Pearl's graphical causal inference framework, finding adoption to be recent, concentrated in software quality analysis, and lacking an established community of practice.
@@ -198,7 +200,7 @@ Understanding how the causal inference toolkit evolved---and the tensions betwee
 
 \paragraph{Origins and Experimental Foundations.}
 The quest for rigorous causal reasoning in empirical science long predates any formal statistical framework.
-\citeauthor{snow1855mode}'s~\cite{snow1855mode} investigation of the 1854 Broad Street cholera outbreak demonstrated the power of systematic empirical reasoning about cause and effect: by mapping cholera deaths and tracing water supply to specific pumps, Snow constructed a proto-natural experiment that anticipated the logic of confounding (households on the same street differed only in water supplier) and the importance of identifying a plausible mechanism.
+\citeauthor{snow1855mode}'s~\cite{snow1855mode} investigation of the 1854 Broad Street cholera outbreak demonstrated the power of systematic empirical reasoning about cause and effect: By mapping cholera deaths and tracing water supply to specific pumps, Snow constructed a proto-natural experiment that anticipated the logic of confounding---households on the same street differed only in water supplier---and the importance of identifying a plausible mechanism.
 The conceptual foundations were laid in the early twentieth century when \citet{neyman1923application} introduced potential outcomes notation---the causal effect as the difference between outcomes under treatment and control, of which only one is observed---thereby articulating what would later be called the ``fundamental problem of causal inference.''
 \citet{fisher1935design} established randomization as the principled basis for attributing observed differences to treatment, providing the practical methodology that ensures all observed and unobserved confounders are balanced in expectation.
 Together, Neyman and Fisher established the twin pillars of experimental causal inference, but their frameworks were designed for settings where randomization is feasible---a condition rarely met in SE, where programming languages, tools, and processes cannot be randomly assigned to developers or projects.
@@ -206,15 +208,15 @@ Together, Neyman and Fisher established the twin pillars of experimental causal 
 \paragraph{Observational Extensions.}
 \citet{hill1965environment} confronted the harder question of evaluating causal claims when experimentation is infeasible, proposing nine viewpoints---strength, consistency, specificity, temporality, biological gradient, plausibility, coherence, experiment, and analogy---for assessing whether an observed association reflects a genuine causal relationship.
 He explicitly cautioned against treating these as rigid criteria, noting that ``none of my nine viewpoints can bring indisputable evidence for or against the cause-and-effect hypothesis.''
-\citet{rubin1974estimating} extended the potential outcomes framework to observational settings by formalizing \emph{conditional ignorability}: causal effects are identifiable without randomization if treatment assignment is independent of potential outcomes conditional on observed covariates.
+\citet{rubin1974estimating} extended the potential outcomes framework to observational settings by formalizing \emph{conditional ignorability}: Causal effects are identifiable without randomization if treatment assignment is independent of potential outcomes conditional on observed covariates.
 \citet{rosenbaum1983central} introduced the propensity score as a dimension-reducing device for covariate adjustment, enabling matching, stratification, and inverse probability weighting as practical alternatives to multivariate regression.
-These methods share a fundamental limitation: they cannot address confounding from unobserved variables, a constraint that motivated the design-based tradition.
+These methods share a fundamental limitation: They cannot address confounding from unobserved variables, a constraint that motivated the design-based tradition.
 
 \paragraph{The Design-Based Credibility Revolution.}
 \citeauthor{card1994minimum}'s~\cite{card1994minimum} study of a New Jersey minimum wage increase---comparing employment changes in New Jersey fast-food restaurants to those in neighboring Pennsylvania---became the landmark exemplar of difference-in-differences identification, demonstrating that a policy change creating treatment and control groups with plausibly parallel pre-treatment trends could overturn decades of conventional economic wisdom derived from cross-sectional correlations.
-\citet{angrist1996identification} formalized instrumental variable identification through the Local Average Treatment Effect (LATE) theorem, providing precise conditions (relevance, exclusion, independence, monotonicity) that transformed IV from an algebraic technique into a principled causal identification strategy.
+\citet{angrist1996identification} formalized instrumental variable identification through the Local Average Treatment Effect (LATE) theorem, providing precise conditions---relevance, exclusion, independence, monotonicity---that transformed IV from an algebraic technique into a principled causal identification strategy.
 \citet{shadish2002experimental} codified threats to quasi-experimental validity around four types---statistical conclusion, internal, construct, and external---providing the vocabulary that subsequent textbooks would refine.
-\citet{angrist2010credibility} crystallized the ``credibility revolution'' manifesto: design-based studies exploiting natural experiments yield more credible causal evidence than advances in statistical modeling alone.
+\citet{angrist2010credibility} crystallized the ``credibility revolution'' manifesto: Design-based studies exploiting natural experiments yield more credible causal evidence than advances in statistical modeling alone.
 This ethos---deriving credibility from research design rather than modeling assumptions---is foundational to our tutorial and has not been systematically introduced to SE audiences.
 
 \paragraph{Graphical Causal Models.}
@@ -245,24 +247,24 @@ Psychology and health research have confronted the same disconnect between causa
 
 \paragraph{Diagnosing the Causal Language Problem.}
 \citet{hernan2018cword} challenged the epidemiological norm of replacing causal language with associational euphemisms (``association,'' ``link,'' ``relationship''), arguing that this linguistic evasion does not prevent readers from drawing causal inferences but merely obscures the causal question, invites analytical errors, and prevents transparent discussion of identification assumptions.
-\citet{grosz2020taboo} documented a parallel ``taboo'' in psychology: the norm against explicit causal inference in nonexperimental research does not prevent researchers from making causal interpretations but pushes them underground, resulting in four concrete harms---impaired study design, stunted cumulative research, disconnect between findings and downstream interpretation, and limited policy relevance.
+\citet{grosz2020taboo} documented a parallel ``taboo'' in psychology: The norm against explicit causal inference in nonexperimental research does not prevent researchers from making causal interpretations but pushes them underground, resulting in four concrete harms---impaired study design, stunted cumulative research, disconnect between findings and downstream interpretation, and limited policy relevance.
 \citet{haber2022causal} provided large-scale empirical evidence that this taboo fails on its own terms, systematically evaluating 1,170 articles from 18 high-profile health journals and finding that 52\% of abstracts implied moderate or strong causality despite using ostensibly associational language, with the most common linking word ``associate'' rated as carrying at least some causal implication by over half of reviewers.
-The SE community exhibits the same pattern: regression coefficients are routinely interpreted causally without explicit identification assumptions, as the language--defect debate (Section~\ref{sec:bg-pl-debate}) illustrates.
+The SE community exhibits the same pattern: Regression coefficients are routinely interpreted causally without explicit identification assumptions, as the language--defect debate (Section~\ref{sec:bg-pl-debate}) illustrates.
 
 \paragraph{Constructive Reforms.}
 \citet{rohrer2018thinking} introduced graphical causal models to psychology as a practical tool for reasoning about confounding, mediation, and collider bias, providing psychologists with their first accessible primer on DAGs and moving beyond the abstract admonition that ``correlation does not imply causation'' to offer constructive methodology.
-\citet{wysocki2022statistical} formalized the warning: through mathematical analysis and simulation, they demonstrated that controlling for mediators, colliders, or descendants of colliders can produce estimates \emph{more biased} than uncontrolled estimates---a finding directly applicable to SE studies that include covariates (project size, team size, commit frequency) without DAG-based justification for conditioning.
-\citet{lundberg2021estimand} formalized the \emph{estimand-first} principle: every quantitative study should begin by clearly defining its target quantity in terms that exist outside any particular statistical model, connecting statistical evidence to substantive theory.
+\citet{wysocki2022statistical} formalized the warning: Through mathematical analysis and simulation, they demonstrated that controlling for mediators, colliders, or descendants of colliders can produce estimates \emph{more biased} than uncontrolled estimates---a finding directly applicable to SE studies that include covariates---project size, team size, commit frequency---without DAG-based justification for conditioning.
+\citet{lundberg2021estimand} formalized the \emph{estimand-first} principle: Every quantitative study should begin by clearly defining its target quantity in terms that exist outside any particular statistical model, connecting statistical evidence to substantive theory.
 This principle informs our Step~2 and addresses a pervasive problem in SE where studies report regression coefficients without specifying what causal or descriptive quantity they target.
 Institutionally, \citet{lederer2019control} issued editor-endorsed guidance in respiratory, sleep, and critical care journals requiring authors to specify their causal question, justify covariate selection using domain knowledge, and distinguish clearly between causal and associational interpretations---translating the critique into enforceable editorial policy.
 \citet{tennant2021dags} assessed the adoption of these tools, reviewing 234 health research articles using DAGs and finding that only 21\% reported their target estimands and about 48\% reported the adjustment sets implied by their DAGs---revealing a substantial gap between the theoretical promise of DAGs and their practical implementation that parallels the SE situation documented by \citeauthor{DBLP:journals/infsof/Siebert23}~\cite{DBLP:journals/infsof/Siebert23}.
-No comparable editorial guidance exists in SE: the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} do not address causal identification assumptions, and no SE journal has adopted reporting requirements for observational studies making causal claims.
+No comparable editorial guidance exists in SE: The ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} do not address causal identification assumptions, and no SE journal has adopted reporting requirements for observational studies making causal claims.
 
 \paragraph{A Cautionary Parallel.}
 The income--happiness debate illustrates the consequences of ignoring causal reasoning in observational studies.
 \citet{killingsworth2023income} appeared to resolve a long-standing conflict through an adversarial collaboration with Kahneman, reporting through sophisticated observational analysis that well-being increases linearly with log income for the happiest 80\% of people.
 \citet{rohrer2024inappropriate} subsequently demonstrated that this apparent resolution rested on untested and implausible identification assumptions---including the absence of time-varying confounders and reverse causality---effectively performing Steps~1--4 of our framework on a study that had not performed them.
-This sequence mirrors the trajectory from \citet{DBLP:conf/sigsoft/RayPFD14} through \citeauthor{DBLP:journals/toplas/BergerHMVV19}'s~\cite{DBLP:journals/toplas/BergerHMVV19} reproduction in SE: in both cases, increasingly sophisticated correlational analyses cannot resolve causal questions without explicit identification.
+This sequence mirrors the trajectory from \citet{DBLP:conf/sigsoft/RayPFD14} through \citeauthor{DBLP:journals/toplas/BergerHMVV19}'s~\cite{DBLP:journals/toplas/BergerHMVV19} reproduction in SE: In both cases, increasingly sophisticated correlational analyses cannot resolve causal questions without explicit identification.
 \citeauthor{rohrer2024causal}'s~\cite{rohrer2024causal} recent tutorial for psychologists---demonstrating that causal reasoning is unavoidable even for researchers who work exclusively with observational data---is the closest existing analog to our work, but does not cover design-based identification strategies or SE-specific confounding structures.
 The solutions emerging across these disciplines---explicit causal questions, DAG-based covariate justification, estimand-first workflows, sensitivity analysis, and editorial enforcement---can inform and accelerate SE's methodological reform.
 
@@ -280,16 +282,16 @@ The programming language and defect proneness question serves as our running exa
 The first phase traded ecological validity for internal validity.
 \citet{DBLP:journals/computer/Prechelt00} conducted one of the earliest controlled comparisons, having 80 programmers implement the same task in seven languages and finding that within-language individual differences typically exceeded between-language differences---a finding that would haunt all subsequent observational studies.
 To isolate the specific effect of type systems from whole-language comparisons, \citet{DBLP:conf/oopsla/Hanenberg10} designed a custom language (``Purity'') in statically and dynamically typed versions---identical in every other respect---and randomly assigned 49 subjects to develop a scanner and parser, finding no significant positive impact of static types on development time.
-\citet{DBLP:conf/oopsla/MayerHRTS12} extended this paradigm from development to maintenance tasks, finding mixed results: for some tasks static typing led to faster completion, while for others dynamic typing was faster, suggesting that the type system's effect depends on the nature of the task.
-\citeauthor{DBLP:journals/ese/HanenbergKRTS14}'s~\cite{DBLP:journals/ese/HanenbergKRTS14} most comprehensive experiment revealed a crucial nuance: static types provide significant benefits for understanding unfamiliar code and fixing type-related errors, but offer no advantage for fixing semantic errors---the defect category most relevant to the PL--quality debate that subsequent observational studies would obscure.
+\citet{DBLP:conf/oopsla/MayerHRTS12} extended this paradigm from development to maintenance tasks, finding mixed results: For some tasks static typing led to faster completion, while for others dynamic typing was faster, suggesting that the type system's effect depends on the nature of the task.
+\citeauthor{DBLP:journals/ese/HanenbergKRTS14}'s~\cite{DBLP:journals/ese/HanenbergKRTS14} most comprehensive experiment revealed a crucial nuance: Static types provide significant benefits for understanding unfamiliar code and fixing type-related errors, but offer no advantage for fixing semantic errors---the defect category most relevant to the PL--quality debate that subsequent observational studies would obscure.
 \citet{DBLP:conf/icse/NanzF15} bridged the experimental and observational traditions by exploiting Rosetta Code---where multiple programmers independently implement identical algorithmic tasks in different languages---as a quasi-experimental setting, finding compiled strongly typed languages less prone to runtime failures.
 
 \paragraph{Large-Scale Observational Studies.}
 The second phase began when \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} shifted from controlled experiments to large-scale observational data, analyzing 729 GitHub projects across 17 languages and reporting that language design has a ``modest'' effect on defect proneness.
 Although the authors framed their findings as correlational, the CACM version~\cite{DBLP:journals/cacm/RayPDF17} brought these findings to a broad audience where they were widely cited in causal terms~\cite{DBLP:journals/corr/abs-1911-11894}---illustrating the downstream consequences of the causal language problem that \citet{hernan2018cword} diagnosed.
 A general challenge facing all such observational studies is endogeneity: \citet{DBLP:conf/oopsla/MeyerovichR13}, surveying up to 13,000 programmers and mining over 200,000 SourceForge projects, found that intrinsic language features play only a secondary role in adoption decisions---developers prioritize available libraries, existing codebases, and their own experience---meaning that language choice is confounded by factors that also affect quality, and cross-sectional regression cannot separate these effects.
-\citet{DBLP:conf/wcre/KochharWL16} highlighted an additional complication: real-world projects are polyglot, and treating language as a project-level variable obscures exploitable within-project variation.
-\citet{DBLP:conf/icse/GaoBB17} partially circumvented the identification problem through an ingenious design: they identified publicly fixed bugs in JavaScript project histories, added TypeScript or Flow type annotations to the pre-fix code, and tested whether the type checker would have flagged the buggy code.
+\citet{DBLP:conf/wcre/KochharWL16} highlighted an additional complication: Real-world projects are polyglot, and treating language as a project-level variable obscures exploitable within-project variation.
+\citet{DBLP:conf/icse/GaoBB17} partially circumvented the identification problem through an ingenious design: They identified publicly fixed bugs in JavaScript project histories, added TypeScript or Flow type annotations to the pre-fix code, and tested whether the type checker would have flagged the buggy code.
 They found that both type checkers detected approximately 15\% of public bugs---confirming a tangible but bounded benefit consistent with the experimental evidence, and bridging the gap between controlled experiments and uncontrolled observational studies.
 
 \paragraph{Reproduction and Methodological Reckoning.}
@@ -301,7 +303,7 @@ The original authors disputed several corrections~\cite{DBLP:journals/corr/abs-1
 \paragraph{Toward Causal Identification.}
 \citeauthor{DBLP:journals/tosem/FuriaTF24}~\cite{DBLP:journals/tosem/FuriaTF24} took the crucial next step by applying structural causal models to Google Code Jam competition data, finding ``considerable differences between a purely associational and a causal analysis of the very same data''---the first formal causal identification in the PL--effects literature.
 This paper advanced the debate from whether correlations are robust to what causal effects actually look like, but used coding competition data rather than real-world projects and did not exploit panel variation that would strengthen identification.
-\citet{DBLP:conf/msr/BognerM22} compared 299 JavaScript with 305 TypeScript GitHub projects, finding that TypeScript had significantly better code quality but a 60\% higher bug-fix commit ratio (0.206 vs.\ 0.126)---a surprising result consistent with selection bias, as TypeScript-adopting teams likely differ systematically in ways (code review culture, bug-tracking discipline, project complexity) that correlate with both adoption and observed metrics.
+\citet{DBLP:conf/msr/BognerM22} compared 299 JavaScript with 305 TypeScript GitHub projects, finding that TypeScript had significantly better code quality but a 60\% higher bug-fix commit ratio (0.206 vs.\ 0.126)---a surprising result consistent with selection bias, as TypeScript-adopting teams likely differ systematically in ways---code review culture, bug-tracking discipline, project complexity---that correlate with both adoption and observed metrics.
 We use this study as Worked Example~B\@.
 No existing study of real-world PL effects exploits within-repository panel variation or design-based identification from natural experiments such as TypeScript migrations; our worked examples address this gap.
 
@@ -313,23 +315,94 @@ No existing study of real-world PL effects exploits within-repository panel vari
 \subsection{Causal Inference Adoption in SE to Date}
 \label{sec:bg-adoption}
 
-% TODO: Write empirical analysis of causal inference adoption in top-venue
-% SE papers (ASE + FSE + ICSE, 2015--2025).
-%
-% Content plan (from README.md and notebooks/literature_review.Rmd):
-% - Taxonomy of causal methods actually used (RCTs, quasi-experiments,
-%   causal graphs, causal discovery, counterfactual analysis, Granger
-%   causality, SEM, propensity scores, causal fault localization,
-%   regression-based causal inference, etc.)
-% - Trend analysis: volume of empirical SE papers vs. papers asking causal
-%   RQs vs. papers employing causal methods --- quantifying the gap between
-%   causal ambition and methodological rigor
-% - Summary of findings: which methods dominate (RCTs and causal fault
-%   localization), which are underrepresented (quasi-/natural experiments,
-%   IV, DiD, RDD), and what this implies for the field
-%
-% Data source: data/se_papers_metadata.csv
-% Analysis notebook: notebooks/literature_review.Rmd
+The preceding sections document a growing awareness of causal reasoning in SE, but how widespread is its actual use?
+To quantify the gap between causal ambition and methodological practice, we conducted a systematic classification of all main-research-track papers published at three premier SE venues---ICSE, FSE, and ASE---from 2015 to 2025.
+
+\paragraph{Corpus and Classification.}
+Paper titles and DOIs were obtained from DBLP proceedings pages; abstracts were retrieved via the Semantic Scholar batch API with OpenAlex as a backfill source.
+This produced a corpus of 5,341 papers.
+Each paper was classified by a large language model (Claude Opus 4.6, \texttt{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, (2)~whether it is a mining software repositories (MSR) study, and (3)~whether it makes causal claims, employs a causal inference method, or both.
+For papers tagged as using causal methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
+Deterministic decoding and an explicit classification schema were chosen to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package.
+
+\paragraph{The Causal Ambition--Methodology Gap.}
+Of the 5,341 papers, 2,136 (40\%) are empirical SE studies.
+Among these empirical papers, 621 (29\%) make causal claims---asserting that one variable ``affects,'' ``causes,'' ``leads to,'' or ``increases'' another---yet only 81 (3.8\%) employ any recognizable causal inference method.
+The remaining 540 papers make causal claims supported by correlational or descriptive evidence alone.
+Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers making causal claims has grown steadily---from 23 in 2015 to 131 in 2025---the number employing causal methods has grown far more slowly, from 3 to 14 over the same period.
+The ratio of causal claims to causal methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
+
+The gap is particularly pronounced among MSR papers.
+Of the 961 MSR papers in our corpus, 249 (26\%) make causal claims, but only 30 (3.1\%) employ causal methods---consistent with the reliance on large-scale observational data that cannot distinguish causal effects from confounding without an identification strategy.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{causal_trends.pdf}
+\caption{Publication trends at ICSE, FSE, and ASE (2015--2025).
+The top two lines show total publications and empirical SE papers; the bottom two show papers making causal claims versus papers employing causal inference methods.
+The persistent gap between causal claims and causal methods quantifies the disconnect between causal ambition and methodological practice.}
+\label{fig:causal-trends}
+\end{figure}
+
+\paragraph{Which Causal Methods Are Used?}
+Among the 100 papers that employ causal methods, the distribution is strikingly concentrated (Table~\ref{tab:taxonomy}).
+Randomized controlled experiments dominate (37 papers), reflecting the SE community's established tradition of controlled developer studies~\cite{DBLP:books/sp/WohlinRHORW24}.
+Causal fault localization---applying causal testing, causal contribution scores, or causal debugging to identify root causes of failures---accounts for 17 papers, representing a growing research thread that applies causal reasoning to software analysis rather than to empirical research methodology.
+Regression-based causal inference (11 papers) includes studies that use regression or observational analysis with explicit causal intent, such as controlling for confounders or using causal-adjacent language, but without formal identification strategies.
+
+\begin{table}[t]
+\centering
+\caption{Taxonomy of causal methods in 100 SE papers (ICSE + FSE + ASE, 2015--2025) classified as employing a causal inference method.
+Each paper is assigned a primary category; multi-label assignments are stored separately in the replication package.
+Methods from the design-based credibility revolution are strikingly underrepresented.}
+\label{tab:taxonomy}
+\footnotesize
+\begin{tabular}{@{} p{5cm} r p{7cm} @{}}
+\toprule
+\textbf{Category} & \textbf{$n$} & \textbf{Description} \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{Experimental}} \\
+\addlinespace[2pt]
+Randomized Controlled Experiment  & 37 & Random assignment to treatment/control groups \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Observational --- Design-Based}} \\
+\addlinespace[2pt]
+Quasi-/Natural Experiment         &  7 & Exploits naturally occurring variation (e.g., case-control, before-after, panel data) \\
+Propensity Score Methods          &  1 & Matching or weighting on observed covariates to reduce selection bias \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Observational --- Graphical / Structural}} \\
+\addlinespace[2pt]
+Causal Graph / DAG                &  7 & Explicitly constructs a directed acyclic graph of assumed causal relationships \\
+Causal Discovery                  &  3 & Algorithmically learns causal structure from data \\
+Interventional / do-Calculus      &  4 & Estimates effects via Pearl's do-operator or explicit interventions \\
+Structural Equation Modeling      &  2 & System of equations with observed/latent variables for direct and indirect effects \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Observational --- Other}} \\
+\addlinespace[2pt]
+Counterfactual Analysis           &  6 & Reasons about outcomes under hypothetical alternative conditions \\
+Granger Causality                 &  2 & Tests whether past values of one time series predict another \\
+Causal Impact Analysis            &  1 & Bayesian structural time-series model for event effects \\
+Survival / Hazard Modeling        &  2 & Time-to-event models with causal interpretation \\
+Regression-based Causal Inference & 11 & Regression with explicit causal intent but no formal identification strategy \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Software Analysis (not empirical methodology)}} \\
+\addlinespace[2pt]
+Causal Fault Localization         & 17 & Causal testing, contribution scores, or causal debugging for root-cause analysis \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The methods central to the credibility revolution in economics and political science are nearly absent.
+Only 7 papers employ quasi-experimental or natural experiment designs; propensity score methods appear in just 1 paper; and no paper in our corpus uses instrumental variables, difference-in-differences, or regression discontinuity as a primary identification strategy.
+The graphical causal model tradition is better represented (7 papers using causal DAGs, 3 using causal discovery algorithms, 4 using interventional or do-calculus reasoning), consistent with \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} observation that Pearl's framework has gained some traction in SE\@.
+Structural equation modeling (2 papers), Granger causality (2 papers), and causal impact analysis (1 paper) round out the remaining categories.
+
+\paragraph{Implications.}
+Three patterns emerge from this analysis.
+First, the SE community's dominant approach to causal questions---making causal claims from correlational evidence, often with regression controls but without formal identification---mirrors the pattern that \citet{haber2022causal} documented in health research and that \citet{grosz2020taboo} described as a ``taboo'' in psychology.
+Second, when SE researchers do employ causal methods, they overwhelmingly use either randomized experiments or causal fault localization---methods that are important but insufficient for the field's most pressing observational questions about tool adoption, process effects, and language design.
+Third, the design-based methods that powered the credibility revolution---difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects---remain virtually unexplored in SE, despite the field's abundance of panel data (repositories with temporal structure, developers contributing across projects, tools adopted in staggered fashion) that is well suited to these methods.
+This tutorial aims to bridge that gap.
 
 
 % =============================================================================
@@ -352,7 +425,7 @@ Three mechanisms generate spurious correlations.
 
 \paragraph{Confounding.}
 A third variable $Z$ that causally affects both treatment $X$ and outcome $Y$ induces an association even absent a direct causal relationship.
-Developer expertise is a plausible confounder: experienced developers may both prefer functional languages and write fewer bugs.
+Developer expertise is a plausible confounder: Experienced developers may both prefer functional languages and write fewer bugs.
 Let $Y$ denote defect density, $X$ denote language choice, and $Z$ denote expertise.
 The observed association decomposes as:
 \begin{equation}
@@ -361,12 +434,12 @@ The observed association decomposes as:
 If $\tau = 0$ but functional language adopters have higher expertise and expertise reduces defects, the observed correlation is a pure artifact of selection.
 
 \paragraph{Reverse Causality.}
-The association may reflect $Y$ causing $X$: teams with persistent quality problems may switch to ``rigorous'' languages like Haskell to impose discipline.
+The association may reflect $Y$ causing $X$: Teams with persistent quality problems may switch to ``rigorous'' languages like Haskell to impose discipline.
 Cross-sectional data cannot distinguish $X \to Y$ from $Y \to X$.
 
 \paragraph{Selection Bias.}
 Conditioning on a \emph{collider}---a variable caused by both $X$ and $Y$---induces spurious associations.
-Analyzing only ``successful'' GitHub projects (e.g., $>$1,000 stars) conditions on a post-treatment variable that depends on both language choice and code quality, generating artifactual correlations that reveal nothing about the causal effect of language choice.
+Analyzing only ``successful'' GitHub projects---e.g., $>$1,000 stars---conditions on a post-treatment variable that depends on both language choice and code quality, generating artifactual correlations that reveal nothing about the causal effect of language choice.
 
 
 \subsection{Why Multivariate Regression Usually Does Not Suffice}
@@ -386,12 +459,12 @@ Unless $\text{Cov}(X, U \mid Z) = 0$, the estimate remains biased regardless of 
 
 \paragraph{Bad Controls.}
 Including the \emph{wrong} controls can introduce bias.
-\emph{Mediator bias} arises from conditioning on a variable on the causal pathway ($X \to M \to Y$): controlling for immutable data structure usage when studying functional languages blocks part of the effect.
-\emph{Collider bias} arises from conditioning on a common effect of treatment and outcome ($X \to C \leftarrow Y$): controlling for project popularity, which depends on both language novelty and quality, induces a spurious association.
+\emph{Mediator bias} arises from conditioning on a variable on the causal pathway ($X \to M \to Y$): Controlling for immutable data structure usage when studying functional languages blocks part of the effect.
+\emph{Collider bias} arises from conditioning on a common effect of treatment and outcome ($X \to C \leftarrow Y$): Controlling for project popularity, which depends on both language novelty and quality, induces a spurious association.
 Without a causal model, researchers cannot determine which controls are appropriate; a regression with 100 covariates is not more causally credible than one with five.
 
 \paragraph{When Can Regression Support Causal Claims?}
-Regression identifies causal effects under \emph{conditional ignorability} (selection on observables):
+Regression identifies causal effects under \emph{conditional ignorability}---selection on observables:
 \begin{equation}
     (Y(1), Y(0)) \perp D \mid X
     \label{eq:cond-ignorability}
@@ -399,7 +472,7 @@ Regression identifies causal effects under \emph{conditional ignorability} (sele
 This requires that all confounders be measured and correctly included, no post-treatment variables contaminate the model, and sufficient overlap exists between groups.
 Propensity score matching~\cite{rosenbaum1983central}, inverse probability weighting, and regression adjustment all rest on this same assumption.
 Credibility hinges on encoding the assumed data-generating process as a causal DAG (Section~\ref{sec:primer-dags}) and showing the covariates satisfy the back-door criterion.
-Design-based methods (DiD, RDD, IV) appear more credible not because they are assumption-free, but because their assumptions---parallel trends, continuity, exclusion restrictions---are more transparent and partially testable.
+Design-based methods---DiD, RDD, IV---appear more credible not because they are assumption-free, but because their assumptions---parallel trends, continuity, exclusion restrictions---are more transparent and partially testable.
 
 
 \subsection{The Potential Outcomes Framework}
@@ -489,7 +562,7 @@ All other paths connecting Language to Defect Proneness are back-door paths that
 
 \paragraph{Causal Paths and Back-Door Paths.}
 \emph{Causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:pl-dag}, the sole causal path is Language $\to$ Tooling/Type Safety $\to$ Defect Proneness.
-\emph{Back-door paths} connect treatment to outcome through a common cause (e.g., Language $\leftarrow$ Team Skill $\to$ Defect Proneness), transmitting spurious associations.
+\emph{Back-door paths} connect treatment to outcome through a common cause---e.g., Language $\leftarrow$ Team Skill $\to$ Defect Proneness---transmitting spurious associations.
 A naive comparison conflates the genuine causal effect with these spurious associations.
 
 \paragraph{The Back-Door Criterion.}
@@ -503,7 +576,7 @@ Tooling/Type Safety should \emph{not} be conditioned on---it is a mediator, and 
 
 \paragraph{Connecting DAGs to Potential Outcomes.}
 When $Z$ satisfies the back-door criterion, the potential outcomes are independent of treatment conditional on $Z$---the graphical counterpart to conditional ignorability.
-The two frameworks are complementary: potential outcomes define \emph{what} to estimate; DAGs argue \emph{why} the required assumptions hold.
+The two frameworks are complementary: Potential outcomes define \emph{what} to estimate; DAGs argue \emph{why} the required assumptions hold.
 
 \paragraph{Alternative Explanations as Alternative DAGs.}
 Alternative explanations correspond to alternative graph structures.
@@ -569,7 +642,7 @@ Third, quasi-experimental methods are not assumption-free; they replace untestab
 Every study navigates a tension between internal validity (causal confidence) and external validity (generalizability).
 A controlled experiment assigning developers to different languages achieves strong internal validity but may not reflect production environments; a large-scale GitHub study captures real-world variation but cannot rule out selection bias.
 
-A hierarchy of evidence organizes this trade-off: randomized experiments provide the strongest causal evidence, followed by quasi-experimental designs (DiD, IV, RDD) with partially testable assumptions, then observational studies with careful controls, and finally descriptive and correlational analyses.
+A hierarchy of evidence organizes this trade-off: Randomized experiments provide the strongest causal evidence, followed by quasi-experimental designs---DiD, IV, RDD---with partially testable assumptions, then observational studies with careful controls, and finally descriptive and correlational analyses.
 This hierarchy ranks \emph{causal} evidence, not overall scientific value---execution quality matters as much as design choice.
 The pragmatic researcher chooses the strongest credible design and builds confidence through \emph{triangulation}: convergent findings across complementary designs, data sources, and populations~\cite{shadish2002experimental}.
 
@@ -618,7 +691,7 @@ Each method's assumptions should be stated explicitly and connected to the causa
 \subsection{Step 3: Honestly Acknowledge and Mitigate Limitations}
 \label{sec:framework-step3}
 
-No study achieves perfect identification, especially in SE where treatments are complex and key constructs (defect proneness, productivity, code quality) lack universally accepted definitions~\cite{DBLP:journals/queue/ForsgrenSMZHB21} and are proxied by noisy repository metrics~\cite{DBLP:journals/ese/KalliamvakouGBS16}.
+No study achieves perfect identification, especially in SE where treatments are complex and key constructs---defect proneness, productivity, code quality---lack universally accepted definitions~\cite{DBLP:journals/queue/ForsgrenSMZHB21} and are proxied by noisy repository metrics~\cite{DBLP:journals/ese/KalliamvakouGBS16}.
 
 In the language--defect example, limitations include: unmeasured developer motivation may violate conditional ignorability; the treatment is imprecise in polyglot repositories~\cite{DBLP:conf/wcre/KochharWL16}; and defect proneness is proxied by bug-fix commits, which are noisy and potentially correlated with project-level bug-tracking practices~\cite{DBLP:journals/toplas/BergerHMVV19}.
 
@@ -640,7 +713,7 @@ In the language--defect example, three challenges illustrate this:
 
     \item \emph{Unmeasured confounding.}
     If developer motivation drives both language choice and quality, sensitivity analysis can quantify the required confounding strength.
-    \emph{Falsification tests}~\cite{oster2019unobservable} further probe this: if motivation were the driver, one would expect spurious ``effects'' for language features irrelevant to defects (e.g., syntax style).
+    \emph{Falsification tests}~\cite{oster2019unobservable} further probe this: If motivation were the driver, one would expect spurious ``effects'' for language features irrelevant to defects---e.g., syntax style.
 
     \item \emph{Reverse causality.}
     If defect-prone projects migrate to ``safer'' languages, panel data should reveal language switches following defect spikes---a testable temporal signature.
@@ -663,12 +736,12 @@ The DAG framework channels disagreements into questions about specific edges and
 \label{sec:example-a-diagnostic}
 
 % TODO: Walk through all four steps showing identification limitations.
-% Step 1: unmeasured confounders (developer skill, org culture).
-% Step 2: ill-defined estimand --- ``effect of language'' conflates
+% Step 1: Unmeasured confounders (developer skill, org culture).
+% Step 2: Ill-defined estimand --- ``effect of language'' conflates
 %         type system, ecosystem, paradigm, community.
-% Step 3: measurement challenges, SUTVA violations
+% Step 3: Measurement challenges, SUTVA violations
 %         in polyglot projects.
-% Step 4: debate lacked explicit causal structures to guide productive discourse.
+% Step 4: Debate lacked explicit causal structures to guide productive discourse.
 
 \subsection{Downstream Causal Misinterpretation}
 \label{sec:example-a-citations}
@@ -683,7 +756,7 @@ The DAG framework channels disagreements into questions about specific edges and
 % GitHub data already contains developer IDs, timestamps,
 % multi-language contributions -> panel structure.
 % Panel FE absorbs time-invariant confounders.
-% Limitations: time-varying confounders, compound treatment.
+% Limitations: Time-varying confounders, compound treatment.
 
 \subsection{Empirical Demonstration}
 \label{sec:example-a-empirical}
@@ -706,9 +779,9 @@ The DAG framework channels disagreements into questions about specific edges and
 
 % TODO: Walk through all four steps showing selection bias.
 % Step 1: TS adoption is endogenous (skill, quality culture, complexity).
-% Step 2: confounded estimand --- cross-sectional JS-vs-TS comparison.
-% Step 3: ``surprising'' finding likely reflects better bug-tracking.
-% Step 4: selection explanation is more plausible than literal interpretation.
+% Step 2: Confounded estimand --- cross-sectional JS-vs-TS comparison.
+% Step 3: ``Surprising'' finding likely reflects better bug-tracking.
+% Step 4: Selection explanation is more plausible than literal interpretation.
 
 \subsection{Treatment Decomposition: From ``Language'' to ``Type System Adoption''}
 \label{sec:example-b-decomposition}
@@ -721,7 +794,7 @@ The DAG framework channels disagreements into questions about specific edges and
 \label{sec:example-b-constructive}
 
 % TODO: Treatment group: JS projects that adopt TS.
-% Control group: comparable JS projects that remain in pure JS.
+% Control group: Comparable JS projects that remain in pure JS.
 % DiD identification, pre-trend tests, parallel trends assumption.
 % Connection to modern DiD methods (Roth et al. 2023).
 

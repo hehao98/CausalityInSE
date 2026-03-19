@@ -11,9 +11,11 @@ alwaysApply: true
 When writing or editing LaTeX (`.tex`) files or documentation, ensure that each sentence is placed on a new line.
 
 ### Why
+
 This practice greatly facilitates version control (`git diff`). When multiple people edit the same paragraph, line-by-line diffs become much cleaner and easier to review if every sentence is on its own line.
 
 ### Rules
+
 - Place a line break after sentence-ending punctuation (e.g., periods, question marks, exclamation marks) instead of continuing on the same line.
 - Do not wrap lines or break lines in the middle of a sentence simply to enforce a column width limit.
 - Only break mid-sentence if it is dictated by specific formatting constraints (like macros or math formulas that require it).
@@ -63,6 +65,11 @@ Do **not** capitalize after a colon when it introduces a list, fragment, or math
 - Use rhetorical questions sparingly as pedagogical devices to motivate new concepts: "Under what conditions can we estimate these quantities from observed data?"
 - Weave **software engineering examples** naturally into the exposition rather than setting them apart in standalone illustrations.
 - After a formal definition or estimand, provide a one-sentence practical interpretation: "The ATE answers: On average across the population, how much does treatment change outcomes?"
+
+## Citation Style
+
+- Use `\citet{...}` instead of writing out "XX et al.~\cite{...}" when using author names as part of the sentence (e.g., use "As \citet{DBLP:conf/sigsoft/RayPFD14} show" instead of "As Ray et al.~\cite{DBLP:conf/sigsoft/RayPFD14} show").
+- Always double-check the `.bib` file and search to ensure that the citation key actually exists, especially when in doubt about the reference.
 
 ## Conciseness
 
