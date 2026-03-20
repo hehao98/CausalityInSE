@@ -29,19 +29,19 @@
     ],
     "latex-workshop.latex.recipes": [
         {
-            "name": "tectonic",
-            "tools": ["tectonic"]
-        },
-        {
             "name": "pdflatex -> bibtex -> pdflatex x2",
             "tools": ["pdflatex", "bibtex", "pdflatex", "pdflatex"]
         },
         {
             "name": "pdflatex only",
             "tools": ["pdflatex"]
+        },
+        {
+            "name": "tectonic",
+            "tools": ["tectonic"]
         }
     ],
-    "latex-workshop.latex.recipe.default": "lastUsed",
+    "latex-workshop.latex.recipe.default": "first",
     "latex-workshop.latex.autoBuild.run": "onSave",
     "latex-workshop.latex.autoClean.run": "onBuilt",
     "latex-workshop.latex.autoClean.cleanAndRetry.enabled": true,
