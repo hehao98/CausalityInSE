@@ -167,49 +167,52 @@ Our tutorial fills this gap with an integrative treatment, covering multiple int
 \subsection{The Causal Inference Challenge in Econometrics, Psychology and Epidemiology Research}
 \label{sec:bg-psychology}
 
-\paragraph{Experimental Foundations and Observational Extensions.}
-The conceptual foundations were laid when \citet{neyman1923application} introduced potential outcomes notation---the causal effect as the difference between outcomes under treatment and control, of which only one is observed---and \citet{fisher1935design} established randomization as the principled basis for causal attribution.
-Together, they established the twin pillars of experimental causal inference, but their frameworks require randomization---a condition rarely met in SE, where programming languages, tools, and processes cannot be randomly assigned to developers or projects.
-Extending causal reasoning to observational settings required three advances: \citet{hill1965environment} proposed nine viewpoints for evaluating whether observed associations reflect genuine causal relationships; \citet{rubin1974estimating} formalized \emph{conditional ignorability}, showing that causal effects are identifiable if treatment assignment is independent of potential outcomes conditional on observed covariates; and \citet{rosenbaum1983central} introduced the propensity score as a practical dimension-reducing device for covariate adjustment.
-These methods share a fundamental limitation: They cannot address confounding from unobserved variables, a constraint that motivated the design-based tradition.
+\subsubsection{The Development of the Causal Inference Toolkit}
+\label{sec:bg-causal-history}
 
-\paragraph{The Design-Based Credibility Revolution.}
-The credibility revolution shifted the basis of causal claims from statistical modeling to research design.
-\citeauthor{card1994minimum}'s~\cite{card1994minimum} difference-in-differences study of a New Jersey minimum wage increase demonstrated that natural experiments can overturn decades of cross-sectional conventional wisdom; \citet{angrist1996identification} formalized instrumental variable identification through the LATE theorem, providing precise conditions that transformed IV into a principled identification strategy; and \citet{shadish2002experimental} codified threats to quasi-experimental validity.
-\citet{angrist2010credibility} crystallized the overarching manifesto: Design-based studies exploiting natural experiments yield more credible causal evidence than advances in statistical modeling alone.
+The modern causal inference toolkit emerged over a century through contributions from three intellectual traditions---statistics, econometrics, and computer science---each addressing a distinct aspect of the causal inference problem.
+
+Statisticians laid the experimental foundations.
+\citet{neyman1923application} defined the causal effect as the difference between two potential outcomes---only one of which is ever observed---and \citet{fisher1935design} established randomization as the principled basis for causal attribution.
+Extending causal reasoning to observational settings, \citet{hill1965environment} proposed viewpoints for evaluating whether observed associations reflect genuine causal relationships, \citet{rubin1974estimating} formalized \emph{conditional ignorability} as the identifying assumption for observational studies, and \citet{rosenbaum1983central} introduced the propensity score as a practical dimension-reducing device for covariate adjustment.
+These selection-on-observables methods cannot address confounding from unobserved variables---a limitation that motivated economists to develop design-based alternatives.
+
+Econometricians drove the \emph{credibility revolution}, shifting the basis of causal claims from statistical modeling to research design.
+\citet{leamer1983let} first diagnosed the profession's credibility problem, arguing that the sensitivity of regression results to specification choices undermined confidence in empirical findings.
+The constructive response came through landmark natural experiments: \citeauthor{card1994minimum}'s~\cite{card1994minimum} difference-in-differences analysis of a minimum wage increase demonstrated that design-based evidence can overturn decades of cross-sectional conventional wisdom, and \citet{angrist1996identification} formalized instrumental variable identification through the LATE theorem.
+\citet{angrist2010credibility} crystallized the overarching manifesto: Design-based studies yield more credible causal evidence than advances in statistical modeling alone.
+The 2021 Nobel Prize in Economics, awarded to Card, Angrist, and Imbens for their methodological contributions, cemented the credibility revolution as one of the most consequential intellectual movements in modern social science.
+
+From computer science and artificial intelligence, \citet{pearl2009causality} independently developed the graphical causal model framework, representing causal relationships as directed acyclic graphs (DAGs) and introducing the \emph{do-calculus} and \emph{back-door criterion} for determining sufficient adjustment sets.
+Where the potential outcomes tradition defines \emph{what} to estimate, DAGs provide a visual language for arguing \emph{why} identification assumptions hold.
+\citet{morgan2015counterfactuals} bridged the two traditions for social science, and \citet{imbens2020potential} clarified their relative strengths, arguing that potential outcomes are more natural for design-based research while DAGs excel at encoding complex causal structures.
+
+Recent cross-disciplinary advances have extended the toolkit further: double/debiased machine learning for high-dimensional settings~\cite{chernozhukov2018double}, causal forests for heterogeneous effects~\cite{athey2016recursive}, modern DiD estimators robust to staggered adoption~\cite{callaway2021difference, roth2023whats}, and sensitivity analysis tools for assessing vulnerability to unobserved confounding~\cite{rosenbaum2002observational, oster2019unobservable, cinelli2020making}.
+A new generation of accessible textbooks~\cite{angrist2009mostly, hernan2020causal, cunningham2021causal, huntingtonklein2021effect} has demonstrated that these methods can be taught to non-specialist audiences; \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework, which asks researchers to describe the hypothetical randomized trial their observational analysis attempts to emulate, is particularly relevant to SE\@.
 This ethos---deriving credibility from research design rather than modeling assumptions---is foundational to our tutorial and has not been systematically introduced to SE audiences.
 
-\paragraph{Graphical Causal Models.}
-Independently, \citet{pearl2009causality} developed the graphical framework, representing causal relationships as DAGs and introducing the \emph{do-calculus} and \emph{back-door criterion} for determining sufficient adjustment sets.
-Where the potential outcomes tradition defines \emph{what} to estimate, DAGs provide a visual tool for arguing \emph{why} assumptions hold---making causal assumptions explicit so that critics can challenge specific edges rather than raising vague concerns about ``omitted variables.''
-\citet{morgan2015counterfactuals} bridged the two traditions for social science, and \citet{imbens2020potential} clarified their relative strengths, arguing that potential outcomes are more natural for design-based research while DAGs excel at encoding complex causal structures---a synthesis our tutorial brings to SE audiences.
+\subsubsection{Methodological Reform in Psychology and Epidemiology}
+\label{sec:bg-psych-reform}
 
-\paragraph{Modern Advances.}
-Recent methodological frontiers extend the toolkit in directions relevant to SE\@.
-\citet{chernozhukov2018double} introduced double/debiased machine learning for high-dimensional treatment effect estimation, and \citet{athey2016recursive} developed causal forests for heterogeneous effects---both addressing the high-dimensional feature spaces common in mining software repositories.
-\citet{callaway2021difference} and \citet{roth2023whats} revealed that standard two-way fixed effects DiD can produce biased estimates under staggered adoption and heterogeneous effects, providing alternative estimators directly relevant to SE panel data studying tool adoption or language switching.
-Sensitivity analysis has matured into an essential complement: \citeauthor{rosenbaum2002observational}'s~\cite{rosenbaum2002observational} bounds on hidden bias, \citeauthor{oster2019unobservable}'s~\cite{oster2019unobservable} coefficient stability framework, and \citeauthor{cinelli2020making}'s~\cite{cinelli2020making} robustness value provide tools for assessing vulnerability to unobserved confounding---none yet applied in SE\@.
-A new generation of accessible textbooks~\cite{angrist2009mostly, hernan2020causal, cunningham2021causal, huntingtonklein2021effect} has demonstrated that these methods can be taught effectively to non-specialist audiences; \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework, which asks researchers to describe the hypothetical randomized trial their observational analysis attempts to emulate, is particularly relevant to SE\@.
+Psychology and health research have confronted the same disconnect between causal ambition and methodological practice that we identify in SE, and their experience reveals both consequences and remedies relevant to the SE community.
 
-Psychology and health research have confronted the same disconnect between causal ambition and methodological practice that we identify in SE, and their experience---unfolding in three phases---reveals both consequences and remedies relevant to the SE community.
-
-\paragraph{Diagnosing the Causal Language Problem.}
-\citet{hernan2018cword} challenged the epidemiological norm of replacing causal language with associational euphemisms, arguing that this linguistic evasion does not prevent causal interpretation but merely obscures the causal question and prevents transparent discussion of identification assumptions.
-\citet{grosz2020taboo} documented a parallel ``taboo'' in psychology, showing that the norm against explicit causal inference pushes causal interpretations underground---resulting in impaired study design, stunted cumulative research, and disconnect between findings and downstream interpretation.
-\citet{haber2022causal} provided large-scale empirical evidence that this taboo fails on its own terms: Among 1,170 articles from 18 high-profile health journals, 52\% of abstracts implied moderate or strong causality despite ostensibly associational language.
+The reform began with diagnosing the causal language problem.
+\citet{hernan2018cword} challenged the epidemiological norm of replacing causal language with associational euphemisms, arguing that this evasion does not prevent causal interpretation but merely obscures the causal question and blocks transparent discussion of identification assumptions.
+\citet{grosz2020taboo} documented a parallel ``taboo'' in psychology: The norm against explicit causal inference pushes causal reasoning underground, resulting in impaired study design and disconnect between findings and downstream interpretation.
+\citet{haber2022causal} provided large-scale empirical evidence that this taboo fails on its own terms---among 1,170 articles from 18 high-profile health journals, 52\% of abstracts implied moderate or strong causality despite ostensibly associational language.
 The SE community exhibits the same pattern, as the language--defect debate (Section~\ref{sec:bg-pl-debate}) illustrates.
 
-\paragraph{Constructive Reforms.}
-In response, \citet{rohrer2018thinking} introduced DAGs to psychology as a practical tool for reasoning about confounding, and \citet{wysocki2022statistical} demonstrated through simulation that controlling for mediators, colliders, or their descendants can introduce \emph{more} bias---a finding directly applicable to SE studies that include covariates without DAG-based justification.
-\citet{lundberg2021estimand} formalized the \emph{estimand-first} principle---every quantitative study should begin by clearly defining its target quantity outside any particular statistical model---which informs our Step~2.
+In response, methodological reformers borrowed tools from the causal inference traditions described above.
+\citet{rohrer2018thinking} introduced DAGs to psychology, and \citet{wysocki2022statistical} demonstrated that controlling for mediators, colliders, or their descendants can introduce \emph{more} bias---a finding directly applicable to SE studies that include covariates without causal justification.
+\citet{lundberg2021estimand} formalized the \emph{estimand-first} principle for sociology, requiring every study to define its target quantity outside any particular statistical model.
 Institutionally, \citet{lederer2019control} issued editor-endorsed guidance requiring authors to specify causal questions and justify covariate selection---editorial policy that does not yet exist in any SE venue.
-\citet{tennant2021dags} assessed DAG adoption in 234 health research articles and found that only 21\% reported target estimands, revealing a theory-practice gap that parallels \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} findings in SE\@.
+\citet{tennant2021dags} assessed DAG adoption in health research and found that only 21\% of articles reported target estimands, revealing a theory-practice gap that parallels \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} findings in SE\@.
 
-\paragraph{A Cautionary Parallel.}
-The income--happiness debate illustrates these consequences: \citet{killingsworth2023income} appeared to resolve a long-standing conflict through sophisticated observational analysis, only for \citet{rohrer2024inappropriate} to demonstrate that the resolution rested on untested identification assumptions---effectively performing Steps~1--4 of our framework on a study that had not performed them.
+High-profile case studies have illustrated the consequences of ignoring causal reasoning.
+\citet{killingsworth2023income} appeared to resolve the long-standing income--happiness debate through sophisticated observational analysis, only for \citet{rohrer2024inappropriate} to demonstrate that the resolution rested on untested identification assumptions---effectively performing the causal assessment our framework codifies.
 This sequence mirrors the trajectory from \citet{DBLP:conf/sigsoft/RayPFD14} through \citeauthor{DBLP:journals/toplas/BergerHMVV19}'s~\cite{DBLP:journals/toplas/BergerHMVV19} reproduction in SE: In both cases, increasingly sophisticated correlational analyses cannot resolve causal questions without explicit identification.
-\citeauthor{rohrer2024causal}'s~\cite{rohrer2024causal} recent tutorial for psychologists---demonstrating that causal reasoning is unavoidable even for researchers who work exclusively with observational data---is the closest existing analog to our work, but does not cover design-based identification strategies or SE-specific confounding structures.
-The solutions emerging across these disciplines---explicit causal questions, DAG-based covariate justification, estimand-first workflows, sensitivity analysis, and editorial enforcement---can inform and accelerate SE's methodological reform.
+\citeauthor{rohrer2024causal}'s~\cite{rohrer2024causal} recent tutorial for psychologists is the closest existing analog to our work but does not cover design-based identification strategies or SE-specific confounding structures.
+The solutions emerging across these disciplines---explicit causal questions, DAG-based covariate justification, estimand-first workflows, sensitivity analysis, and editorial enforcement---can inform and accelerate SE's own methodological reform.
 
 \subsection{Causal Inference Adoption in Software Engineering to Date}
 \label{sec:bg-adoption}
