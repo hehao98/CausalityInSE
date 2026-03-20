@@ -1,6 +1,17 @@
 {
     "latex-workshop.latex.tools": [
         {
+            "name": "tectonic",
+            "command": "tectonic",
+            "args": [
+                "--synctex",
+                "--keep-logs",
+                "--keep-intermediates",
+                "%DOC%.tex"
+            ],
+            "env": {}
+        },
+        {
             "name": "pdflatex",
             "command": "pdflatex",
             "args": [
@@ -18,6 +29,10 @@
     ],
     "latex-workshop.latex.recipes": [
         {
+            "name": "tectonic",
+            "tools": ["tectonic"]
+        },
+        {
             "name": "pdflatex -> bibtex -> pdflatex x2",
             "tools": ["pdflatex", "bibtex", "pdflatex", "pdflatex"]
         },
@@ -26,6 +41,7 @@
             "tools": ["pdflatex"]
         }
     ],
+    "latex-workshop.latex.recipe.default": "lastUsed",
     "latex-workshop.latex.autoBuild.run": "onSave",
     "latex-workshop.latex.autoClean.run": "onBuilt",
     "latex-workshop.latex.autoClean.cleanAndRetry.enabled": true,
