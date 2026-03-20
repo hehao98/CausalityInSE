@@ -191,16 +191,16 @@ Recent cross-disciplinary advances have extended the toolkit further: double/deb
 A new generation of accessible textbooks~\cite{angrist2009mostly, hernan2020causal, cunningham2021causal, huntingtonklein2021effect} has demonstrated that these methods can be taught to non-specialist audiences; \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework, which asks researchers to describe the hypothetical randomized trial their observational analysis attempts to emulate, is particularly relevant to SE\@.
 Our tutorial treats both traditions as essential for SE research: Design-based identification provides credible effect estimates for SE interventions while graphical causal models help the decomposition of mechanisms in which the intervention affects the outcome---both are critical for a full understanding of empirical SE problems (Section~\ref{sec:primer}).
 
-\subsubsection{Methodological Reform in Psychology and Epidemiology}
+\subsubsection{The Methodological Reform in Psychology and Epidemiology}
 \label{sec:bg-psych-reform}
 
-Psychology and health research have confronted the same disconnect between causal ambition and methodological practice that we identify in SE, and their experience reveals both consequences and remedies relevant to the SE community.
+In recent years, psychology and health research have confronted a strikingly similar problem---the disconnect between causal ambition and methodological practice---that we identify in SE, and their experience reveals both consequences and remedies relevant to the SE community.
 
 The reform began with diagnosing the causal language problem.
 \citet{hernan2018cword} challenged the epidemiological norm of replacing causal language with associational euphemisms, arguing that this evasion does not prevent causal interpretation but merely obscures the causal question and blocks transparent discussion of identification assumptions.
 \citet{grosz2020taboo} documented a parallel ``taboo'' in psychology: The norm against explicit causal inference pushes causal reasoning underground, resulting in impaired study design and disconnect between findings and downstream interpretation.
 \citet{haber2022causal} provided large-scale empirical evidence that this taboo fails on its own terms---among 1,170 articles from 18 high-profile health journals, 52\% of abstracts implied moderate or strong causality despite ostensibly associational language.
-The SE community exhibits the same pattern, as the language--defect debate (Section~\ref{sec:bg-pl-debate}) illustrates.
+The SE community exhibits the same pattern, as we will show in Section~\ref{sec:bg-adoption}.
 
 In response, methodological reformers borrowed tools from the causal inference traditions described above.
 \citet{rohrer2018thinking} introduced DAGs to psychology, and \citet{wysocki2022statistical} demonstrated that controlling for mediators, colliders, or their descendants can introduce \emph{more} bias---a finding directly applicable to SE studies that include covariates without causal justification.
@@ -210,7 +210,7 @@ Institutionally, \citet{lederer2019control} issued editor-endorsed guidance requ
 
 High-profile case studies have illustrated the consequences of ignoring causal reasoning.
 \citet{killingsworth2023income} appeared to resolve the long-standing income--happiness debate through sophisticated observational analysis, only for \citet{rohrer2024inappropriate} to demonstrate that the resolution rested on untested identification assumptions---effectively performing the causal assessment our framework codifies.
-This sequence mirrors the trajectory from \citet{DBLP:conf/sigsoft/RayPFD14} through \citeauthor{DBLP:journals/toplas/BergerHMVV19}'s~\cite{DBLP:journals/toplas/BergerHMVV19} reproduction in SE: In both cases, increasingly sophisticated correlational analyses cannot resolve causal questions without explicit identification.
+This sequence mirrors the trajectory from \citet{DBLP:conf/sigsoft/RayPFD14} through \citeauthor{DBLP:journals/toplas/BergerHMVV19}'s~\cite{DBLP:journals/toplas/BergerHMVV19} in SE: In both cases, increasingly sophisticated correlational analyses cannot resolve causal questions without explicit identification.
 \citeauthor{rohrer2024causal}'s~\cite{rohrer2024causal} recent tutorial for psychologists is the closest existing analog to our work but does not cover design-based identification strategies or SE-specific confounding structures.
 The solutions emerging across these disciplines---explicit causal questions, DAG-based covariate justification, estimand-first workflows, sensitivity analysis, and editorial enforcement---can inform and accelerate SE's own methodological reform.
 
@@ -218,10 +218,11 @@ The solutions emerging across these disciplines---explicit causal questions, DAG
 \label{sec:bg-adoption}
 
 The preceding sections document a growing awareness of causal reasoning in SE, but how widespread is its actual use?
-To quantify the gap between causal ambition and methodological practice, we conducted a systematic classification of all main-research-track papers published at three premier SE venues---ICSE, FSE, and ASE---from 2015 to 2025.
+To quantify the gap between causal ambition and methodological practice, we conducted a classification of all main-research-track papers published at three premier SE venues---ICSE, FSE, and ASE---from 2015 to 2025.
+We do not aim to achieve methodological perfection in this analysis, but even a simple exploration reveals a picture strikingly similar to the problems reported in psychology~\cite{grosz2020taboo} and epidemiology~\cite{haber2022causal} research.
 
 \paragraph{Corpus and Classification.}
-Paper titles and DOIs were obtained from DBLP proceedings pages; abstracts were retrieved via the Semantic Scholar batch API with OpenAlex as a backfill source.
+For each venue (ICSE, FSE, ASE), we obtained a paper list, paper titles, and DOIs from DBLP, and retrieved the paper abstracts via the Semantic Scholar batch API with OpenAlex as a backfill source.
 This produced a corpus of 5,341 papers.
 Each paper was classified by a large language model (Claude Opus 4.6, \texttt{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, (2)~whether it is a mining software repositories (MSR) study, and (3)~whether it makes causal claims, employs a causal inference method, or both.
 For papers tagged as using causal methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
@@ -247,19 +248,18 @@ The persistent gap between causal claims and causal methods quantifies the disco
 \end{figure}
 
 \paragraph{Which Causal Methods Are Used?}
-Among the 100 papers that employ causal methods, the distribution is strikingly concentrated (Table~\ref{tab:taxonomy}).
+Among the papers with causal methods, the distribution is highly concentrated (Table~\ref{tab:taxonomy}).
 Randomized controlled experiments dominate (37 papers), reflecting the SE community's established tradition of controlled developer studies~\cite{DBLP:books/sp/WohlinRHORW24}.
 Causal fault localization---applying causal testing, causal contribution scores, or causal debugging to identify root causes of failures---accounts for 17 papers, representing a growing research thread that applies causal reasoning to software analysis rather than to empirical research methodology.
-Regression-based causal inference (11 papers) includes studies that use regression or observational analysis with explicit causal intent, such as controlling for confounders or using causal-adjacent language, but without formal identification strategies.
+Regression-based causal inference (10 papers) includes studies that use regression or observational analysis with explicit causal intent, such as controlling for confounders or using causal-adjacent language, but without formal identification strategies.
 
 \begin{table}[t]
 \centering
 \caption{Taxonomy of causal methods in 100 SE papers (ICSE + FSE + ASE, 2015--2025) classified as employing a causal inference method.
-Each paper is assigned a primary category; multi-label assignments are stored separately in the replication package.
-Methods from the design-based credibility revolution are strikingly underrepresented.}
+Each paper is assigned a primary category; multi-label assignments are stored separately in the replication package.}
 \label{tab:taxonomy}
 \footnotesize
-\begin{tabular}{@{} p{5cm} r p{7cm} @{}}
+\begin{tabular}{@{} p{5cm} r p{9cm} @{}}
 \toprule
 \textbf{Category} & \textbf{$n$} & \textbf{Description} \\
 \midrule
@@ -269,7 +269,7 @@ Randomized Controlled Experiment  & 37 & Random assignment to treatment/control 
 \addlinespace
 \multicolumn{3}{@{}l}{\emph{Observational --- Design-Based}} \\
 \addlinespace[2pt]
-Quasi-/Natural Experiment         &  7 & Exploits naturally occurring variation (e.g., case-control, before-after, panel data) \\
+Quasi-/Natural Experiment         &  8 & Exploits naturally occurring variation (e.g., case-control, before-after, panel data) \\
 Propensity Score Methods          &  1 & Matching or weighting on observed covariates to reduce selection bias \\
 \addlinespace
 \multicolumn{3}{@{}l}{\emph{Observational --- Graphical / Structural}} \\
@@ -285,9 +285,9 @@ Counterfactual Analysis           &  6 & Reasons about outcomes under hypothetic
 Granger Causality                 &  2 & Tests whether past values of one time series predict another \\
 Causal Impact Analysis            &  1 & Bayesian structural time-series model for event effects \\
 Survival / Hazard Modeling        &  2 & Time-to-event models with causal interpretation \\
-Regression-based Causal Inference & 11 & Regression with explicit causal intent but no formal identification strategy \\
+Regression-based Causal Inference & 10 & Regression with explicit causal intent but no formal identification strategy \\
 \addlinespace
-\multicolumn{3}{@{}l}{\emph{Software Analysis (not empirical methodology)}} \\
+\multicolumn{3}{@{}l}{\emph{Software Analysis (not Empirical Methodology)}} \\
 \addlinespace[2pt]
 Causal Fault Localization         & 17 & Causal testing, contribution scores, or causal debugging for root-cause analysis \\
 \bottomrule
@@ -295,7 +295,8 @@ Causal Fault Localization         & 17 & Causal testing, contribution scores, or
 \end{table}
 
 The methods central to the credibility revolution in economics and political science are nearly absent.
-Only 7 papers employ quasi-experimental or natural experiment designs; propensity score methods appear in just 1 paper; and no paper in our corpus uses instrumental variables, difference-in-differences, or regression discontinuity as a primary identification strategy.
+Only 8 papers employ quasi-experimental or natural experiment designs; propensity score methods and difference-in-differences are used at most a few times; and no paper in our corpus uses instrumental variables or regression discontinuity as a primary identification strategy.\footnote{A small number of SE studies outside our corpus label their design as ``regression discontinuity''---e.g., \citet{DBLP:conf/icsme/ZimmermannC19} on bug tracker switching and \citet{DBLP:journals/ese/WesselSWSG22} on code review bot adoption---but these use \emph{time} as the running variable, with all units experiencing the treatment simultaneously at a calendar cutoff.
+As \citet{hausman2018regression} discuss, such temporal designs are more accurately characterized as \emph{interrupted time series} (ITS) analyses: True regression discontinuity exploits quasi-random variation near a threshold of a continuous assignment variable, whereas ITS designs face confounding from concurrent events and lack the cross-sectional variation that gives RDD its identification power.}
 The graphical causal model tradition is better represented (7 papers using causal DAGs, 3 using causal discovery algorithms, 4 using interventional or do-calculus reasoning), consistent with \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} observation that Pearl's framework has gained some traction in SE\@.
 Structural equation modeling (2 papers), Granger causality (2 papers), and causal impact analysis (1 paper) round out the remaining categories.
 
