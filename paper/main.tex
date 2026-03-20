@@ -175,7 +175,7 @@ The modern causal inference toolkit emerged over a century through contributions
 First of all, statisticians laid the \emph{experimental foundations}.
 \citet{neyman1923application} defined the causal effect as the difference between two potential outcomes---only one of which is ever observed---and \citet{fisher1935design} established randomization as the principled basis for causal attribution.
 Extending causal reasoning to observational settings, \citet{hill1965environment} proposed viewpoints for evaluating whether observed associations reflect genuine causal relationships, \citet{rubin1974estimating} formalized \emph{conditional ignorability} as the identifying assumption for observational studies, and \citet{rosenbaum1983central} introduced the propensity score as a practical dimension-reducing device for covariate adjustment.
-Yet, the family of selection-on-observables methods fundamentally cannot address confounding from \emph{unobserved variables} plaguing many economic and societal problems~\cite{heckman1979sample}---for instance, a person's inherent ability affects both their educational attainment and future earnings but is challenging to measure~\cite{card1999causal}---a limitation that motivated economists to develop design-based alternatives.
+Yet, the family of selection-on-observables methods fundamentally cannot address confounding from \emph{unobserved variables} plaguing many economic and societal problems~\cite{heckman1979sample}---e.g., one's (arguably unmeasureable) inherent ability affects both their educational attainment and future earnings~\cite{card1999causal}---a limitation that motivated economists to develop design-based alternatives.
 
 Thus, econometricians drove the \emph{credibility revolution}, shifting the basis of causal claims from statistical modeling to research design.
 \citet{leamer1983let} first diagnosed the field's credibility problem, arguing that the sensitivity of regression results to specification choices undermined confidence in empirical findings.
@@ -189,7 +189,7 @@ Where the potential outcomes tradition defines \emph{what} to estimate, DAGs pro
 
 Recent cross-disciplinary advances have extended the toolkit further: double/debiased machine learning for high-dimensional settings~\cite{chernozhukov2018double}, causal forests for heterogeneous effects~\cite{athey2016recursive}, modern DiD estimators robust to staggered adoption~\cite{callaway2021difference, roth2023whats}, and sensitivity analysis tools for assessing vulnerability to unobserved confounding~\cite{rosenbaum2002observational, oster2019unobservable, cinelli2020making}.
 A new generation of accessible textbooks~\cite{angrist2009mostly, hernan2020causal, cunningham2021causal, huntingtonklein2021effect} has demonstrated that these methods can be taught to non-specialist audiences; \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework, which asks researchers to describe the hypothetical randomized trial their observational analysis attempts to emulate, is particularly relevant to SE\@.
-This ethos---deriving credibility from research design rather than modeling assumptions---is foundational to our tutorial and has not been systematically introduced to SE audiences.
+This ethos---deriving credibility from research design rather than statisical modeling assumptions---is foundational to our tutorial and has not been systematically introduced to SE audiences.
 
 \subsubsection{Methodological Reform in Psychology and Epidemiology}
 \label{sec:bg-psych-reform}
