@@ -76,3 +76,8 @@ Do **not** capitalize after a colon when it introduces a list, fragment, or math
 - Avoid saying the same thing twice in different words. If the equation already states a result, do not restate it verbatim in prose.
 - Prefer merging two short sentences into one when they share a logical thread: "Similarly, $E[Y(1) \mid D=1] = E[Y(1)]$, so the ATT equals the ATE, and the naive difference in means identifies the ATE."
 - Omit meta-commentary ("It is worth noting that," "As we shall see"). Get to the point.
+
+## Custom Commands
+
+- **`\TODO{...}`**: Use this command for marking parts of the text that should be completed, expanded, or reviewed later. It renders the text in bold red to make it easily identifiable.
+- **`\Code{...}`**: Use this command (with an uppercase C) when formatting inline code within the main text, instead of raw `\texttt{...}` or `\verb`. It ensures that the code font size looks similar to the main text font and scales properly, especially in ACM or IEEE formats.
