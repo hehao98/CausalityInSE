@@ -306,45 +306,59 @@ This tutorial aims to bridge that gap.
 \section{A Primer on Causal Inference for SE Researchers}
 \label{sec:primer}
 
-This section develops the technical foundations for causal inference, using the programming language and defect proneness question as a running example.
-We examine why naive approaches fail (Sections~\ref{sec:primer-correlation}--\ref{sec:primer-regression}), formalize key concepts (Sections~\ref{sec:primer-po}--\ref{sec:primer-dags}), survey identification methods (Section~\ref{sec:primer-methods}), and discuss the internal--external validity trade-off (Section~\ref{sec:primer-validity}).
+Section~\ref{sec:background} documented three facts: The causal inference toolkit has matured over a century of cross-disciplinary development, psychology and epidemiology have undergone a methodological reform that SE has yet to experience, and fewer than 4\% of empirical SE papers employ any recognized causal inference method despite 29\% asking causal questions.
+This section equips the reader with the conceptual and technical foundations needed to close that gap.
+We cover the three pillars most relevant to empirical SE research---counterfactual reasoning and potential outcomes, graphical causal models, and design-based identification---and argue for a pragmatic synthesis suited to the field's observational data.
+We do not cover causal discovery algorithms~\cite{journals/ese/HulseEM25}, machine-learning-based heterogeneous treatment effect estimation~\cite{chernozhukov2018double, athey2016recursive}, or formal verification of causal claims; readers interested in these topics should consult the references cited and the textbooks listed in Section~\ref{sec:bg-causal-history}.
 
-\subsection{What is Causality, Actually?}
-\label{sec:bg-causality}
+\subsection{What Does It Mean for X to Cause Y?}
+\label{sec:primer-causality}
 
-Understanding how the causal inference toolkit evolved---and the tensions between competing traditions---equips SE researchers to select the approach best suited to their research question and data structure.
+Consider a question that has occupied SE researchers for over a decade: Does adopting TypeScript reduce defects in JavaScript projects?
+At its core, this is a question about a contrast between two worlds---one in which a team adopts TypeScript and one in which it does not---and whether the defect rate differs between them.
+This deceptively simple framing conceals a deep conceptual question: What does it \emph{mean} for one thing to cause another?
+Four perspectives, developed across philosophy, statistics, and epidemiology, provide complementary answers.
 
-\paragraph{Experimental Foundations and Observational Extensions.}
-The conceptual foundations were laid when \citet{neyman1923application} introduced potential outcomes notation---the causal effect as the difference between outcomes under treatment and control, of which only one is observed---and \citet{fisher1935design} established randomization as the principled basis for causal attribution.
-Together, they established the twin pillars of experimental causal inference, but their frameworks require randomization---a condition rarely met in SE, where programming languages, tools, and processes cannot be randomly assigned to developers or projects.
-Extending causal reasoning to observational settings required three advances: \citet{hill1965environment} proposed nine viewpoints for evaluating whether observed associations reflect genuine causal relationships; \citet{rubin1974estimating} formalized \emph{conditional ignorability}, showing that causal effects are identifiable if treatment assignment is independent of potential outcomes conditional on observed covariates; and \citet{rosenbaum1983central} introduced the propensity score as a practical dimension-reducing device for covariate adjustment.
-These methods share a fundamental limitation: They cannot address confounding from unobserved variables, a constraint that motivated the design-based tradition.
+\paragraph{Causation as Regular Association.}
+The most intuitive notion, dating to Hume, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$.
+In SE terms: If teams using TypeScript consistently have fewer bugs, we might say TypeScript ``causes'' fewer bugs.
+This view fails immediately.
+Projects that adopt continuous integration also tend to have fewer defects, but this association likely reflects the maturity and discipline of teams that adopt CI---not a causal effect of CI pipelines on code quality.
+Regular association cannot distinguish genuine causal effects from systematic differences between the groups being compared.
 
-\paragraph{The Design-Based Credibility Revolution.}
-The credibility revolution shifted the basis of causal claims from statistical modeling to research design.
-\citeauthor{card1994minimum}'s~\cite{card1994minimum} difference-in-differences study of a New Jersey minimum wage increase demonstrated that natural experiments can overturn decades of cross-sectional conventional wisdom; \citet{angrist1996identification} formalized instrumental variable identification through the LATE theorem, providing precise conditions that transformed IV into a principled identification strategy; and \citet{shadish2002experimental} codified threats to quasi-experimental validity.
-\citet{angrist2010credibility} crystallized the overarching manifesto: Design-based studies exploiting natural experiments yield more credible causal evidence than advances in statistical modeling alone.
-This ethos---deriving credibility from research design rather than modeling assumptions---is foundational to our tutorial and has not been systematically introduced to SE audiences.
+\paragraph{Causation as Counterfactual Dependence.}
+A deeper account, formalized by \citet{rubin1974estimating} building on philosophical work by Lewis, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
+Applied to our example: TypeScript \emph{caused} the reduction in defects for a given project if that project \emph{would have had more defects} had it not adopted TypeScript, all else being equal.
+This definition is precise but introduces what \citet{holland1986statistics} called the \emph{fundamental problem of causal inference}: We can never observe both worlds for the same unit.
+We observe the project's defect rate after adopting TypeScript, or its defect rate without TypeScript, but never both.
+The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
 
-\paragraph{Graphical Causal Models.}
-Independently, \citet{pearl2009causality} developed the graphical framework, representing causal relationships as DAGs and introducing the \emph{do-calculus} and \emph{back-door criterion} for determining sufficient adjustment sets.
-Where the potential outcomes tradition defines \emph{what} to estimate, DAGs provide a visual tool for arguing \emph{why} assumptions hold---making causal assumptions explicit so that critics can challenge specific edges rather than raising vague concerns about ``omitted variables.''
-\citet{morgan2015counterfactuals} bridged the two traditions for social science, and \citet{imbens2020potential} clarified their relative strengths, arguing that potential outcomes are more natural for design-based research while DAGs excel at encoding complex causal structures---a synthesis our tutorial brings to SE audiences.
+\paragraph{Causation as Intervention.}
+A third perspective, developed by \citet{woodward2003making} in philosophy and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} \emph{do-calculus}, defines causation through intervention: $X$ causes $Y$ if \emph{intervening} on $X$---holding everything else fixed---changes $Y$.
+The key insight is the difference between \emph{seeing} and \emph{doing}.
+Observing that TypeScript projects have fewer bugs ($P(Y \mid X\!=\!1)$) is not the same as forcing a team to switch to TypeScript and measuring the result ($P(Y \mid do(X\!=\!1))$).
+The former reflects both the causal effect of TypeScript and the systematic differences between teams that choose TypeScript and those that do not; the latter isolates the causal effect by holding the selection process fixed.
+This distinction---between conditioning and intervening---is the conceptual foundation of all causal inference methods.
 
-\paragraph{Modern Advances.}
-Recent methodological frontiers extend the toolkit in directions relevant to SE\@.
-\citet{chernozhukov2018double} introduced double/debiased machine learning for high-dimensional treatment effect estimation, and \citet{athey2016recursive} developed causal forests for heterogeneous effects---both addressing the high-dimensional feature spaces common in mining software repositories.
-\citet{callaway2021difference} and \citet{roth2023whats} revealed that standard two-way fixed effects DiD can produce biased estimates under staggered adoption and heterogeneous effects, providing alternative estimators directly relevant to SE panel data studying tool adoption or language switching.
-Sensitivity analysis has matured into an essential complement: \citeauthor{rosenbaum2002observational}'s~\cite{rosenbaum2002observational} bounds on hidden bias, \citeauthor{oster2019unobservable}'s~\cite{oster2019unobservable} coefficient stability framework, and \citeauthor{cinelli2020making}'s~\cite{cinelli2020making} robustness value provide tools for assessing vulnerability to unobserved confounding---none yet applied in SE\@.
-A new generation of accessible textbooks~\cite{angrist2009mostly, hernan2020causal, cunningham2021causal, huntingtonklein2021effect} has demonstrated that these methods can be taught effectively to non-specialist audiences; \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework, which asks researchers to describe the hypothetical randomized trial their observational analysis attempts to emulate, is particularly relevant to SE\@.
+\paragraph{Causation as a Target Trial.}
+For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers the most pragmatic formulation: Every causal question implicitly describes a hypothetical randomized experiment.
+The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
+For the TypeScript question, the target trial would randomly assign half of a set of JavaScript teams to adopt TypeScript and compare defect rates after a fixed period.
+Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign languages, teams willing to adopt TypeScript likely differ from those that resist, the ``treatment'' is ambiguous (full adoption or gradual migration?), and defect measurement may reflect bug-tracking practices rather than code quality.
+Each of these concerns maps directly to a specific identification assumption that must be addressed.
 
-\subsection{Why Correlation Does Not Imply Causation}
-\label{sec:primer-correlation}
+\paragraph{Synthesis.}
+These four perspectives are not competing theories but complementary lenses that modern applied causal inference uses together.
+The counterfactual view yields \emph{estimands}---precise definitions of the causal quantities we seek to estimate.
+The interventionist view yields \emph{identification conditions}---formal criteria for when observational data can approximate the result of an intervention.
+The target trial view yields \emph{research design}---a concrete protocol for evaluating whether a study's design is adequate for the causal question.
+Together, they form the conceptual backbone of the three technical pillars introduced in Section~\ref{sec:primer-toolkit}: Potential outcomes formalize the counterfactual view (Section~\ref{sec:primer-po}), DAGs formalize the interventionist view (Section~\ref{sec:primer-dags}), and design-based identification operationalizes the target trial view (Section~\ref{sec:primer-design}).
 
-Suppose we observe that functional language projects on GitHub have 20\% fewer defects.
-Can we conclude that switching to a functional language would reduce defects by 20\%?
-Almost certainly not.
-Three mechanisms generate spurious correlations.
+\subsection{Why Naive Approaches Fail}
+\label{sec:primer-naive}
+
+Before introducing the toolkit, we must understand why the approaches dominant in SE research fail to establish causation.
+Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery of Sections~\ref{sec:primer-toolkit}--\ref{sec:primer-stance}.
 
 \paragraph{Confounding.}
 A third variable $Z$ that causally affects both treatment $X$ and outcome $Y$ induces an association even absent a direct causal relationship.
@@ -364,27 +378,20 @@ Cross-sectional data cannot distinguish $X \to Y$ from $Y \to X$.
 Conditioning on a \emph{collider}---a variable caused by both $X$ and $Y$---induces spurious associations.
 Analyzing only ``successful'' GitHub projects---e.g., $>$1,000 stars---conditions on a post-treatment variable that depends on both language choice and code quality, generating artifactual correlations that reveal nothing about the causal effect of language choice.
 
-
-\subsection{Why Multivariate Regression Usually Does Not Suffice}
-\label{sec:primer-regression}
-
+\paragraph{Why Regression Does Not Solve the Problem.}
 Confronted with confounding, researchers often ``control for'' confounders via multivariate regression.
 This approach has fundamental limitations.
-
-\paragraph{Omitted Variable Bias.}
-Regression can only adjust for \emph{observed} confounders.
-Confounders plausibly affecting both language choice and defect rates---developer expertise, team culture, project complexity, code review practices, testing discipline---are largely unmeasurable from repository data.
+Regression can only adjust for \emph{observed} confounders, and confounders plausibly affecting both language choice and defect rates---developer expertise, team culture, project complexity, code review practices, testing discipline---are largely unmeasurable from repository data.
 If the true model includes an unobserved confounder $U$, the estimated coefficient converges to:
 \begin{equation}
     \hat{\tau} \xrightarrow{p} \tau + \gamma \cdot \frac{\text{Cov}(X, U \mid Z)}{\text{Var}(X \mid Z)}
 \end{equation}
 Unless $\text{Cov}(X, U \mid Z) = 0$, the estimate remains biased regardless of how many observed controls are included.
 
-\paragraph{Bad Controls.}
-Including the \emph{wrong} controls can introduce bias.
+Worse, including the \emph{wrong} controls can introduce bias.
 \emph{Mediator bias} arises from conditioning on a variable on the causal pathway ($X \to M \to Y$): Controlling for immutable data structure usage when studying functional languages blocks part of the effect.
 \emph{Collider bias} arises from conditioning on a common effect of treatment and outcome ($X \to C \leftarrow Y$): Controlling for project popularity, which depends on both language novelty and quality, induces a spurious association.
-Without a causal model, researchers cannot determine which controls are appropriate; a regression with 100 covariates is not more causally credible than one with five.
+Without a causal model specifying the relationships among variables, researchers cannot determine which controls are appropriate; a regression with 100 covariates is not more causally credible than one with five~\cite{wysocki2022statistical}.
 
 \paragraph{When Can Regression Support Causal Claims?}
 Regression identifies causal effects under \emph{conditional ignorability}---selection on observables:
@@ -394,25 +401,42 @@ Regression identifies causal effects under \emph{conditional ignorability}---sel
 \end{equation}
 This requires that all confounders be measured and correctly included, no post-treatment variables contaminate the model, and sufficient overlap exists between groups.
 Propensity score matching~\cite{rosenbaum1983central}, inverse probability weighting, and regression adjustment all rest on this same assumption.
-Credibility hinges on encoding the assumed data-generating process as a causal DAG (Section~\ref{sec:primer-dags}) and showing the covariates satisfy the back-door criterion.
-Design-based methods---DiD, RDD, IV---appear more credible not because they are assumption-free, but because their assumptions---parallel trends, continuity, exclusion restrictions---are more transparent and partially testable.
+When the assumed data-generating process is encoded as a causal DAG (Section~\ref{sec:primer-dags}), the \emph{back-door criterion} provides a formal basis for determining whether a set of covariates suffices for identification---turning regression from an ad hoc modeling exercise into a principled identification strategy.
+In practice, however, the required covariates are often unmeasured in SE settings, which is precisely why design-based methods (Section~\ref{sec:primer-design}) are typically more credible: Their assumptions---parallel trends, exclusion restrictions, continuity---are more transparent and partially testable than the assumption that all confounders are observed.
+
+These failures motivate a more careful approach.
+Before worrying about \emph{how} to estimate a causal effect, we must first define \emph{what} we want to estimate---the \emph{estimand}---and specify the assumptions under which our estimate admits a causal interpretation.
+The next section introduces the three pillars of the causal inference toolkit that enable this.
 
 
-\subsection{The Potential Outcomes Framework}
+\subsection{The Causal Inference Toolkit}
+\label{sec:primer-toolkit}
+
+Applied causal inference rests on three complementary pillars, each addressing a distinct question.
+\emph{Potential outcomes} answer: What do we want to estimate?
+They provide a formal language for defining causal estimands---the ATE, ATT, LATE---independently of any statistical model.
+\emph{Graphical causal models} answer: What must we assume about the world for our estimate to be valid?
+They encode causal assumptions as directed acyclic graphs (DAGs), making every assumption visible and debatable.
+\emph{Design-based identification} answers: How can we exploit features of the research setting to make those assumptions credible?
+Methods such as difference-in-differences, instrumental variables, and regression discontinuity derive identification from quasi-random variation rather than from the hope that all confounders have been measured.
+Modern applied researchers use all three together: Potential outcomes define the target, DAGs encode the assumed causal structure, and design-based methods provide the identification strategy.
+
+\subsubsection{The Potential Outcomes Framework}
 \label{sec:primer-po}
 
-The potential outcomes framework~\cite{neyman1923application, rubin1974estimating} defines causal effects and the assumptions required to estimate them.
+The potential outcomes framework~\cite{neyman1923application, rubin1974estimating} formalizes the counterfactual view of causation introduced in Section~\ref{sec:primer-causality} and operationalizes the \emph{estimand-first} principle~\cite{lundberg2021estimand}: Before choosing a statistical method, define the causal quantity of interest.
 
 \paragraph{Notation and Setup.}
 Each unit $i$ has two \emph{potential outcomes}: $Y_i(1)$ under treatment and $Y_i(0)$ under control.
-The individual causal effect $\tau_i = Y_i(1) - Y_i(0)$ is unobservable because only one potential outcome is realized---the ``fundamental problem of causal inference.''
+The individual causal effect $\tau_i = Y_i(1) - Y_i(0)$ is unobservable because only one potential outcome is realized---the fundamental problem of causal inference discussed in Section~\ref{sec:primer-causality}.
 
 \paragraph{Causal Estimands.}
-We target population-level summaries.
-The \emph{Average Treatment Effect} (ATE) is $\text{ATE} = E[Y(1)] - E[Y(0)]$.
-The \emph{Average Treatment Effect on the Treated} (ATT) conditions on treated units: $\text{ATT} = E[Y(1) - Y(0) \mid D = 1]$.
+We target population-level summaries, each answering a different question.
+The \emph{Average Treatment Effect} (ATE), $\text{ATE} = E[Y(1)] - E[Y(0)]$, answers: On average across \emph{all} projects, how much does adopting TypeScript change defect rates?
+The \emph{Average Treatment Effect on the Treated} (ATT), $\text{ATT} = E[Y(1) - Y(0) \mid D = 1]$, answers: Among projects that \emph{actually adopted} TypeScript, how much did it change their defect rates?
 ATE and ATT coincide only under homogeneous effects or independence of treatment assignment.
-Other estimands include the \emph{Local Average Treatment Effect} (LATE) for the subpopulation affected by an instrument, and \emph{conditional average treatment effects} (CATEs).
+Other estimands include the \emph{Local Average Treatment Effect} (LATE) for the subpopulation affected by an instrument, and \emph{conditional average treatment effects} (CATEs) for specific subgroups.
+Which estimand to target is a substantive decision, not a statistical one: An SE researcher must decide whether the question concerns the average effect across all projects (ATE), the effect on adopters (ATT), or the effect on the subpopulation induced to adopt by a specific mechanism (LATE).
 
 \paragraph{From Estimands to Identification.}
 The naive comparison decomposes as:
@@ -425,7 +449,7 @@ Selection bias arises because treated and control groups may differ systematical
 In a \emph{randomized controlled trial} (RCT), $(Y(1), Y(0)) \perp D$, so selection bias vanishes and the naive comparison identifies the ATE\@.
 A valid RCT additionally requires the \emph{Stable Unit Treatment Value Assumption} (SUTVA)---no interference between units and a well-defined treatment.
 
-When randomization is infeasible, the researcher invokes conditional ignorability (Equation~\ref{eq:cond-ignorability}).
+When randomization is infeasible---as is typical in SE---the researcher invokes conditional ignorability (Equation~\ref{eq:cond-ignorability}).
 Under this assumption plus overlap ($0 < P(D\!=\!1 \mid X\!=\!x) < 1$), the ATE is identified:
 \begin{equation}
     \text{ATE} = E_X\!\big[E[Y \mid D\!=\!1, X] - E[Y \mid D\!=\!0, X]\big]
@@ -433,16 +457,17 @@ Under this assumption plus overlap ($0 < P(D\!=\!1 \mid X\!=\!x) < 1$), the ATE 
 Credibility hinges on whether all confounders are captured in $X$---a question the graphical framework addresses.
 
 
-\subsection{Graphical Causal Models and DAGs}
+\subsubsection{Graphical Causal Models and DAGs}
 \label{sec:primer-dags}
 
 The potential outcomes framework defines estimands but offers limited guidance on \emph{which} variables to condition on.
-\citeauthor{pearl2009causality}'s~\cite{pearl2009causality} graphical framework addresses this by encoding causal assumptions as \emph{directed acyclic graphs} (DAGs).
+\citeauthor{pearl2009causality}'s~\cite{pearl2009causality} graphical framework addresses this by encoding causal assumptions as \emph{directed acyclic graphs} (DAGs), formalizing the interventionist view of causation introduced in Section~\ref{sec:primer-causality}.
 
 \paragraph{Directed Acyclic Graphs.}
 A DAG consists of nodes (variables) and directed edges ($\to$) representing direct causal effects.
 Every arrow is a substantive claim; every absent arrow asserts no direct effect.
-This makes assumptions visually explicit---critics can challenge specific edges rather than raising vague concerns about ``omitted variables.''
+This transparency is the central value of DAGs for SE research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
+In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
 
 Figure~\ref{fig:pl-dag} presents a plausible DAG for the language--defect question.
 Language affects Defect Proneness indirectly through Tooling/Type Safety; Domain, Team Skill, Org Culture, and Codebase Age each influence both Language choice and Defect Proneness, making them confounders.
@@ -506,11 +531,22 @@ Alternative explanations correspond to alternative graph structures.
 A critic might add developer motivation as an unmeasured confounder, or remove the Language $\to$ Tooling/Type Safety edge entirely.
 These disagreements are productive because each alternative DAG implies testable conditional independence relations.
 
+\paragraph{Limitations of DAGs.}
+Three limitations deserve mention.
+First, DAGs require \emph{domain knowledge} to construct---they encode the researcher's assumptions about the data-generating process, not knowledge derived from the data itself.
+Second, a DAG's validity depends on the completeness of the variables included; omitting an important confounder renders the back-door criterion unreliable.
+Third, DAGs encode qualitative causal structure (which variables affect which) but say nothing about the \emph{magnitude} or functional form of effects.
+Despite these limitations, DAGs remain the most practical tool for making causal assumptions transparent and debatable~\cite{rohrer2018thinking, tennant2021dags}.
 
-\subsection{Overview of Identification Methods}
-\label{sec:primer-methods}
 
-Table~\ref{tab:methods-summary} summarizes the methods most relevant to SE research, organized by the type of identifying variation they exploit.
+\subsubsection{Design-Based Identification}
+\label{sec:primer-design}
+
+The methods introduced above---regression with the back-door criterion, propensity score matching---all require that every confounder be observed.
+In SE, where key confounders such as developer skill, team culture, and organizational practices are largely unmeasurable, this requirement is rarely credible.
+\emph{Design-based identification} takes a different approach: Rather than attempting to measure and adjust for all confounders, it exploits features of the research setting---temporal variation, natural experiments, assignment thresholds---that provide quasi-random variation in treatment assignment.
+
+Table~\ref{tab:methods-summary} summarizes the methods most relevant to SE research.
 
 \begin{table}[t]
 \centering
@@ -553,21 +589,80 @@ Synthetic Control
 \end{tabular}
 \end{table}
 
+We illustrate each method with an SE example to build intuition.
+
+\paragraph{Difference-in-Differences (DiD).}
+DiD compares changes in outcomes over time between a treated group and a control group.
+In SE: Compare defect trends before and after TypeScript migration in treatment projects versus comparable JavaScript projects that did not migrate.
+The key assumption---\emph{parallel trends}---requires that, absent the migration, both groups would have followed the same defect trajectory.
+Pre-treatment trend tests can partially assess this assumption, and modern estimators handle staggered adoption~\cite{callaway2021difference, roth2023whats}.
+
+\paragraph{Instrumental Variables (IV).}
+IV uses an \emph{instrument}---a variable that affects the treatment but influences the outcome only through the treatment---to isolate exogenous variation.
+In SE: A policy change at a company that mandates TypeScript for new projects could serve as an instrument, provided the mandate affects defects only through TypeScript adoption.
+The IV estimand is the LATE---the effect on projects whose language choice was changed by the instrument~\cite{angrist1996identification}.
+
+\paragraph{Regression Discontinuity (RDD).}
+RDD exploits sharp thresholds in treatment assignment.
+In SE: If projects exceeding a certain complexity threshold are required to undergo formal code review, comparing projects just above and just below the threshold provides a quasi-experimental contrast.
+Identification requires that potential outcomes are continuous at the threshold and that units cannot precisely manipulate their position relative to the cutoff.
+
+\paragraph{Panel Fixed Effects.}
+Panel FE uses repeated observations of the same unit over time, absorbing all \emph{time-invariant} characteristics through unit-specific intercepts.
+In SE: Observing the same developer writing code in multiple languages across different projects removes confounding from all stable developer traits---experience, cognitive style, training---that cross-sectional comparisons cannot address.
+The identifying assumption is \emph{strict exogeneity}: Conditional on unit fixed effects, the treatment is uncorrelated with time-varying unobservables.
+
+\paragraph{Synthetic Control.}
+Synthetic control constructs a weighted combination of untreated units to serve as a counterfactual for a single treated unit.
+In SE: To estimate the effect of a major framework's migration to TypeScript, one could construct a ``synthetic'' control from similar frameworks that did not migrate, weighted to match the treated framework's pre-migration defect trajectory.
+
+\paragraph{Choosing Among Methods.}
 Three points deserve emphasis.
 First, different methods estimate different quantities---DiD identifies the ATT, IV recovers the LATE for compliers, RDD identifies an effect at the threshold---so the choice should be guided by the research setting, not convention.
 Second, design-based methods derive credibility from features of the research setting rather than covariate completeness, making their assumptions more transparent and partially testable~\cite{angrist2010credibility}.
 Third, quasi-experimental methods are not assumption-free; they replace untestable no-unobserved-confounders assumptions with different ones (parallel trends, exclusion restrictions, continuity) whose plausibility must be argued substantively.
 
-
-\subsection{The Internal--External Validity Trade-Off and the Hierarchy of Evidence}
-\label{sec:primer-validity}
-
+\paragraph{The Internal--External Validity Trade-Off.}
 Every study navigates a tension between internal validity (causal confidence) and external validity (generalizability).
 A controlled experiment assigning developers to different languages achieves strong internal validity but may not reflect production environments; a large-scale GitHub study captures real-world variation but cannot rule out selection bias.
-
 A hierarchy of evidence organizes this trade-off: Randomized experiments provide the strongest causal evidence, followed by quasi-experimental designs---DiD, IV, RDD---with partially testable assumptions, then observational studies with careful controls, and finally descriptive and correlational analyses.
 This hierarchy ranks \emph{causal} evidence, not overall scientific value---execution quality matters as much as design choice.
 The pragmatic researcher chooses the strongest credible design and builds confidence through \emph{triangulation}: convergent findings across complementary designs, data sources, and populations~\cite{shadish2002experimental}.
+
+
+\subsection{A Pragmatic Stance for SE Research}
+\label{sec:primer-stance}
+
+The preceding subsections introduced three pillars of causal inference as distinct conceptual tools.
+In practice, applied researchers combine them into an integrated workflow.
+Drawing on the emerging consensus across econometrics~\cite{imbens2020potential, angrist2010credibility}, epidemiology~\cite{hernan2020causal}, and sociology~\cite{lundberg2021estimand}, we recommend a pragmatic synthesis tailored to the realities of empirical SE research.
+
+\paragraph{Use Counterfactual Reasoning to Evaluate Research Designs.}
+Before analyzing data, articulate the \emph{target trial}: What randomized experiment would you ideally run?
+What is the treatment, the population, the outcome, and the timing?
+This exercise forces clarity about aspects that SE studies often leave implicit.
+In the programming language debate, the target trial might randomly assign JavaScript teams to adopt TypeScript and measure defect rates over the following year.
+Articulating this trial immediately reveals that ``language choice'' is a compound treatment conflating the type system, the ecosystem, and the developer community---a decomposition that motivates the sharper ``type system adoption'' framing in our Worked Example~B (Section~\ref{sec:example-b}).
+The target trial framework is especially natural for SE researchers who are already comfortable with controlled experiments~\cite{DBLP:books/sp/WohlinRHORW24}: It simply asks them to describe the experiment they wish they could run and then evaluate how far their observational design departs from this ideal.
+
+\paragraph{Use DAGs to Reason About Mechanisms and Covariate Selection.}
+Once the target trial is articulated, construct a DAG encoding the assumed causal structure.
+The DAG serves three purposes: It identifies which covariates must be controlled for (back-door criterion), identifies which covariates must \emph{not} be controlled for (mediators and colliders), and makes every assumption explicit so that reviewers can challenge specific edges rather than raising vague concerns.
+For design-based methods---DiD, IV, RDD---the DAG is less central to identification, since the design itself provides the quasi-random variation.
+Even so, a DAG remains valuable for reasoning about which confounders the design does and does not address and for decomposing the causal mechanisms through which the treatment operates.
+
+\paragraph{Use Design-Based Identification Whenever the Setting Permits.}
+When the data contain temporal variation (panel data), staggered adoption events (DiD), plausible instruments (IV), or assignment thresholds (RDD), exploit these features rather than relying solely on covariate adjustment.
+SE data is rich in exactly the kinds of variation that design-based methods exploit: Repositories evolve over time, developers contribute across projects, tools are adopted in waves, and policy changes create natural experiments.
+The credibility revolution's core lesson---that research design trumps statistical modeling~\cite{angrist2010credibility}---applies with full force to SE\@.
+
+\paragraph{Why This Stance Fits SE.}
+Four features of the SE research landscape make this synthesis particularly appropriate.
+First, SE's observational data is plagued by unmeasured confounders---developer skill, team culture, organizational practices---that render selection-on-observables strategies fragile; design-based methods sidestep this by exploiting quasi-random variation.
+Second, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
+Third, DAGs align with the SE mindset: Software systems are themselves structured as dependency graphs, and the idea of encoding causal relationships as a directed graph is congenial to computer scientists.
+Fourth, the target trial framework bridges SE researchers' existing intuitions about controlled experiments to the observational settings where most SE data originates.
+The four-step framework in Section~\ref{sec:framework} operationalizes this pragmatic stance: Step~1 constructs the DAG, Step~2 defines the estimand via potential outcomes and selects the identification strategy, Step~3 probes the assumptions through sensitivity analysis, and Step~4 considers alternative DAGs.
 
 
 % =============================================================================
