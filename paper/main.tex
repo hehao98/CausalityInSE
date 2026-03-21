@@ -313,7 +313,7 @@ This section equips the reader with the conceptual and technical foundations nee
 We cover the three pillars most relevant to empirical SE research---counterfactual reasoning and potential outcomes, graphical causal models, and design-based identification---and argue for a pragmatic synthesis suited to the field's observational data.
 We do not cover causal discovery algorithms~\cite{journals/ese/HulseEM25}, machine-learning-based heterogeneous treatment effect estimation~\cite{chernozhukov2018double, athey2016recursive}, or formal verification of causal claims~\cite{halpern2016actual}; readers interested in these topics should consult the references cited and the textbooks listed in Section~\ref{sec:bg-causal-history}.
 
-\subsection{What Does It Mean for X to Cause Y?}
+\subsection{What Does It Mean Exactly for X to Cause Y?}
 \label{sec:primer-causality}
 
 Consider a question that is highly relevant to SE researchers: Does adopting TypeScript reduce defects in JavaScript projects?
@@ -351,13 +351,14 @@ The interventionist view yields \emph{identification conditions}---formal criter
 The target trial view yields \emph{research design}---a concrete protocol for evaluating whether a study's design is adequate for the causal question.
 Together, they form the conceptual backbone of the three technical pillars introduced in Section~\ref{sec:primer-toolkit}: Potential outcomes formalize the counterfactual view (Section~\ref{sec:primer-po}), DAGs formalize the interventionist view (Section~\ref{sec:primer-dags}), and design-based identification operationalizes the target trial view (Section~\ref{sec:primer-design}).
 
-\subsection{Why Naive Approaches Fail}
+\subsection{Why Naïve Approaches Fail}
 \label{sec:primer-naive}
 
-Before introducing the toolkit, we must understand why the approaches dominant in SE research fail to establish causation.
+Before introducing the toolkit, we must understand why the approaches dominant in SE research fail to convincingly establish causation.
 Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery of Sections~\ref{sec:primer-toolkit}--\ref{sec:primer-stance}.
 
-\paragraph{Confounding.}
+\paragraph{Why Comparing Outcomes Across Groups Fails.}
+A comparison across two groups with/without an intervention (e.g., TypeScript vs. JavaScript projects) suffers from \emph{confounding}, \emph{reverse causality}, and \emph{selection bias}. 
 A third variable $Z$ that causally affects both treatment $X$ and outcome $Y$ induces an association even absent a direct causal relationship.
 Developer expertise is a plausible confounder: Experienced developers may both prefer functional languages and write fewer bugs.
 Let $Y$ denote defect density, $X$ denote language choice, and $Z$ denote expertise.
@@ -367,11 +368,11 @@ The observed association decomposes as:
 \end{equation}
 If $\tau = 0$ but functional language adopters have higher expertise and expertise reduces defects, the observed correlation is a pure artifact of selection.
 
-\paragraph{Reverse Causality.}
+\emph{Reverse Causality.}
 The association may reflect $Y$ causing $X$: Teams with persistent quality problems may switch to ``rigorous'' languages like Haskell to impose discipline.
 Cross-sectional data cannot distinguish $X \to Y$ from $Y \to X$.
 
-\paragraph{Selection Bias.}
+\emph{Selection Bias.}
 Conditioning on a \emph{collider}---a variable caused by both $X$ and $Y$---induces spurious associations.
 Analyzing only ``successful'' GitHub projects---e.g., $>$1,000 stars---conditions on a post-treatment variable that depends on both language choice and code quality, generating artifactual correlations that reveal nothing about the causal effect of language choice.
 
