@@ -2,7 +2,7 @@
 
 **Target Venue:** ACM Transactions on Software Engineering and Methodology (TOSEM)
 
-**Status:** Planning phase — literature review and framing in progress.
+**Status:** Drafting phase --- Sections 1--2 drafted; Section 3 primer under active planning and drafting.
 
 ## Repository Organization
 
@@ -16,207 +16,216 @@
 This tutorial paper aims to provide an accessible introduction to causal inference and causal claim assessment for software engineering researchers. Using the longstanding programming language vs. defect proneness debate as a worked example, the paper walks readers through:
 
 1. The intellectual landscape of causal inference (potential outcomes, graphical causal models, design-based approaches) and why it matters for SE,
-2. A four-step causal credibility assessment framework (derive causal theory → define estimand and identifying assumptions → acknowledge limitations → navigate alternative explanations),
+2. A four-step causal credibility assessment framework (derive causal theory -> define estimand and identifying assumptions -> acknowledge limitations -> navigate alternative explanations),
 3. Two diagnostic-then-constructive worked examples showing the framework's power to both critically evaluate existing studies and guide improved designs:
    - **Example A (Ray et al.):** Diagnoses the identification failures in the landmark PL-defect study, then shows how panel fixed effects on the *same GitHub data* would have provided stronger identification by exploiting within-developer and within-repository variation.
    - **Example B (Bogner & Merkel):** Diagnoses the selection bias in a cross-sectional JavaScript vs. TypeScript comparison, then shows how the framework decomposes the compound "language" treatment into the sharper "type system adoption" question and redesigns the study as a TypeScript migration difference-in-differences on the *same GitHub data*.
 
 The paper should be self-contained and pedagogically oriented so that an SE researcher with no prior exposure to causal inference can (a) understand the state of the art, (b) critically evaluate causal claims in existing work, and (c) apply the framework to their own research.
 
-## Planned Paper Structure (Tentative)
+## Paper Structure
 
-1. **Introduction** — Motivate the problem: SE practice is driven by folklore and contested conventional wisdom; empirical SE research produces voluminous but often inconclusive evidence because of methodological limitations (descriptive/correlational evidence, qualitative opinion synthesis). Causal inference offers a principled path forward.
+1. **Introduction** (Section 1) --- *Drafted.* Motivates the problem: SE practice is driven by folklore; empirical SE research produces voluminous but often inconclusive evidence because of its reliance on correlational methods. Causal inference offers a principled path forward. Three contributions: primer, four-step framework, two worked examples.
 
-2. **Background & Related Work**
+2. **Background & Related Work** (Section 2) --- *Drafted.* Three subsections:
    - 2.1 Existing tutorials and methodological guides in SE (positioning our contribution)
-   - 2.2 The intellectual traditions of causal inference (from Snow and the early formalization by Neyman, Fisher, and Rubin through the graphical causal models of Pearl, the design-based credibility revolution, and modern sensitivity analysis)
-   - 2.3 Parallel causal inference challenges in psychology and health research (cross-disciplinary context: the causal language taboo, the gap between causal ambition and methodology, reform efforts and lessons for SE)
-   - 2.4 The PL vs. defect proneness debate (comprehensive review of all related work)
-   - 2.5 Causal inference adoption in SE to date — *empirical analysis of top-venue SE papers (ASE + FSE + ICSE, 2015–2025)*
-     - Taxonomy of causal methods actually used (RCTs, quasi-experiments, causal graphs, causal discovery, counterfactual analysis, Granger causality, SEM, propensity scores, causal fault localization, regression-based causal inference, etc.)
-     - Trend analysis: volume of empirical SE papers vs. papers asking causal RQs vs. papers employing causal methods — quantifying the gap between causal ambition and methodological rigor
-     - Summary of findings: which methods dominate (RCTs and causal fault localization), which are underrepresented (quasi-/natural experiments, IV, DiD, RDD), and what this implies for the field
+   - 2.2 The causal inference challenge in econometrics, psychology, and epidemiology (development of the toolkit; the methodological reform movement)
+   - 2.3 Causal inference adoption in SE to date (empirical analysis of 5,341 papers from ICSE + FSE + ASE, 2015--2025; taxonomy and trend figures)
 
-3. **A Primer on Causal Inference for SE Researchers** — Self-contained, accessible introduction:
-   - 3.1 Why correlation does not imply causation (confounding, reverse causality, selection bias — illustrated with PL example)
-   - 3.2 Why multivariate regression usually does not suffice (omitted variable bias, bad controls, when regression *can* support causal claims)
-   - 3.3 The potential outcomes framework (notation, estimands, identification)
-   - 3.4 Graphical causal models and DAGs (back-door criterion, connecting DAGs to potential outcomes)
-   - 3.5 Overview of identification methods (RCTs, DiD, IV, RDD, panel FE, synthetic control) with assumptions and estimands
-   - 3.6 The internal–external validity trade-off and the hierarchy of evidence
+3. **A Primer on Causal Inference for SE Researchers** (Section 3) --- *Under active planning; see detailed plan below.*
 
-4. **The Four-Step Causal Credibility Assessment Framework**
-   - 4.1 Step 1: Derive an explicit causal theory from domain knowledge
-   - 4.2 Step 2: Define the causal estimate of interest and specify the identifying assumption
-   - 4.3 Step 3: Honestly acknowledge and mitigate limitations and known caveats
-   - 4.4 Step 4: Thoughtfully navigate alternative explanations
+4. **The Four-Step Causal Credibility Assessment Framework** (Section 4) --- *Drafted.*
 
-5. **Worked Example A: The PL-Defect Debate (Regression → Panel Fixed Effects)**
-   - 5.1 Diagnostic assessment: Applying the four steps to Ray et al. (2014) and the subsequent debate
-     - Step 1 reveals unmeasured confounders (developer skill, org culture) that regression cannot address
-     - Step 2 reveals an ill-defined estimand: "effect of language" conflates type system, ecosystem, paradigm, and community
-     - Step 3 reveals devastating measurement problems (Berger et al. 2019) and SUTVA violations in polyglot projects (Kochhar et al. 2016)
-     - Step 4 reveals the debate was unproductive because participants argued without explicit causal structures
-   - 5.2 Downstream causal misinterpretation analysis (citation analysis showing correlational findings reinterpreted as causal)
-   - 5.3 Constructive improvement: how the framework guides Ray et al. toward panel FE on their *own data*
-     - Their GitHub data already contains developer IDs, timestamps, and multi-language contributions → panel structure
-     - Panel FE absorbs all time-invariant developer and project confounders that cross-sectional regression cannot
-     - The framework reveals that this is better but still imperfect: time-varying confounders remain, and the compound treatment problem persists
-   - 5.4 Brief empirical demonstration on the Ray et al. dataset (or a comparable GitHub sample)
+5. **Worked Example A: The PL--Defect Debate** (Section 5) --- *Section 5.1 (PL debate review) drafted; Sections 5.2--5.4 TODO.*
 
-6. **Worked Example B: TypeScript and Code Quality (Cross-Sectional → DiD)**
-   - 6.1 Diagnostic assessment: Applying the four steps to Bogner & Merkel (MSR 2022)
-     - They compared 299 JS projects with 305 TS projects cross-sectionally, finding (surprisingly) that TS projects had *more* bug-fix commits
-     - Step 1 reveals that TypeScript adoption is endogenous: teams that adopt TS likely differ systematically from those that don't (in skill, quality culture, project complexity, and bug-tracking practices)
-     - Step 2 reveals the estimand is confounded: the cross-sectional JS-vs-TS comparison estimates a selection-biased associational quantity, not a causal effect
-     - Step 3: the "surprising" finding that TS has more bug-fix commits likely reflects better bug-tracking practices in TS-adopting teams, not a causal effect of TypeScript on bugs
-     - Step 4: the alternative explanation (selection) is more plausible than the literal interpretation
-   - 6.2 The framework decomposes the question: from compound "language" to specific "type system adoption"
-     - TypeScript adds a type system to the JS ecosystem while holding runtime, packages, and tooling approximately constant → a well-defined intervention in the potential outcomes sense
-     - This connects directly to the controlled experiments (Hanenberg et al. 2014: types help with type errors; Gao et al. 2017: TS catches ~15% of real bugs)
-   - 6.3 Constructive improvement: redesigning as a TypeScript adoption DiD on the *same GitHub data*
-     - Treatment group: JS projects that adopt TS (observable migration events)
-     - Control group: Comparable JS projects that remain in pure JS
-     - DiD identification: compare defect trajectory changes, pre-trend tests assess parallel trends assumption
-     - Connects to modern DiD methods from Roth et al. (2023) for staggered adoption
-   - 6.4 Brief empirical demonstration on GitHub data
-   - 6.5 Synthesis: how the framework systematically upgrades research designs — from cross-sectional to panel FE (Example A) and from cross-sectional to DiD with a sharper treatment (Example B)
+6. **Worked Example B: TypeScript and Code Quality** (Section 6) --- *TODO.*
 
-7. **Discussion** — Implications for SE research practices, when and how to apply the framework, relationship to other methodological reform efforts (pre-registration, registered reports, replication)
+7. **Discussion** (Section 7) --- *TODO.*
 
-8. **Conclusion**
+8. **Conclusion** (Section 8) --- *TODO.*
 
-## Literature Review Plan
+---
 
-Four systematic literature review efforts are needed to accurately frame the contribution and ensure comprehensive coverage. These reviews should be conducted before finalizing the paper framing and contribution statement.
+## Detailed Plan for Section 3: A Primer on Causal Inference for SE Researchers
 
-### LR1: Existing Tutorials and Methodological Guides in SE
+### Design Principles
 
-**Goal:** Identify all existing tutorial papers, methodological primers, and guideline papers in SE venues that touch on causal inference, research methodology, statistical methods, or evidence-based SE. This is critical for positioning our contribution and demonstrating the gap our paper fills.
+Section 2 already covers the *history* of causal inference traditions and the *state of practice* in SE. Section 3 must therefore avoid rehashing history and instead deliver the *conceptual and technical toolkit* that SE researchers need to understand, assess, and conduct causal research. The current draft of Section 3 (in `main.tex`) contains substantial material but has two problems:
 
-**Search strategy:**
-- Venues to search: ICSE, FSE/ESEC-FSE, ASE, MSR, EMSE, TSE, TOSEM, IST, JSS, and key methodological venues (e.g., EASE, ESEM)
-- Search terms: "tutorial" OR "primer" OR "guidelines" OR "causal inference" OR "causal" OR "quasi-experiment" OR "research methodology" in SE venues
-- Also search for methodological papers by known advocates of empirical rigor in SE (e.g., work by Shull, Singer, Basili, Kitchenham, Wohlin, Stol & Fitzgerald, Ralph, etc.)
+1. **Overlap with Section 2.** The current Section 3.1 ("What is Causality, Actually?") recounts the same historical progression (Neyman, Fisher, Rubin, Pearl, credibility revolution, modern advances) already covered in Section 2.2.1. This must be replaced with a *conceptual* treatment of what causality *means* across traditions, not when each tradition emerged.
+2. **Missing narrative arc.** The current subsections (correlation != causation, regression, PO, DAGs, methods, validity) read as a textbook checklist rather than a story with a through-line. The new structure should follow a clear pedagogical arc: *what is causality?* -> *why is it hard to establish?* -> *what tools exist?* -> *which stance should SE researchers adopt?*
 
-**Key questions to answer:**
-1. Are there any existing tutorials specifically on causal inference for SE? If so, what do they cover and what gaps remain?
-2. What tutorials exist on adjacent topics (e.g., controlled experiments in SE, survey methodology, case studies, mining software repositories methodology)?
-3. How do existing SE methodology papers treat causal claims — do they discuss identification strategies, or do they remain at the level of statistical testing?
-4. What is the state of adoption of causal inference methods in empirical SE research? (Are there papers surveying this?)
-5. Are there tutorial papers from adjacent fields (e.g., HCI, information systems, management) that we should reference as models?
+### Proposed Structure
 
-**Existing analysis:** The notebook `notebooks/literature_review.Rmd` (reading from `data/se_papers_metadata.csv`) already contains a systematic classification of 100 SE papers from ASE, FSE, and ICSE (2015–2025) that engage with causality. Each paper is coded by `causal_type` (claim, method, or both) and, for papers using causal methods, by `causal_method_class` (a 13-category taxonomy). The notebook produces a bar chart of method prevalence and a trend plot of causal claims vs. causal methods over time. These results form the empirical backbone of Section 2.3.
+#### Opening Paragraph (no subsection number)
 
-**Expected deliverable:** A table mapping existing tutorials/guides by topic, venue, and the extent to which they address causal reasoning. A clear articulation of the gap our paper fills. The taxonomy and trend analysis from `literature_review.Rmd` should be refined and incorporated into Section 2.3 of the paper.
+**Purpose:** Position Section 3 relative to Section 2 and set scope.
 
-### LR2: Intellectual Traditions of Causal Inference and Causal Claim Assessment
+**Content:**
+- Transition from Section 2: Section 2 documented (a) the historical development of the causal inference toolkit, (b) the methodological reform in psychology and epidemiology, and (c) the quantitative gap between causal ambition and method in SE. This section now equips the reader with the conceptual and technical foundations needed to close that gap.
+- Scope declaration: We cover the three conceptual pillars most relevant to empirical SE research---potential outcomes / counterfactual reasoning, graphical causal models (DAGs), and design-based identification. We do *not* cover causal discovery algorithms (learning graph structure from data), ML-based heterogeneous treatment effect estimation (causal forests, double ML), or formal verification of causal claims. Provide references for each excluded topic so interested readers know where to go.
+- Justify the scope from the SE perspective: The three pillars we cover address the field's most pressing methodological gap---substantiating causal claims from observational repository data---whereas the excluded topics either require experimental data SE rarely has (heterogeneous effects) or address different questions (causal discovery, formal methods). The combination of potential outcomes + DAGs + design-based identification is what the credibility revolution in economics brought to social science; SE is the natural next audience.
 
-**Goal:** Trace the historical development of causal inference from its origins through to the modern state of the art, ensuring comprehensive coverage of the different intellectual traditions and frameworks. The review should tell a concise story of how the field evolved---from early epidemiological reasoning through the formalization of experimental and counterfactual frameworks to the credibility revolution and its modern extensions---so that SE researchers can understand not just the current toolkit but how and why it came to be.
+#### 3.1 What Does It Mean for X to Cause Y?
 
-**Search strategy:**
-- Historical foundations: Snow (1855, the origin of epidemiological causal reasoning), Neyman (1923, potential outcomes), Fisher (1935, randomized experiments), Hill (1965, observational causal assessment)
-- Formalization of the counterfactual framework: Rubin (1974, potential outcomes for observational studies), Rosenbaum & Rubin (1983, propensity scores)
-- The design-based tradition and credibility revolution: Card & Krueger (1994, landmark DiD), Angrist, Imbens & Rubin (1996, IV/LATE), Angrist & Pischke (2010, the credibility revolution manifesto)
-- Graphical causal models: Pearl (2009, DAGs and do-calculus)
-- Integrative treatments: Shadish, Cook & Campbell (2002), Morgan & Winship (2015), Imbens (2020, PO vs. DAG comparison)
-- Textbooks and pedagogical references: Cunningham (2021), Hernán & Robins (2020), Huntington-Klein (2021), Hansen (2022)
-- Recent methodological advances: DiD (Callaway & Sant'Anna 2021, Roth et al. 2023), double/debiased ML (Chernozhukov et al. 2018), causal forests (Athey & Imbens)
-- Sensitivity analysis: Rosenbaum (2002), Oster (2019), Cinelli & Hazlett (2020)
-- Debates within the causal inference community (e.g., Pearl vs. Rubin, DAGs vs. potential outcomes, structural vs. design-based)
+**Purpose:** Give the reader an intuitive, philosophically grounded understanding of what causality *is*, told as an engaging story rather than a history lesson. This replaces the current Section 3.1 and must *not* duplicate Section 2.2.
 
-**Key questions to answer:**
-1. What are the major intellectual traditions and how do they relate to each other? Where do they agree and disagree?
-2. Which traditions are most relevant and accessible for SE researchers? Which are currently underrepresented in SE?
-3. How should we position the "four-step framework" relative to existing frameworks (e.g., Bradford Hill viewpoints, GRADE framework in medicine, the credibility revolution in economics)?
-4. What sensitivity analysis methods exist and which are most applicable to SE settings?
-5. Are there recent developments (e.g., ML-based causal inference methods) that we should cover, at least at a high level?
+**Narrative arc:**
+1. **Start with an SE question the reader cares about.** "Does adopting TypeScript reduce defects?" Frame this as a question about what *would happen* if a team adopted TypeScript vs. what *would happen* if it did not---i.e., a question about a contrast between two worlds.
+2. **The regularity / associational view (Hume).** The simplest notion: X causes Y if X is regularly followed by Y. In SE terms: if teams using TypeScript consistently have fewer bugs, we might say TypeScript "causes" fewer bugs. Immediately show why this fails---the ice cream and drowning example, or better, an SE-specific one (e.g., projects using CI/CD have fewer bugs, but that may reflect team maturity, not CI/CD itself).
+3. **The counterfactual view (Lewis, Hume's second definition, Rubin).** X causes Y if Y would not have occurred had X not occurred. This is the potential outcomes idea in natural language: What would have happened to *this team* if they had *not* adopted TypeScript? The fundamental problem: We can never observe both worlds for the same unit. This is profound and non-obvious to an SE audience accustomed to thinking in terms of A/B tests or simple comparisons.
+4. **The manipulationist / interventionist view (Woodward, Pearl).** X causes Y if intervening on X (holding everything else fixed) changes Y. Pearl's do-operator formalizes this: P(Y | do(X=1)) vs. P(Y | X=1). The key insight is the difference between *seeing* X=1 (conditioning) and *making* X=1 (intervening). Use the SE example: Observing that TypeScript projects have fewer bugs (conditioning) is different from forcing a team to switch to TypeScript (intervening). The former includes selection effects; the latter isolates the causal effect.
+5. **The "target trial" view (Hernan).** For applied researchers, the most pragmatic formulation: Every causal question implicitly describes a hypothetical randomized experiment. Hernan's target trial framework asks: What RCT would you *ideally* run? Even though you cannot run it, articulating it clarifies the treatment, the population, the outcome, and the threats to validity. For SE: The target trial for the TypeScript question would randomly assign half of a set of JavaScript teams to adopt TypeScript and compare defect rates. Articulating this target trial immediately reveals problems---you cannot randomly assign languages, teams that would comply differ from those that would not, the "treatment" is fuzzy (full adoption? gradual migration?).
+6. **Synthesis.** These perspectives are not competing theories; they are complementary lenses that modern applied research uses together. The counterfactual view gives us *estimands* (what we want to estimate). The interventionist view gives us *identification* (under what conditions can observational data approximate an intervention). The target trial view gives us *research design* (what ideal experiment are we trying to emulate). Together, they form the conceptual backbone of the rest of this primer.
 
-**Expected deliverable:** A structured overview of the landscape, a mapping of how our framework draws from each tradition, and a clear pedagogical path through the material that respects the nuances without overwhelming SE readers.
+**Tone:** Conversational, engaging, with concrete SE examples at every step. Minimal formalism---save equations for Section 3.3. Use rhetorical questions to motivate transitions.
 
-### LR3: The Programming Language vs. Defect Proneness Debate
+**Key references:** Hume (1748) for regularity, Lewis (1973) for counterfactuals, Woodward (2003) for interventionism, Holland (1986) for "the fundamental problem," Hernan & Robins (2020) for the target trial framework.
 
-**Goal:** Compile a comprehensive bibliography of all papers related to the question of whether programming language choice affects software quality / defect proneness. This includes the core debate papers, all papers citing them, independent studies on the topic, and related work on PL effects on other outcomes (productivity, security, maintainability).
+#### 3.2 Why Naive Approaches Fail
 
-**Core papers in the debate:**
-- Ray et al., FSE 2014: "A Large Scale Study of Programming Languages and Code Quality in GitHub" (and the CACM 2017 extended version)
-- Berger et al., TOPLAS 2019: "On the Impact of Programming Languages on Code Quality"
-- Ray et al., arXiv 2019: rebuttal
-- Berger et al., arXiv 2019: counter-rebuttal
-- Furia et al., TOSEM 2024: structural causal model analysis of the PL-defect question
+**Purpose:** Establish *why* causal inference is hard, building on the intuition from 3.1. This section consolidates and retains the core content from the current Sections 3.2 ("Why Correlation Does Not Imply Causation") and 3.3 ("Why Multivariate Regression Usually Does Not Suffice").
 
-**Search strategy:**
-- Forward citation search from the core papers (Google Scholar, Semantic Scholar)
-- Search for papers on "programming language" AND ("defect" OR "bug" OR "fault" OR "quality" OR "reliability" OR "safety") in SE venues
-- Search for papers using causal methods (DiD, IV, RDD, fixed effects, matching) in SE that study PL effects
-- Search for the broader PL effectiveness literature (not just defects — also productivity, security, maintainability)
-- Search for controlled experiments on PL effects, especially the Hanenberg research program on type systems (Hanenberg 2010; Mayer et al. 2012; Hanenberg et al. 2014 EMSE) and quasi-experimental studies (Nanz & Furia 2015 via Rosetta Code; Gao, Bird & Barr 2017 via type-checker bug detection on real JavaScript projects)
-- Search for TypeScript vs. JavaScript comparisons (Bogner & Merkel MSR 2022: cross-sectional quality comparison) — these serve as candidates for Worked Example B (redesign as TypeScript adoption DiD)
+**Content to keep (from current draft):**
+- The three mechanisms generating spurious correlations: confounding, reverse causality, selection bias. Keep the PL-specific examples (developer expertise as confounder, teams switching to "rigorous" languages as reverse causality, conditioning on popular projects as collider bias).
+- The decomposition of the observed association into causal effect + selection bias (Equation 1 in current draft).
+- Why multivariate regression does not solve the problem: omitted variable bias (with the formula showing bias from unobserved confounders), bad controls (mediator bias and collider bias with PL examples).
+- When regression *can* support causal claims: conditional ignorability, overlap, correct functional form.
 
-**Key questions to answer:**
-1. What is the complete set of empirical studies examining PL effects on defect proneness or code quality?
-2. How have downstream papers cited Ray et al. — correlationally or causally? (Extends the citation analysis from the thesis)
-3. Have any studies used causal inference methods (beyond correlational regression) to study PL effects? If so, what did they find?
-4. What do controlled experiments (e.g., developer studies) say about PL effects, and how do their findings compare with observational studies?
-5. What does the PL research community (as opposed to the SE community) say about this question?
-6. How does Furia et al. (2024) relate to our work, and how should we position ourselves relative to it?
+**Content to add:**
+- A brief forward pointer: Note that DAG-informed regression (using the back-door criterion to select covariates) can turn regression into a valid identification strategy *if* the DAG is correct and all required covariates are observed---but this is a big "if" in SE settings where key confounders (developer skill, team culture) are typically unmeasured. Point the reader to Section 3.3 for the full treatment of DAGs and to Section 3.4 for the pragmatic recommendation.
+- A brief mention of the estimand-first principle: Before worrying about *how* to estimate, define *what* you want to estimate. The current draft jumps from "regression is bad" to "here is the PO framework" without motivating why we need to think about estimands first. A sentence or two bridging this gap would improve flow.
 
-**Expected deliverable:** A comprehensive annotated bibliography, a narrative synthesis of the state of the debate, and a clear articulation of what our worked example adds beyond what is already known.
+**Content to trim:**
+- The current drafts of 3.2 and 3.3 are already fairly tight. Ensure no redundancy with the confounding discussion in 3.1 (which should be intuitive, not formula-based).
 
-### LR4: Revisiting Similar Problems in Psychology and Health Research
+#### 3.3 The Causal Inference Toolkit: Three Pillars
 
-**Goal:** Document how psychology and health research have confronted the same causal inference gap that we identify in SE---the disconnect between causal ambition and methodological practice in observational research. This cross-disciplinary review strengthens the motivation for our tutorial by showing that the SE community's struggle is part of a broader pattern across empirical sciences, and that solutions emerging in adjacent fields can inform SE's methodological reform.
+**Purpose:** Introduce the three conceptual pillars---potential outcomes, DAGs, and design-based identification---at a level that gives the reader both intuition and enough technical detail to follow Sections 4--6. Each pillar gets a dedicated sub-subsection.
 
-**Search strategy:**
-- Key papers on the causal language problem in health research (Hernán 2018, Haber et al. 2022)
-- Papers documenting the "taboo" against causal inference in psychology (Grosz, Rohrer & Thoemmes 2020)
-- Methodological reform efforts introducing causal tools to psychology (Rohrer 2018, 2024; Wysocki et al. 2022)
-- Estimand-first frameworks in social science (Lundberg, Johnson & Stewart 2021)
-- Systematic reviews of causal methodology adoption in health research (Tennant et al. 2021 on DAG usage)
-- Editorial guidance on causal inference reporting in clinical journals (Lederer et al. 2019)
-- High-profile case studies where causal assumptions in observational research were contested (Killingsworth, Kahneman & Mellers 2023; Rohrer & Wenz 2024)
+**Overall framing paragraph:** Note that applied causal inference rests on three complementary tools, each answering a different question:
+- **Potential outcomes** answer: *What do we want to estimate?* (Estimands: ATE, ATT, LATE, CATE.)
+- **DAGs** answer: *What must we assume about the world for our estimate to be valid?* (Causal structure, adjustment sets, identification.)
+- **Design-based identification** answers: *How can we exploit features of the research setting to make those assumptions credible?* (DiD, IV, RDD, panel FE, synthetic control.)
 
-**Key questions to answer:**
-1. How do psychology and health research parallel SE in their gap between causal ambition and methodological practice?
-2. What institutional responses (editorial policies, reporting guidelines) have emerged in health research that SE venues have not yet adopted?
-3. Which pedagogical models from psychology (e.g., Rohrer 2024) and epidemiology (e.g., Hernán's target trial framework) can inform our tutorial's approach?
-4. What are the consequences of the causal language taboo across disciplines, and how does the SE community exhibit the same patterns?
-5. How do high-profile observational debates in psychology (income-happiness) mirror the PL-defect debate in SE?
+Modern applied researchers use all three together: Potential outcomes define the target, DAGs encode the assumed causal structure, and design-based methods exploit quasi-random variation to achieve identification without relying on the (often untenable) assumption that all confounders are observed.
 
-**Expected deliverable:** A cross-disciplinary narrative showing that SE's causal inference gap is systemic across observational empirical sciences, with specific lessons from psychology and health research that inform our four-step framework and motivate its adoption in SE.
+##### 3.3.1 The Potential Outcomes Framework
+
+Retain the core content from the current Section 3.4 ("The Potential Outcomes Framework"):
+- Notation and setup: $Y_i(1)$, $Y_i(0)$, the fundamental problem of causal inference.
+- Causal estimands: ATE, ATT, LATE, CATE. Interpret each in SE terms ("The ATE answers: On average across all teams, how much does adopting TypeScript change defect rates?").
+- The selection bias decomposition (Equation 4 in current draft) --- this is critical and well-done.
+- RCTs as the gold standard: Randomization makes $(Y(1), Y(0)) \perp D$, so selection bias vanishes. SUTVA.
+- Conditional ignorability and its limitations (bridge to DAGs and design-based methods).
+
+Add emphasis on the *estimand-first* principle (Lundberg et al. 2021): Before choosing a method, define the estimand. Different estimands answer different questions, and an SE researcher must decide whether they care about the ATE (average effect across all projects) or the ATT (effect on projects that actually adopted the treatment) or the LATE (effect on projects whose adoption was driven by a specific instrument).
+
+##### 3.3.2 Graphical Causal Models and DAGs
+
+Retain the core content from the current Section 3.5 ("Graphical Causal Models and DAGs"):
+- What a DAG is: nodes (variables), directed edges (direct causal effects), every arrow is a substantive claim.
+- The PL-defect DAG (Figure 2 in current draft) --- keep this, it is effective.
+- Causal paths vs. back-door paths.
+- The back-door criterion and the do-calculus adjustment formula.
+- Connecting DAGs to potential outcomes: When Z satisfies the back-door criterion, conditional ignorability holds.
+- Alternative explanations as alternative DAGs.
+
+Add:
+- Emphasize the *transparency* value of DAGs for SE: A DAG makes every causal assumption visible and debatable. In the PL-defect debate, the unproductive back-and-forth between Ray et al. and Berger et al. could have been channeled into a productive discussion about *which edges belong in the DAG* and *which confounders are unmeasured*.
+- Briefly note the limitations of DAGs: They require domain knowledge to construct (they are not learned from data in this framework); they assume no unobserved variables are omitted from the graph; and they say nothing about the *magnitude* of effects.
+
+##### 3.3.3 Design-Based Identification
+
+Retain the core content from the current Section 3.6 ("Overview of Identification Methods"):
+- Table 2 (methods, estimands, assumptions) --- keep this, it is a valuable reference.
+- The three key points: different methods estimate different quantities; design-based methods derive credibility from the research setting; quasi-experimental methods are not assumption-free.
+
+Add:
+- Brief intuitive explanation of each method with an SE example:
+  - **DiD:** Compare defect trends before and after TypeScript migration in treatment projects vs. control projects. Assumption: Without migration, both groups would have followed the same trend.
+  - **IV:** Find an "instrument" that affects language choice but not defects except through language. Example: A new manager who mandates TypeScript adoption. Assumption: The manager's preference affects defects *only* through the language switch.
+  - **RDD:** If a policy assigns treatment based on a threshold (e.g., projects above a size threshold must adopt code review), compare projects just above and just below the threshold. Assumption: Projects near the threshold are similar in all respects except treatment.
+  - **Panel FE:** Use repeated observations of the same developer or project over time, absorbing all time-invariant characteristics. Assumption: No time-varying confounders correlated with both treatment and outcome.
+  - **Synthetic control:** Construct a weighted combination of untreated units to serve as a counterfactual for a single treated unit (e.g., a major framework that adopted TypeScript). Assumption: The synthetic control tracks the treated unit's counterfactual trajectory.
+- Retain the internal--external validity discussion (from current Section 3.7) as a closing paragraph here, noting the hierarchy of evidence and the importance of triangulation.
+
+#### 3.4 A Pragmatic Stance for SE Research
+
+**Purpose:** Synthesize the three pillars into an actionable recommendation for SE researchers. This is the *opinionated* part of the primer, where we argue for a specific methodological stance rather than just surveying options.
+
+**Core argument:**
+
+We recommend that SE researchers adopt a pragmatic synthesis of the three pillars, drawing on the emerging consensus in applied social science (Imbens 2020, Hernan & Robins 2020, Cunningham 2021):
+
+1. **Use potential outcomes / counterfactual reasoning / the target trial framework to reason about the *validity* of a research design.** Before analyzing data, articulate: What is the target trial? What estimand are we targeting? What would the ideal randomized experiment look like? This forces clarity about the treatment definition, the population, the outcome, and the timing---all of which are often left implicit in SE studies. The target trial framework is especially valuable because SE researchers are comfortable with the idea of controlled experiments (even if they cannot always run them); the target trial simply asks them to *describe* the experiment they wish they could run, and then evaluate how far their observational design departs from it.
+
+2. **Use DAGs to reason about *mechanisms* and *covariate selection*.** Once the target trial is articulated, construct a DAG encoding the assumed causal structure. The DAG serves three purposes: (a) it identifies which covariates must be controlled for (back-door criterion), (b) it identifies which covariates must *not* be controlled for (mediators, colliders), and (c) it makes assumptions explicit so that reviewers and critics can challenge specific edges. For design-based methods (DiD, IV, RDD), the DAG is less central to identification---the design itself provides identification---but it remains valuable for reasoning about *which confounders the design does and does not address* and for decomposing mechanisms.
+
+3. **Use design-based identification whenever the research setting permits.** When the data contain temporal variation (panel data), staggered adoption events (DiD), plausible instruments (IV), or assignment thresholds (RDD), exploit these features rather than relying solely on covariate adjustment. The credibility revolution's core lesson is that research design trumps statistical modeling; SE data is rich in exactly the kinds of variation that design-based methods exploit.
+
+**Why this stance for SE specifically:**
+- SE's observational data (repository mining) is plagued by *unmeasured confounders* (developer skill, team culture, organizational practices) that make selection-on-observables strategies fragile. Design-based methods sidestep this by exploiting quasi-random variation.
+- SE researchers already have strong intuitions about controlled experiments from the developer study tradition (Wohlin et al.). The target trial framework bridges this intuition to observational settings.
+- SE data is inherently *panel data* (repositories evolve over time, developers contribute across projects, tools are adopted in waves), making it well-suited to DiD, panel FE, and synthetic control designs that much of the social sciences lack access to.
+- DAGs are a natural fit for SE because software systems are themselves structured as dependency graphs; the idea of encoding causal relationships as a graph is congenial to the SE mindset.
+
+**Forward pointer:** This pragmatic stance is operationalized in the four-step framework (Section 4), where Step 1 constructs the DAG, Step 2 defines the estimand via potential outcomes and selects the identification strategy, Step 3 probes the assumptions, and Step 4 considers alternative DAGs.
+
+### Relationship to Existing Content in `main.tex`
+
+The restructuring implies the following changes to the current `main.tex` Section 3:
+
+| Current subsection | Disposition |
+|---|---|
+| 3.1 "What is Causality, Actually?" | **Replace entirely.** Current content overlaps with Section 2.2.1. New 3.1 is a *conceptual* treatment of perspectives on causality (regularity, counterfactual, interventionist, target trial), not a historical narrative. |
+| 3.2 "Why Correlation Does Not Imply Causation" | **Keep and consolidate** into new 3.2 ("Why Naive Approaches Fail"), merged with current 3.3. |
+| 3.3 "Why Multivariate Regression Usually Does Not Suffice" | **Merge** into new 3.2. Add brief DAG-informed regression forward pointer. |
+| 3.4 "The Potential Outcomes Framework" | **Move** into new 3.3.1. Add estimand-first emphasis. |
+| 3.5 "Graphical Causal Models and DAGs" | **Move** into new 3.3.2. Add transparency-for-SE emphasis and DAG limitations. |
+| 3.6 "Overview of Identification Methods" | **Move** into new 3.3.3. Add intuitive SE example for each method; merge internal--external validity discussion. |
+| 3.7 "Internal--External Validity Trade-Off" | **Merge** as closing paragraphs of new 3.3.3. |
+| *(new)* | **Add** new 3.4 ("A Pragmatic Stance for SE Research") --- entirely new content. |
+
+---
 
 ## Task Backlog
 
-### Phase 0: Literature Review and Framing (Current Phase)
+### Phase 0: Literature Review and Framing (Completed)
 
-- [x] **LR1a:** Classify causal methods in top-venue SE papers (ASE + FSE + ICSE, 2015–2025) — taxonomy and trend analysis implemented in `notebooks/literature_review.Rmd`; data in `data/se_papers_metadata.csv`
-- [x] **LR1b:** Complete literature review on existing SE tutorials and methodological guides (extend beyond top-3 venues to EMSE, TSE, TOSEM, IST, JSS, EASE, ESEM; identify tutorial papers specifically)
-- [x] **LR1c:** Refine taxonomy and trend analysis for paper-ready figures (polish labels, add confidence intervals to trends, compute inter-rater reliability if double-coded)
-- [x] **LR2:** Conduct literature review on intellectual traditions of causal inference
-- [x] **LR3:** Conduct literature review on the PL vs. defect proneness debate
-- [x] **LR4:** Conduct literature review on parallel causal inference problems in psychology and health research
-- [x] Synthesize findings from LR1–LR4 to finalize paper framing and contribution statement
+- [x] LR1: Classify causal methods in top-venue SE papers; refine taxonomy and trend analysis for paper-ready figures
+- [x] LR2: Conduct literature review on intellectual traditions of causal inference
+- [x] LR3: Conduct literature review on the PL vs. defect proneness debate
+- [x] LR4: Conduct literature review on parallel causal inference problems in psychology and health research
+- [x] Synthesize findings from LR1--LR4 to finalize paper framing and contribution statement
 - [x] Revise paper structure based on literature review findings
 - [ ] Write a 1-page "positioning statement" articulating the novelty relative to existing work (especially Furia et al. 2024)
 
-### Phase 1: Tutorial Drafting
+### Phase 1: Tutorial Drafting (Current Phase)
 
 - [x] Write Introduction (Section 1)
-- [x] Write Background & Related Work (Section 2), informed by LR1–LR4
-- [ ] Write the Causal Inference Primer (Section 3), drawing from thesis Chapter 2 but adapted for a standalone tutorial format
-- [ ] Write the Four-Step Framework (Section 4)
+- [x] Write Background & Related Work (Section 2), informed by LR1--LR4
+- [ ] **Write the Causal Inference Primer (Section 3)**
+  - [ ] Restructure Section 3 according to the detailed plan above
+  - [ ] Write new Section 3.1: "What Does It Mean for X to Cause Y?" (conceptual perspectives, SE-grounded)
+  - [ ] Revise Section 3.2: Consolidate correlation != causation and regression limitations; add DAG-informed regression pointer
+  - [ ] Revise Section 3.3: Restructure as "Three Pillars" with sub-subsections for PO, DAGs, design-based identification; add SE examples for each method
+  - [ ] Write new Section 3.4: "A Pragmatic Stance for SE Research" (potential outcomes for validity, DAGs for mechanisms, design-based identification when possible)
+  - [ ] Write opening paragraph positioning Section 3 relative to Section 2 and scoping coverage
+- [ ] Write the Four-Step Framework (Section 4) --- *currently drafted but may need revision after Section 3 is finalized*
 
-### Phase 2: Worked Example A — Ray et al. + Panel FE (Section 5)
+### Phase 2: Worked Example A --- Ray et al. + Panel FE (Section 5)
 
-- [ ] Write diagnostic assessment of Ray et al. (Section 5.1): walk through all four steps showing identification failures
-- [ ] Conduct and write up the downstream citation analysis (Section 5.2)
-- [ ] Write constructive improvement narrative: how the framework guides from regression to panel FE (Section 5.3)
+- [x] Write the PL vs. defect proneness debate review (Section 5.1)
+- [ ] Write diagnostic assessment of Ray et al. (Section 5.2): walk through all four steps showing identification failures
+- [ ] Conduct and write up the downstream citation analysis (Section 5.3)
+- [ ] Write constructive improvement narrative: how the framework guides from regression to panel FE (Section 5.4)
 - [ ] Construct panel dataset from Ray et al.'s GitHub data (or comparable sample): identify polyglot developers and repositories
 - [ ] Operationalize language assignment at the commit level; compute defect metrics
 - [ ] Implement panel FE analysis; conduct specification tests and robustness checks
-- [ ] Write up brief empirical demonstration (Section 5.4)
+- [ ] Write up brief empirical demonstration (Section 5.5)
 
-### Phase 3: Worked Example B — Bogner & Merkel + TypeScript DiD (Section 6)
+### Phase 3: Worked Example B --- Bogner & Merkel + TypeScript DiD (Section 6)
 
 - [ ] Write diagnostic assessment of Bogner & Merkel 2022 (Section 6.1): walk through four steps showing selection bias
 - [ ] Write the treatment decomposition narrative: from "language" to "type system adoption" (Section 6.2)
@@ -238,15 +247,15 @@ Four systematic literature review efforts are needed to accurately frame the con
 
 1. **Positioning relative to Furia et al. (2024):** They applied structural causal models (DAG-based adjustment) to coding competition data. Our contribution differs on three dimensions: (a) we provide a general tutorial framework, not just one application; (b) our Example A uses design-based identification (panel FE) rather than DAG-based adjustment; (c) our Example B uses a different identification strategy (DiD exploiting a natural experiment) on real-world project data. The two-example structure demonstrates that the framework generates *different* improved designs depending on the data structure and question.
 
-2. **Scope management:** Two worked examples plus a tutorial primer is ambitious. The empirical demonstrations in Sections 5.4 and 6.4 should be brief and pedagogical (not full empirical papers) — enough to show feasibility and illustrate the framework's output, not to definitively answer the causal questions.
+2. **Scope management:** Two worked examples plus a tutorial primer is ambitious. The empirical demonstrations in Sections 5.4 and 6.4 should be brief and pedagogical (not full empirical papers) --- enough to show feasibility and illustrate the framework's output, not to definitively answer the causal questions.
 
-3. **Empirical feasibility — Example A (Panel FE):** Depends on sufficient within-developer language variation in the data. Mitigation: assess variation early; even a null or weak result is pedagogically valuable (it illustrates Step 3's honesty about limitations).
+3. **Empirical feasibility --- Example A (Panel FE):** Depends on sufficient within-developer language variation in the data. Mitigation: assess variation early; even a null or weak result is pedagogically valuable (it illustrates Step 3's honesty about limitations).
 
-4. **Empirical feasibility — Example B (TypeScript DiD):** Depends on identifying enough clean TypeScript migration events (JS projects that adopted TS) with comparable pure-JS controls. Mitigation: TypeScript adoption has been widespread since ~2017; initial scoping on GHArchive should reveal whether the sample is sufficient.
+4. **Empirical feasibility --- Example B (TypeScript DiD):** Depends on identifying enough clean TypeScript migration events (JS projects that adopted TS) with comparable pure-JS controls. Mitigation: TypeScript adoption has been widespread since ~2017; initial scoping on GHArchive should reveal whether the sample is sufficient.
 
 5. **Framing the contribution:** This is primarily a tutorial paper whose contribution is the framework and the demonstration of its diagnostic-then-constructive power. The empirical demonstrations are illustrations, not standalone empirical contributions. For TOSEM, a tutorial/survey paper category may be most appropriate.
 
-6. **Audience calibration:** The paper must be accessible to SE researchers with no causal inference background while also being rigorous enough to satisfy methodologists. The two-example structure helps: Example A (regression → panel FE) is a gentler step; Example B (cross-sectional → DiD with treatment decomposition) shows the framework's full power.
+6. **Audience calibration:** The paper must be accessible to SE researchers with no causal inference background while also being rigorous enough to satisfy methodologists. The two-example structure helps: Example A (regression -> panel FE) is a gentler step; Example B (cross-sectional -> DiD with treatment decomposition) shows the framework's full power.
 
 ## References (Key)
 
@@ -258,6 +267,11 @@ Four systematic literature review efforts are needed to accurately frame the con
 - Rubin, D. B. (1974). Estimating Causal Effects of Treatments in Randomized and Nonrandomized Studies. Journal of Educational Psychology.
 - Angrist, J. D., & Pischke, J.-S. (2009). Mostly Harmless Econometrics. Princeton University Press.
 - Cunningham, S. (2021). Causal Inference: The Mixtape. Yale University Press.
-- Hernán, M. A., & Robins, J. M. (2020). Causal Inference: What If. Chapman & Hall/CRC.
+- Hernan, M. A., & Robins, J. M. (2020). Causal Inference: What If. Chapman & Hall/CRC.
 - Rosenbaum, P. R. (2002). Observational Studies. Springer.
 - Hill, A. B. (1965). The Environment and Disease: Association or Causation? Proceedings of the Royal Society of Medicine.
+- Woodward, J. (2003). Making Things Happen: A Theory of Causal Explanation. Oxford University Press.
+- Lewis, D. (1973). Causation. Journal of Philosophy.
+- Holland, P. W. (1986). Statistics and Causal Inference. Journal of the American Statistical Association.
+- Lundberg, I., Johnson, R., & Stewart, B. M. (2021). What Is Your Estimand? Defining the Target Quantity Connects Statistical Evidence to Theory. American Sociological Review.
+- Imbens, G. W. (2020). Potential Outcome and Directed Acyclic Graph Approaches to Causality. Journal of Marketing Research.
