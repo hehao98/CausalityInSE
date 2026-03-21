@@ -18,8 +18,10 @@
 \newcommand{\Code}[1]{\begin{small}\texttt{#1}\end{small}}
 
 \usepackage{tikz}
-\usetikzlibrary{positioning}
+\usepackage{enumitem}
 \usepackage{booktabs}
+
+\usetikzlibrary{positioning}
 \graphicspath{{../plots/}}
 
 \begin{document}
@@ -306,48 +308,43 @@ This tutorial aims to bridge that gap.
 \section{A Primer on Causal Inference for SE Researchers}
 \label{sec:primer}
 
-Section~\ref{sec:background} documented three facts: The causal inference toolkit has matured over a century of cross-disciplinary development, psychology and epidemiology have undergone a methodological reform that SE has yet to experience, and fewer than 4\% of empirical SE papers employ any recognized causal inference method despite 29\% asking causal questions.
+Our literature review in Section~\ref{sec:background} have revealed three important facts: The causal inference toolkit has matured over a century of cross-disciplinary development, psychology and epidemiology have undergone a methodological reform that SE has yet to experience, and fewer than 4\% of empirical SE papers employ any recognized causal inference method despite 29\% asking causal questions.
 This section equips the reader with the conceptual and technical foundations needed to close that gap.
 We cover the three pillars most relevant to empirical SE research---counterfactual reasoning and potential outcomes, graphical causal models, and design-based identification---and argue for a pragmatic synthesis suited to the field's observational data.
-We do not cover causal discovery algorithms~\cite{journals/ese/HulseEM25}, machine-learning-based heterogeneous treatment effect estimation~\cite{chernozhukov2018double, athey2016recursive}, or formal verification of causal claims; readers interested in these topics should consult the references cited and the textbooks listed in Section~\ref{sec:bg-causal-history}.
+We do not cover causal discovery algorithms~\cite{journals/ese/HulseEM25}, machine-learning-based heterogeneous treatment effect estimation~\cite{chernozhukov2018double, athey2016recursive}, or formal verification of causal claims~\cite{halpern2016actual}; readers interested in these topics should consult the references cited and the textbooks listed in Section~\ref{sec:bg-causal-history}.
 
 \subsection{What Does It Mean for X to Cause Y?}
 \label{sec:primer-causality}
 
-Consider a question that has occupied SE researchers for over a decade: Does adopting TypeScript reduce defects in JavaScript projects?
+Consider a question that is highly relevant to SE researchers: Does adopting TypeScript reduce defects in JavaScript projects?
 At its core, this is a question about a contrast between two worlds---one in which a team adopts TypeScript and one in which it does not---and whether the defect rate differs between them.
 This deceptively simple framing conceals a deep conceptual question: What does it \emph{mean} for one thing to cause another?
 Four perspectives, developed across philosophy, statistics, and epidemiology, provide complementary answers.
 
-\paragraph{Causation as Regular Association.}
-The most intuitive notion, dating to Hume, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$.
-In SE terms: If teams using TypeScript consistently have fewer bugs, we might say TypeScript ``causes'' fewer bugs.
-This view fails immediately.
-Projects that adopt continuous integration also tend to have fewer defects, but this association likely reflects the maturity and discipline of teams that adopt CI---not a causal effect of CI pipelines on code quality.
-Regular association cannot distinguish genuine causal effects from systematic differences between the groups being compared.
-
-\paragraph{Causation as Counterfactual Dependence.}
-A deeper account, formalized by \citet{rubin1974estimating} building on philosophical work by Lewis, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
-Applied to our example: TypeScript \emph{caused} the reduction in defects for a given project if that project \emph{would have had more defects} had it not adopted TypeScript, all else being equal.
-This definition is precise but introduces what \citet{holland1986statistics} called the \emph{fundamental problem of causal inference}: We can never observe both worlds for the same unit.
-We observe the project's defect rate after adopting TypeScript, or its defect rate without TypeScript, but never both.
-The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
-
-\paragraph{Causation as Intervention.}
-A third perspective, developed by \citet{woodward2003making} in philosophy and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} \emph{do-calculus}, defines causation through intervention: $X$ causes $Y$ if \emph{intervening} on $X$---holding everything else fixed---changes $Y$.
-The key insight is the difference between \emph{seeing} and \emph{doing}.
-Observing that TypeScript projects have fewer bugs ($P(Y \mid X\!=\!1)$) is not the same as forcing a team to switch to TypeScript and measuring the result ($P(Y \mid do(X\!=\!1))$).
-The former reflects both the causal effect of TypeScript and the systematic differences between teams that choose TypeScript and those that do not; the latter isolates the causal effect by holding the selection process fixed.
-This distinction---between conditioning and intervening---is the conceptual foundation of all causal inference methods.
-
-\paragraph{Causation as a Target Trial.}
-For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers the most pragmatic formulation: Every causal question implicitly describes a hypothetical randomized experiment.
-The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
-For the TypeScript question, the target trial would randomly assign half of a set of JavaScript teams to adopt TypeScript and compare defect rates after a fixed period.
-Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign languages, teams willing to adopt TypeScript likely differ from those that resist, the ``treatment'' is ambiguous (full adoption or gradual migration?), and defect measurement may reflect bug-tracking practices rather than code quality.
-Each of these concerns maps directly to a specific identification assumption that must be addressed.
-
-\paragraph{Synthesis.}
+\begin{itemize}[leftmargin=15pt]
+    \item \textbf{Causation as Regular Association.} 
+    The most intuitive notion, dating to \citet{hume1748enquiry}, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$.
+    In SE terms: If teams using TypeScript consistently have fewer bugs, we might say TypeScript ``causes'' fewer bugs.
+    This view fails almost immediately in an observational setting: Even when TypeScript projects consistently have fewer bugs, this association likely reflects the maturity and discipline of teams that adopt TypeScript---not a causal effect of TypeScript on code quality.
+    Regular association cannot distinguish genuine causal effects from systematic differences between the groups being compared.  
+    \item \textbf{Causation as Counterfactual Dependence.} 
+    A deeper account, formalized by \citet{rubin1974estimating} building on philosophical work by \citet{lewis1973causation}, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
+    Applied to our example: TypeScript \emph{caused} the reduction in defects for a given project if that project \emph{would have had more defects} had it not adopted TypeScript, all else being equal.
+    This definition is precise but introduces what \citet{holland1986statistics} called the \emph{fundamental problem of causal inference}: We can never observe both worlds for the same unit.
+    We observe the project's defect rate after adopting TypeScript, or its defect rate without TypeScript, but never both.
+    The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
+    \item \textbf{Causation as Intervention.} 
+    A third perspective, developed by \citet{woodward2003making} in philosophy and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} \emph{do-calculus}, defines causation through \emph{intervention}: $X$ causes $Y$ if \emph{intervening} on $X$---holding everything else fixed---changes $Y$.
+    The key insight is the difference between \emph{seeing} and \emph{doing}.
+    Observing that TypeScript projects have fewer bugs ($P(Y \mid X\!=\!1)$) is not the same as forcing a team to switch to TypeScript and measuring the result ($P(Y \mid do(X\!=\!1))$).
+    The former reflects both the causal effect of TypeScript and the systematic differences between teams that choose TypeScript and those that do not; the latter isolates the causal effect by holding the selection process fixed.
+    All causal inference methods, in some sense, are trying to close the gap between passive observation (i.e., conditioning on $X$) and active intervention (i.e., intervening on $X$).
+    \item \textbf{Causation as a Target Trial.} For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers the most pragmatic formulation: Every causal question implicitly describes a hypothetical randomized experiment.
+    The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
+    For the TypeScript question, the target trial would randomly assign half of a set of JavaScript teams to adopt TypeScript and compare defect rates after a fixed period.
+    Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign languages, teams willing to adopt TypeScript likely differ from those that resist, the ``treatment'' is ambiguous (full adoption or gradual migration?), and defect measurement may reflect bug-tracking practices rather than code quality.
+    Each of these concerns maps directly to a specific identification assumption that must be addressed.  
+\end{itemize}
 These four perspectives are not competing theories but complementary lenses that modern applied causal inference uses together.
 The counterfactual view yields \emph{estimands}---precise definitions of the causal quantities we seek to estimate.
 The interventionist view yields \emph{identification conditions}---formal criteria for when observational data can approximate the result of an intervention.
