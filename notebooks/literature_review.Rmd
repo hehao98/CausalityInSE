@@ -148,16 +148,17 @@ p_taxonomy <- taxonomy |>
   ggplot(aes(N, Category)) +
   geom_col(fill = "#0072B2") +
   geom_text(aes(label = N), hjust = -0.3, size = 3.5, family = "Linux Libertine") +
-  labs(x = "Number of papers", y = NULL) +
+  labs(x = "Number of Papers", y = NULL) +
   theme_minimal(base_size = 13, base_family = "Linux Libertine") +
   theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()) +
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_text(size = rel(0.8))) +
   xlim(0, max(taxonomy$N) + 5)
 
 print(p_taxonomy)
 
 ggsave(file.path(plots_dir, "taxonomy_bar.pdf"),
-       p_taxonomy, width = 7, height = 4.5, device = cairo_pdf)
+       p_taxonomy, width = 8, height = 3, device = cairo_pdf)
 ```
 
 ```{r causal-trends, fig.width=9, fig.height=5.5}
@@ -183,24 +184,27 @@ p_trends <- ggplot(summary_by_year, aes(year, count, colour = category, shape = 
   geom_point(size = 2.5) +
   geom_text(data = labels_bottom,
             aes(label = count),
-            vjust = 1.9, size = 3, show.legend = FALSE, family = "Linux Libertine") +
+            vjust = 1.9, size = 4, show.legend = FALSE, family = "Linux Libertine") +
   scale_x_continuous(breaks = seq(2015, 2025, 1)) +
-  scale_y_continuous(limits = c(-30, NA)) +
+  scale_y_continuous(limits = c(-40, NA)) +
   scale_colour_manual(values = c("All papers" = "grey40",
                                  "Empirical SE" = "#0072B2",
                                  "MSR papers" = "#009E73",
                                  "Asking causal RQs" = "#E69F00",
                                  "Using causal methods" = "#D55E00")) +
   labs(
-    x = NULL, y = "Number of papers", colour = NULL, shape = NULL
+    x = NULL, y = "Number of Papers", colour = NULL, shape = NULL
   ) +
   theme_minimal(base_size = 13, base_family = "Linux Libertine") +
   theme(legend.position = "bottom",
+        legend.margin = margin(t = -5, r = 0, b = -3, l = 0),
+        legend.box.margin = margin(t = -5, r = 0, b = -3, l = 0),
+        axis.title.y = element_text(size = rel(0.8)),
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank())
 
 print(p_trends)
 
 ggsave(file.path(plots_dir, "causal_trends.pdf"),
-       p_trends, width = 9, height = 4, device = cairo_pdf)
+       p_trends, width = 8, height = 3, device = cairo_pdf)
 ```
