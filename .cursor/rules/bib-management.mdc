@@ -1,0 +1,96 @@
+---
+description: Bibliography and citation management conventions for BibTeX files
+globs: **/*.bib
+alwaysApply: true
+---
+
+# Bibliography Management Conventions
+
+When editing or adding entries to BibTeX (`.bib`) files, adhere to the following conventions:
+
+## 1. Document Structure & Ordering
+
+The bibliography is separated into three main sections:
+1. **ONLINE / INSTITUTIONAL RESOURCES**: Placed first in the file (e.g., Nobel Prize announcements, W3C standards).
+2. **NON-CS PUBLICATIONS**: Placed second in the file.
+3. **CS PUBLICATIONS**: Placed third in the file.
+
+### Sorting Rules
+Within each section, entries must be sorted:
+1. **Chronologically** by publication year (ascending).
+2. **Alphabetically** by the first author's surname (for entries within the same year).
+
+## 2. Citation Keys
+
+### Online / Institutional Resources
+- Use **Google Scholar style** keys or descriptive keys.
+- Example: `nobelprize2021economics`, `w3c2023standard`.
+
+### Non-CS Publications
+- Use **Google Scholar style** keys: `surname(s)YYYYkeyword`.
+- Example: `hill1965environment`, `angrist2010credibility`.
+
+### CS Publications
+- Use **DBLP identifiers** whenever available.
+- Example: `DBLP:conf/sigsoft/RayPFD14`.
+- **Verbatim entries**: You MUST retrieve entries directly from the DBLP BibTeX export API (`https://dblp.org/rec/<key>.bib`) or the DBLP website whenever possible. Ensure the entry matches the actual DBLP record.
+- **Not yet indexed**: If a paper is not yet indexed by DBLP, assign a manual DBLP-style key and explicitly mark it with a comment directly above the entry (e.g., `% Not yet indexed by DBLP as of 2026-03-19.`).
+
+## 3. Verification Requirement
+- **DBLP Entries**: You MUST fetch and verify all DBLP entries against the official DBLP website or API. Do not hallucinate or guess DBLP entries.
+- **Google Scholar Entries**: You MUST double-check and verify that all non-CS (Google Scholar style) entries actually exist and the metadata is accurate before adding them.
+- **Online / Institutional Resources**: You MUST verify that the URL is accessible and the metadata (author, year, title) is accurate before adding them.
+
+## 4. Metadata Requirements
+
+- **DOIs**: Always include the DOI (`doi={...}`) whenever it is available for a given paper.
+
+## 5. Examples
+
+### ❌ BAD
+```bibtex
+@article{Smith2023,
+  title={Some Software Engineering Paper},
+  author={Smith, John},
+  year={2023}
+}
+```
+
+### ✅ GOOD (Online / Institutional Resource)
+```bibtex
+@online{nobelprize2021economics,
+  author={{The Royal Swedish Academy of Sciences}},
+  title={The {Sveriges Riksbank} Prize in Economic Sciences in Memory of {Alfred Nobel} 2021},
+  year={2021},
+  url={https://www.nobelprize.org/prizes/economic-sciences/2021/summary/},
+  note={Accessed 2026-03-20}
+}
+```
+
+### ✅ GOOD (Non-CS Publication)
+```bibtex
+@article{hill1965environment,
+  title={The Environment and Disease: Association or Causation?},
+  author={Hill, Austin Bradford},
+  journal={Proceedings of the Royal Society of Medicine},
+  volume={58},
+  number={5},
+  pages={295--300},
+  year={1965},
+  publisher={SAGE Publications}
+}
+```
+
+### ✅ GOOD (CS Publication)
+```bibtex
+@inproceedings{DBLP:conf/sigsoft/RayPFD14,
+  author       = {Baishakhi Ray and
+                  Daryl Posnett and
+                  Vladimir Filkov and
+                  Premkumar T. Devanbu},
+  title        = {A large scale study of programming languages and code quality in github},
+  booktitle    = {Proceedings of the 22nd {ACM} {SIGSOFT} International Symposium on Foundations of Software Engineering},
+  year         = {2014},
+  doi          = {10.1145/2635868.2635922}
+}
+```

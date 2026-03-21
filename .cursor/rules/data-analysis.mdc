@@ -1,6 +1,7 @@
 ---
 description: Guidelines for R and data analysis scripts, specifically regarding plot styling and formatting to match the paper's ACM format.
 globs: "*.R, *.Rmd, *.qmd"
+alwaysApply: true
 ---
 
 # Data Analysis and Plotting Conventions
