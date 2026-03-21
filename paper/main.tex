@@ -225,15 +225,15 @@ We do not aim to achieve methodological perfection in this analysis, but even a 
 \paragraph{Corpus and Classification.}
 For each venue (ICSE, FSE, ASE), we obtained a paper list, paper titles, and DOIs from DBLP, and retrieved the paper abstracts via the Semantic Scholar batch API with OpenAlex as a backfill source.
 This produced a corpus of 5,341 papers.
-Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, (2)~whether it is a mining software repositories (MSR) study, and (3)~whether it makes causal claims, employs a causal inference method, or both.
+Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, (2)~whether it is a mining software repositories (MSR) study, and (3)~whether it investigates a causal research question, employs a causal inference method, or both.
 For papers tagged as using causal methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
 Deterministic decoding and an explicit classification schema were chosen to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package.
 
 \paragraph{The Causal Ambition--Methodology Gap.}
 Of the 5,341 papers, 2,136 (40\%) are empirical SE studies.
-Among these empirical papers, 621 (29\%) make causal claims---asserting that one variable ``affects,'' ``causes,'' ``leads to,'' or ``increases'' another---yet only 81 (3.8\%) employ any recognizable causal inference method.
-The remaining 545 papers make causal claims supported by correlational or descriptive evidence alone.
-Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers making causal claims has grown steadily---from 23 in 2015 to 131 in 2025---the number employing causal methods has grown far more slowly, from 3 to 14 over the same period.
+Among these empirical papers, 621 (29\%) ask or investigate causal research questions---those about how an SE intervention, tool, or practice impacts certain outcomes---yet only 81 (3.8\%) employ any recognizable causal inference method.
+The remaining 545 papers investigate the causal research questions only through interpreting correlational or descriptive evidence.
+Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers asking causal research questions has grown steadily---from 23 in 2015 to 131 in 2025---the number claiming to employ causal inference methods has grown far more slowly, from 3 to 14 over the same period.
 The ratio of causal claims to causal methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
 
 The gap is particularly pronounced among MSR papers.
@@ -243,8 +243,8 @@ Of the 961 MSR papers in our corpus, 249 (26\%) make causal claims, but only 30 
 \centering
 \includegraphics[width=\columnwidth]{causal_trends.pdf}
 \caption{Publication trends at ICSE, FSE, and ASE (2015--2025).
-The top two lines show total publications and empirical SE papers; the bottom two show papers making causal claims versus papers employing causal inference methods.
-The persistent gap between causal claims and causal methods quantifies the disconnect between causal ambition and methodological practice.}
+The top two lines show total publications and empirical SE papers; the bottom two show papers asking causal research questions (RQs) versus papers employing causal inference methods.
+The persistent gap between causal RQs and causal methods quantifies the disconnect between causal ambition and methodological practice.}
 \label{fig:causal-trends}
 \end{figure}
 
