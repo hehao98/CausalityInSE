@@ -147,9 +147,11 @@ p_taxonomy <- taxonomy |>
   mutate(Category = fct_reorder(Category, N)) |>
   ggplot(aes(N, Category)) +
   geom_col(fill = "#0072B2") +
-  geom_text(aes(label = N), hjust = -0.3, size = 3.5) +
+  geom_text(aes(label = N), hjust = -0.3, size = 3.5, family = "Linux Libertine") +
   labs(x = "Number of papers", y = NULL) +
-  theme_minimal(base_size = 13) +
+  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank()) +
   xlim(0, max(taxonomy$N) + 5)
 
 print(p_taxonomy)
@@ -164,36 +166,41 @@ summary_by_year <- papers |>
   summarise(
     `All papers`             = n(),
     `Empirical SE`           = sum(is_empirical == TRUE, na.rm = TRUE),
+#    `MSR papers`             = sum(is_msr == TRUE, na.rm = TRUE),
     `Asking causal RQs`      = sum(causal_type %in% c("claim", "both"), na.rm = TRUE),
     `Using causal methods`   = sum(causal_type %in% c("method", "both"), na.rm = TRUE),
   ) |>
   pivot_longer(-year, names_to = "category", values_to = "count") |>
   mutate(category = factor(category,
-    levels = c("All papers", "Empirical SE",
+    levels = c("All papers", "Empirical SE", "MSR papers",
                "Asking causal RQs", "Using causal methods")))
 
 labels_bottom <- summary_by_year |>
-  filter(category %in% c("Asking causal RQs", "Using causal methods"))
+  filter(category %in% c("Using causal methods"))
 
 p_trends <- ggplot(summary_by_year, aes(year, count, colour = category, shape = category)) +
   geom_line(linewidth = 0.8) +
   geom_point(size = 2.5) +
   geom_text(data = labels_bottom,
             aes(label = count),
-            vjust = -0.9, size = 3, show.legend = FALSE) +
+            vjust = 1.9, size = 3, show.legend = FALSE, family = "Linux Libertine") +
   scale_x_continuous(breaks = seq(2015, 2025, 1)) +
+  scale_y_continuous(limits = c(-30, NA)) +
   scale_colour_manual(values = c("All papers" = "grey40",
                                  "Empirical SE" = "#0072B2",
+                                 "MSR papers" = "#009E73",
                                  "Asking causal RQs" = "#E69F00",
                                  "Using causal methods" = "#D55E00")) +
   labs(
     x = NULL, y = "Number of papers", colour = NULL, shape = NULL
   ) +
-  theme_minimal(base_size = 13) +
-  theme(legend.position = "bottom")
+  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
+  theme(legend.position = "bottom",
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
 
 print(p_trends)
 
 ggsave(file.path(plots_dir, "causal_trends.pdf"),
-       p_trends, width = 7, height = 4, device = cairo_pdf)
+       p_trends, width = 9, height = 4, device = cairo_pdf)
 ```
