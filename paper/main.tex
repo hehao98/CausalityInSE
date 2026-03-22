@@ -428,7 +428,7 @@ Which estimand to target is a substantive decision, not a statistical one: The r
 
 One particular power of the potential outcomes formalism is that it allows researchers to derive the \emph{identifying assumptions} needed for the study results to carry a causal interpretation.
 For example, in a \emph{randomized controlled trial} (RCT), the formal identifying assumption is $(Y(1), Y(0)) \perp D$ (i.e., treatment is as-if randomly assigned), so selection bias vanishes and the naive comparison identifies the ATE\@.
-A valid RCT additionally requires the \emph{Stable Unit Treatment Value Assumption} (SUTVA)---no interference between units and a well-defined treatment.
+A valid RCT additionally requires the \emph{Stable Unit Treatment Value Assumption} (SUTVA), i.e., no interference between units and a well-defined treatment, and \emph{full compliance}, i.e., the research units are truly following their assigned treatment status.
 For the family of regression, matching, and inverse probability weighting methods (for which we jointly refer to as the \emph{selection-on-observables} family), the formal identifying assumption is \emph{conditional ignorability}---the assumption that, conditional on observed covariates $X$, treatment assignment is independent of potential outcomes: $(Y(1), Y(0)) \perp D \mid X$.
 Under this assumption, plus overlap ($0 < P(D\!=\!1 \mid X\!=\!x) < 1$ for all $x$ in the support of $X$), the ATE is identified through differencing the predicted outcome based on $X$:
 In practice, this assumption means that all confounders must be captured in $X$ for the regression to produce a credible causal estimate, whose plausibility can be assessed through the graphical causal framework (Section~\ref{sec:primer-dags}) and complementary sensitivity analysis.\footnote{For textbook proofs that randomization identifies the ATE and that conditional ignorability identifies the ATE via regression, see \citet[Ch.~2]{angrist2009mostly} and \citet[Chs.~2--3]{hernan2020causal}.
@@ -543,8 +543,6 @@ In many SE settings, where key confounders such as developer skill, team culture
 \emph{Design-based identification} takes a fundamentally different approach: Rather than attempting to measure and adjust for all confounders, it exploits features of the research setting---temporal variation, natural experiments, assignment thresholds---that provide quasi-random variation in treatment assignment.
 The credibility of these methods derives not from the completeness of the covariate set but from the transparency and partial testability of their design-specific assumptions~\cite{angrist2010credibility}.
 
-Table~\ref{tab:methods-summary} summarizes the methods most relevant to SE research.
-
 \begin{table}[t]
 \centering
 \caption{Common causal inference methods, their target estimands, and key identification assumptions under the potential outcomes framework.
@@ -586,7 +584,8 @@ Synthetic Control
 \end{tabular}
 \end{table}
 
-We illustrate each method with an SE example to build intuition.
+Table~\ref{tab:methods-summary} summarizes the methods most relevant to SE research, along with their formal estimand and identifying assumptions derived from the potential outcomes framework (see \citet[Chs.~2--6]{angrist2009mostly} and \citet[Chs.~4--9]{cunningham2021causal} for formal proofs and detailed treatments of each method).
+In this section, we illustrate the high-level idea of each method with SE examples to build intuition:
 
 \paragraph{Difference-in-Differences (DiD).}
 DiD compares changes in outcomes over time between a treated group and a control group.
@@ -613,6 +612,9 @@ The identifying assumption is \emph{strict exogeneity}: Conditional on unit fixe
 Synthetic control constructs a weighted combination of untreated units to serve as a counterfactual for a single treated unit.
 In SE: To estimate the effect of a major framework's migration to TypeScript, one could construct a ``synthetic'' control from similar frameworks that did not migrate, weighted to match the treated framework's pre-migration defect trajectory.
 
+\section{A Pragmatic Stance of Causal Inference in Empirical SE Research}
+\label{sec:framework}
+
 \paragraph{Choosing Among Methods.}
 Three points deserve emphasis.
 First, different methods estimate different quantities---DiD identifies the ATT, IV recovers the LATE for compliers, RDD identifies an effect at the threshold---so the choice should be guided by the research question and available data structure, not convention.
@@ -625,7 +627,6 @@ A controlled experiment assigning developers to different languages achieves str
 A hierarchy of evidence organizes this trade-off: Randomized experiments provide the strongest causal evidence, followed by quasi-experimental designs---DiD, IV, RDD---with partially testable assumptions, then observational studies with careful controls, and finally descriptive and correlational analyses.
 This hierarchy ranks \emph{causal} evidence, not overall scientific value---execution quality matters as much as design choice.
 The pragmatic researcher chooses the strongest credible design and builds confidence through \emph{triangulation}: convergent findings across complementary designs, data sources, and populations~\cite{shadish2002experimental}.
-
 
 \subsection{A Pragmatic Stance for SE Research}
 \label{sec:primer-stance}
@@ -661,17 +662,8 @@ Third, DAGs align with the SE mindset: Software systems are themselves structure
 Fourth, the target trial framework bridges SE researchers' existing intuitions about controlled experiments to the observational settings where most SE data originates.
 The four-step framework in Section~\ref{sec:framework} operationalizes this pragmatic stance: Step~1 constructs the DAG, Step~2 defines the estimand via potential outcomes and selects the identification strategy, Step~3 probes the assumptions through sensitivity analysis, and Step~4 considers alternative DAGs.
 
-
-% =============================================================================
-% SECTION 4: THE FOUR-STEP CAUSAL CREDIBILITY ASSESSMENT FRAMEWORK
-% =============================================================================
-
-\section{The Four-Step Causal Credibility Assessment Framework}
-\label{sec:framework}
-
 This section synthesizes the preceding foundations into a practical framework that serves both as a \emph{diagnostic} tool for evaluating existing studies and a \emph{constructive} guide for designing stronger ones.
 We illustrate each step using the language--defect question; Sections~\ref{sec:example-a} and~\ref{sec:example-b} demonstrate the framework on published studies.
-
 
 \subsection{Step 1: Derive an Explicit Causal Theory from Domain Knowledge}
 \label{sec:framework-step1}
