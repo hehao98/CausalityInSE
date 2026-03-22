@@ -322,24 +322,24 @@ This deceptively simple framing conceals a deep conceptual question: What does i
 Four perspectives, developed across philosophy, statistics, and epidemiology, provide complementary answers.
 
 \begin{itemize}[leftmargin=15pt]
-    \item \textbf{Causation as Regular Association.} 
+    \item \emph{Causation as Regular Association.} 
     The most intuitive notion, dating to \citet{hume1748enquiry}, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$.
     In SE terms: If teams using TypeScript consistently have fewer bugs, we might say TypeScript ``causes'' fewer bugs.
     This view fails almost immediately in an observational setting: Even when TypeScript projects consistently have fewer bugs, this association likely reflects the maturity and discipline of teams that adopt TypeScript---not a causal effect of TypeScript on code quality.
     Regular association cannot distinguish genuine causal effects from systematic differences between the groups being compared.  
-    \item \textbf{Causation as Counterfactual Dependence.} 
+    \item \emph{Causation as Counterfactual Dependence.} 
     A deeper account, formalized by \citet{rubin1974estimating} building on philosophical work by \citet{lewis1973causation}, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
     Applied to our example: TypeScript \emph{caused} the reduction in defects for a given project if that project \emph{would have had more defects} had it not adopted TypeScript, all else being equal.
     This definition is precise but introduces what \citet{holland1986statistics} called the \emph{fundamental problem of causal inference}: We can never observe both worlds for the same unit.
     We observe the project's defect rate after adopting TypeScript, or its defect rate without TypeScript, but never both.
     The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
-    \item \textbf{Causation as Intervention.} 
+    \item \emph{Causation as Intervention.} 
     A third perspective, developed by \citet{woodward2003making} in philosophy and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} \emph{do-calculus}, defines causation through \emph{intervention}: $X$ causes $Y$ if \emph{intervening} on $X$---holding everything else fixed---changes $Y$.
     The key insight is the difference between \emph{seeing} and \emph{doing}.
     Observing that TypeScript projects have fewer bugs ($P(Y \mid X\!=\!1)$) is not the same as forcing a team to switch to TypeScript and measuring the result ($P(Y \mid do(X\!=\!1))$).
     The former reflects both the causal effect of TypeScript and the systematic differences between teams that choose TypeScript and those that do not; the latter isolates the causal effect by holding the selection process fixed.
     All causal inference methods, in some sense, are trying to close the gap between passive observation (i.e., conditioning on $X$) and active intervention (i.e., intervening on $X$).
-    \item \textbf{Causation as a Target Trial.} For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers the most pragmatic formulation: Every causal question implicitly describes a hypothetical randomized experiment.
+    \item \emph{Causation as a Target Trial.} For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers the most pragmatic formulation: Every causal question implicitly describes a hypothetical randomized experiment.
     The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
     For the TypeScript question, the target trial would randomly assign half of a set of JavaScript teams to adopt TypeScript and compare defect rates after a fixed period.
     Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign languages, teams willing to adopt TypeScript likely differ from those that resist, the ``treatment'' is ambiguous (full adoption or gradual migration?), and defect measurement may reflect bug-tracking practices rather than code quality.
@@ -447,7 +447,7 @@ As Section~\ref{sec:primer-naive} illustrated, conditioning on the wrong variabl
 \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} graphical framework addresses this gap by encoding causal assumptions as \emph{directed acyclic graphs} (DAGs), formalizing the interventionist view of causation introduced in Section~\ref{sec:primer-causality}.
 
 \paragraph{Directed Acyclic Graphs.}
-A DAG consists of nodes (variables) and directed edges ($\to$) representing direct causal effects.
+A DAG encodes \emph{the researcher's beliefs about the true data-generating process} and it consists of nodes (variables) and directed edges ($\to$) representing direct causal effects.
 Every arrow is a substantive claim; every absent arrow asserts no direct effect.
 This transparency is the central value of DAGs for applied research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
 %In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
@@ -500,42 +500,46 @@ Popularity is a \emph{collider} (Language $\to$ Popularity $\leftarrow$ Defect P
 \label{fig:pl-dag}
 \end{figure}
 
-%\paragraph{Causal Paths and Back-Door Paths.}
-%\emph{Causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:pl-dag}, the causal paths run Language $\to$ Type Safety $\to$ Defect Proneness and Language $\to$ Tooling $\to$ Defect Proneness.
-%\emph{Back-door paths} connect treatment to outcome through a common cause---e.g., Language $\leftarrow$ Team Skill $\to$ Defect Proneness---transmitting spurious associations.
-%A naive comparison conflates the genuine causal effect with these spurious associations.
+\paragraph{Back-Door Paths and the Back-Door Criterion.}
+In a DAG, a \emph{causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:pl-dag}, the causal paths run Language $\to$ Type Safety/Tooling $\to$ Defect Proneness.
+These paths transmit the genuine causal effect.
+A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, Language $\leftarrow$ Team Skill $\to$ Defect Proneness.
+These back-door paths transmit spurious associations: Even if Language had zero effect on Defect Proneness, the fact that skilled teams both choose certain languages and produce fewer defects creates an observed correlation between language choice and defect rates.
+A naive comparison conflates the genuine causal effect flowing through the causal paths with these spurious associations flowing through the back-door paths.
 
-\paragraph{The Back-Door Criterion.}
-A set $Z$ satisfies the \emph{back-door criterion}~\cite{pearl2009causality} if: (1)~no variable in $Z$ is a descendant of the treatment, and (2)~$Z$ blocks every back-door path.
-When satisfied, the causal effect is identified:
-\begin{equation}
-    P(Y \mid do(X = x)) = \sum_z P(Y \mid X = x, Z = z)\, P(Z = z)
-\end{equation}
-In Figure~\ref{fig:pl-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{Org Culture},\, \text{Codebase Age}\}$ satisfies this criterion.
-Type Safety and Tooling should \emph{not} be conditioned on---they are mediators, and conditioning on either blocks part of the causal effect.
-When $Z$ satisfies the back-door criterion, the potential outcomes are independent of treatment conditional on $Z$---the graphical counterpart to conditional ignorability.
-The two frameworks are complementary: Potential outcomes define \emph{what} to estimate; DAGs argue \emph{why} the required assumptions hold.
+The \emph{back-door criterion}~\cite{pearl2009causality} provides a principled rule for which variables to condition on in order to block all back-door paths without inadvertently blocking the causal paths.
+A set $Z$ satisfies the criterion if (1)~no variable in $Z$ is a descendant of the treatment, and (2)~conditioning on $Z$ blocks every back-door path.
+In Figure~\ref{fig:pl-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{Org Culture},\, \text{Codebase Age}\}$ satisfies this criterion: Each is a common cause of Language and Defect Proneness, and conditioning on all four blocks every spurious path.
+Two types of variables must \emph{not} be included in $Z$.
+Type Safety and Tooling are \emph{mediators} on the causal path: Conditioning on either blocks the very effect the researcher seeks to estimate.
+Popularity is a \emph{collider}: Conditioning on it \emph{opens} a spurious path rather than closing one.
+When $Z$ satisfies the back-door criterion, it provides a justifiable basis that a selection on observables method satisfies the conditional ignorability assumption derived from the potential outcomes framework (Section~\ref{sec:primer-po}).
 
-\paragraph{Alternative Explanations as Alternative DAGs.}
-Alternative explanations correspond to alternative graph structures.
-A critic might add developer motivation as an unmeasured confounder, or remove the Language $\to$ Type Safety edge entirely.
-These disagreements are productive because each alternative DAG implies testable conditional independence relations.
+%the potential outcomes are independent of treatment conditional on $Z$---the graphical counterpart to the conditional ignorability assumption from Section~\ref{sec:primer-po}.
+%The two frameworks are complementary: Potential outcomes define \emph{what} to estimate; DAGs determine \emph{which} variables must be conditioned on for the estimate to be valid.
+
+%\paragraph{Alternative Explanations as Alternative DAGs.}
+%Alternative explanations correspond to alternative graph structures.
+%A critic might add developer motivation as an unmeasured confounder, or remove the Language $\to$ Type Safety edge entirely.
+%These disagreements are productive because each alternative DAG implies testable conditional independence relations.
 
 \paragraph{Limitations of DAGs.}
 Three limitations deserve mention.
-First, DAGs require \emph{domain knowledge} to construct---they encode the researcher's assumptions about the data-generating process, not knowledge derived from the data itself.
-Second, a DAG's validity depends on the completeness of the variables included; omitting an important confounder renders the back-door criterion unreliable.
-Third, DAGs encode qualitative causal structure (which variables affect which) but say nothing about the \emph{magnitude} or functional form of effects.
+First, DAGs require \emph{domain knowledge} to construct---they encode the researcher's assumptions about the data-generating process, not knowledge derived from the data itself.\footnote{Causal discovery algorithms~\cite{spirtes2001causation} attempt to learn DAG structure directly from data, but they require their own strong assumptions (faithfulness, causal sufficiency) and remain fragile in practice.
+In SE specifically, \citet{journals/ese/HulseEM25} showed that causal graph generators are unstable, with over half the discovered edges changing across minor data perturbations.
+We take the stance that domain knowledge remains essential for constructing credible DAGs, though data-driven methods can complement expert judgment by suggesting edges to investigate.}
+Second, a DAG's validity depends on the completeness of the variables included; omitting an important confounder renders the back-door criterion unreliable.\footnote{Sensitivity analysis tools partially address this limitation by quantifying how strong an unmeasured confounder would need to be to alter a study's conclusions---see Rosenbaum bounds~\cite{rosenbaum2002observational}, coefficient stability~\cite{oster2019unobservable}, and the robustness value~\cite{cinelli2020making}, discussed in detail in Section~\ref{sec:primer-po}.}
+Third, DAGs encode qualitative causal structure (which variables affect which) but say nothing about the \emph{magnitude} or functional form of effects.\footnote{Pearl's broader structural causal model (SCM) framework~\cite{pearl2009causality} augments the qualitative DAG with functional equations and derives nonparametric identification formulas via the do-calculus.
+Semiparametric estimators such as double/debiased machine learning~\cite{chernozhukov2018double} can then estimate these quantities without imposing strong functional form assumptions, bridging the gap between qualitative causal structure and quantitative effect estimation.}
 Despite these limitations, DAGs remain the most practical tool for making causal assumptions transparent and debatable~\cite{rohrer2018thinking, tennant2021dags}.
 For selection-on-observables methods, DAGs are indispensable: The back-door criterion provides the only principled basis for deciding which covariates to include and which to exclude.
-When identification instead derives from features of the research design (Section~\ref{sec:primer-design}), DAGs play a supporting but still valuable role---clarifying which confounders the design absorbs and which remain as threats.
-
+When identification instead derives from features of the research design (Section~\ref{sec:primer-design}), DAGs play a supporting but still valuable role---providing a transparent ground for clarifying which confounders the design absorbs and which still remain as potential threats.
 
 \subsubsection{Design-Based Identification}
 \label{sec:primer-design}
 
 The preceding section showed how DAGs guide covariate selection for regression and matching---methods that identify causal effects under the assumption that \emph{all} confounders are observed and adjusted for.
-In SE, where key confounders such as developer skill, team culture, and organizational practices are largely unmeasurable from repository data, this assumption is rarely credible.
+In many SE settings, where key confounders such as developer skill, team culture, and organizational practices are largely unmeasurable from repository data, justifying this assumption is challenging.
 \emph{Design-based identification} takes a fundamentally different approach: Rather than attempting to measure and adjust for all confounders, it exploits features of the research setting---temporal variation, natural experiments, assignment thresholds---that provide quasi-random variation in treatment assignment.
 The credibility of these methods derives not from the completeness of the covariate set but from the transparency and partial testability of their design-specific assumptions~\cite{angrist2010credibility}.
 
