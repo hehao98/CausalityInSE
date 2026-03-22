@@ -357,34 +357,42 @@ Together, they form the conceptual backbone of the three technical pillars intro
 Before introducing the toolkit, we must understand why the approaches dominant in SE research fail to convincingly establish causation.
 Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery of Sections~\ref{sec:primer-toolkit}--\ref{sec:primer-stance}.
 
-Consider again the TypeScript question: A researcher compares defect rates in TypeScript projects against JavaScript projects and finds that TypeScript projects have fewer bugs.
+Consider again the TypeScript question: Suppose a researcher compares defect rates in a group of TypeScript projects against another group of JavaScript projects and finds that TypeScript projects have fewer bugs.
 Can this comparison support the claim that TypeScript \emph{causes} fewer defects?
 Almost certainly not, because the two groups were never comparable to begin with.
-Teams that choose to adopt TypeScript differ systematically from those that do not---they tend to be more experienced, more disciplined about code review, more invested in tooling, and more likely to work in organizations that value software quality.
+For example, it is possible that teams that choose to adopt TypeScript differ systematically from those that do not---they may be more experienced, more disciplined about code review, more invested in tooling, and more likely to work in organizations that value software quality.
 These characteristics are \emph{confounders}: They influence both the decision to adopt TypeScript (the treatment) and the defect rate (the outcome), creating an association between TypeScript and fewer defects even if TypeScript itself has zero causal effect.
 The observed difference in defect rates is a mixture of any genuine TypeScript effect and the \emph{selection bias} arising from systematic differences between the compared groups---and a simple group comparison cannot disentangle the two.
 
-The natural response is to ``control for'' these confounders using multivariate regression---include developer experience, project size, team size, and other covariates, and interpret the remaining coefficient on TypeScript as the causal effect.
-This strategy is by far the most common approach to causal questions in empirical SE research, yet it suffers from at least five distinct problems.
-\emph{Unobserved confounders.}
-Regression can only adjust for variables that are measured, yet the confounders most plausibly affecting both language choice and defect rates---developer expertise, team culture, organizational practices, code review discipline, testing maturity---are largely unmeasurable from repository data.
-No amount of observed controls can compensate for these missing variables, and the resulting bias can be arbitrarily large in either direction.
-\emph{Collider bias.}
-Conditioning on a variable that is a common \emph{effect} of both treatment and outcome creates spurious associations.
-Analyzing only ``successful'' GitHub projects (say, those with more than 1,000 stars) conditions on project popularity---a variable influenced by both language novelty and code quality---and can manufacture an apparent relationship between language and defects even where none exists in the full population.
-\emph{Mediator bias.}
-Conditioning on a variable that lies \emph{on the causal pathway} from treatment to outcome blocks part of the genuine effect.
-If TypeScript reduces defects partly by enabling better tooling and type checking, then controlling for tooling quality attenuates or eliminates the very signal the researcher seeks to detect.
-\emph{Reverse causality.}
-Regression on cross-sectional data cannot determine whether TypeScript reduces defects or whether teams with persistent quality problems switch to ``safer'' languages to impose discipline; no set of cross-sectional controls can distinguish these two causal directions.
-\emph{The Table~2 Fallacy.}
-\citet{westreich2013table2} identified a pervasive error in which researchers interpret \emph{all} coefficients in a regression table as though each has a valid causal interpretation.
-A regression may be properly specified to identify the effect of one variable (say, language choice), but the coefficients on the control variables are generally confounded by their own omitted causes; presenting them as ``effects'' of those covariates is unjustified without a separate identification argument for each.
-The common thread across all five problems is that without a \emph{causal model} specifying the relationships among variables, researchers cannot determine which controls help, which hurt, and which coefficients admit causal interpretation---a regression with 100 covariates is not more causally credible than one with five~\cite{wysocki2022statistical}.
-
+The natural response is to ``control for'' these confounders using multivariate regression--e.g., one with developer experience, project size, team size, and other covariates---and interpret the remaining coefficient on TypeScript as the causal effect.
+This strategy is by far the most common approach to causal questions in empirical SE research, yet it suffers from at least four distinct problems plaguing many observational studies:
+\begin{itemize}[leftmargin=15pt]
+    \item \emph{Unobserved Confounders.}
+    Regression can only adjust for variables that are measured, yet many confounders plausibly affecting both language choice and defect rates---developer expertise, team culture, organizational practices, code review discipline, testing maturity---are largely unmeasurable from repository data.
+    No amount of observed controls can compensate for these missing variables, and the resulting bias can be arbitrarily large in either direction.\footnote{Formally, if the true causal model includes an unobserved confounder $U$, the regression coefficient on the treatment converges to $\hat{\tau} \xrightarrow{p} \tau + \gamma \cdot \text{Cov}(D, U|X) / \text{Var}(D|X)$, where $\gamma$ is the effect of $U$ on the outcome and $\text{Cov}(D, U|X)/\text{Var}(D|X)$ captures the residual association between treatment and the omitted variable after partialling out the included controls (see~\citet[Ch.~3, \S3.2.2]{angrist2009mostly} for a formal derivation and \citet{cinelli2020making} for a modern sensitivity-analysis extension).
+    The bias is large whenever $U$ strongly predicts both treatment $D$ and outcome $Y$.}
+    \item \emph{Collider Bias.}
+    When a variable is a common \emph{effect} of both treatment and outcome, conditioning on it in a regression creates spurious associations.
+    For example, if popularity (e.g., as measured by the number of stars on GitHub) is influenced by both language novelty and code quality, a regression with popularity as a control can manufacture an apparent relationship between language and defects even where none exists in the full population.\footnote{In a causal directed acyclic graph (DAG), a \emph{collider} is a variable with two or more incoming arrows (e.g., $X \to C \leftarrow Y$).
+    Marginally, $X$ and $Y$ may be independent, but conditioning on $C$ ``opens'' the path between them, inducing a spurious association---an effect sometimes called Berkson's paradox~\cite{berkson1946limitations}.
+    Intuitively, once we know the value of a common effect, learning about one cause provides information about the other: Among popular projects, if a project did \emph{not} benefit from language novelty, it likely achieved popularity through high code quality, creating a negative association between novelty and quality that is purely an artifact of the conditioning.
+    See Section~\ref{sec:primer-dags} for more details on DAGs, \citet[Ch.~1, \S1.2.3]{pearl2009causality} for the formal $d$-separation proof, and \citet{elwert2014endogenous} for an accessible treatment with social-science examples.}
+    \item \emph{Mediator Bias.}
+    When a variable lies \emph{on the causal pathway} from treatment to outcome, conditioning on it in a regression blocks part of the genuine effect.
+    For example, if TypeScript reduces defects partly by enabling the adoption of better quality assurance tools (e.g., due to static typing), then controlling for tooling quality attenuates or eliminates the very signal the researcher seeks to detect.\footnote{Formally, if the causal structure is $X \to M \to Y$ (treatment affects outcome through mediator $M$), conditioning on $M$ removes the indirect effect and leaves only the direct effect $X \to Y$.
+    When the entire effect operates through the mediator---as may be the case if TypeScript's benefit is entirely due to its type system---conditioning on $M$ makes the effect vanish entirely, even though the treatment genuinely causes the outcome.
+    The researcher who targets the \emph{total} effect of $X$ on $Y$ should therefore not condition on any variable on the causal pathway.
+    Similarly, see \citet[Ch.~3, \S3.3.1]{pearl2009causality} for the formal derivation via the back-door criterion and \citet{wysocki2022statistical} for a demonstration of this error in applied research.}
+    \item \emph{Reverse Causality.}
+    Finally, regression on cross-sectional data (i.e., data collected at a single point in time) cannot determine whether TypeScript reduces defects or whether teams with persistent quality problems switch to ``safer'' languages to impose discipline; no set of cross-sectional controls can distinguish these two causal directions.
+ %   \item \emph{The Table~2 Fallacy.}
+ %   \citet{westreich2013table2} identified a pervasive error in which researchers interpret \emph{all} coefficients in a regression table as though each has a valid causal interpretation.
+ %   A regression may be properly specified to identify the effect of one variable (say, language choice), but the coefficients on the control variables are generally confounded by their own omitted causes; presenting them as ``effects'' of those covariates is unjustified without a separate identification argument for each.
+ %   The common thread across all five problems is that without a \emph{causal model} specifying the relationships among variables, researchers cannot determine which controls help, which hurt, and which coefficients admit causal interpretation---a regression with 100 covariates is not more causally credible than one with five~\cite{wysocki2022statistical}.
+\end{itemize}
 Despite these concerns, multivariate regression is not inherently incapable of supporting causal claims---under specific conditions, it can be a valid identification strategy~\cite{angrist2009mostly, cunningham2021causal}.
 However, determining whether those conditions hold requires the formal frameworks introduced in Section~\ref{sec:primer-toolkit}: The \emph{potential outcomes framework} (Section~\ref{sec:primer-po}) defines precisely what causal quantity the researcher seeks to estimate, and the \emph{graphical causal model} framework (Section~\ref{sec:primer-dags}) provides a principled basis---through the \emph{back-door criterion}---for determining which covariates must be included, which must be excluded, and whether the remaining assumptions are plausible.
-We defer the technical details to those sections, where the formalisms make the conditions precise and where design-based alternatives (Section~\ref{sec:primer-design}) offer a path forward for the many SE settings in which the regression requirements cannot be met.
+We defer the technical details to those sections, where the formalisms make the conditions precise and where design-based alternatives (Section~\ref{sec:primer-design}) offer a path forward for the many SE settings in which the regression requirements cannot be plausibly met.
 
 
 \subsection{The Causal Inference Toolkit}
@@ -402,42 +410,34 @@ Modern applied researchers use all three together: Potential outcomes define the
 \subsubsection{The Potential Outcomes Framework}
 \label{sec:primer-po}
 
-The potential outcomes framework~\cite{neyman1923application, rubin1974estimating} formalizes the counterfactual view of causation introduced in Section~\ref{sec:primer-causality} and operationalizes the \emph{estimand-first} principle~\cite{lundberg2021estimand}: Before choosing a statistical method, define the causal quantity of interest.
+The potential outcomes framework~\cite{neyman1923application, rubin1974estimating} formalizes the counterfactual view of causation introduced in Section~\ref{sec:primer-causality} and operationalizes the \emph{estimand-first} principle~\cite{lundberg2021estimand}: Before choosing a statistical method, the researcher must first define the causal quantity of interest.
+In this section, we formally introduce this framework in the simplest binary treatment case and highlight its mathematical power in transparently articulating the \emph{identifying assumptions} needed for the estimates to carry a causal interpretation.
 
 \paragraph{Notation and Setup.}
-Each unit $i$ has two \emph{potential outcomes}: $Y_i(1)$ under treatment and $Y_i(0)$ under control.
+In the binary treatment case, each study unit $i$ has two \emph{potential outcomes}: $Y_i(1)$ under treatment and $Y_i(0)$ without treatment.
 The individual causal effect $\tau_i = Y_i(1) - Y_i(0)$ is unobservable because only one potential outcome is realized---the fundamental problem of causal inference discussed in Section~\ref{sec:primer-causality}.
 
 \paragraph{Causal Estimands.}
-We target population-level summaries, each answering a different question.
-The \emph{Average Treatment Effect} (ATE), $\text{ATE} = E[Y(1)] - E[Y(0)]$, answers: On average across \emph{all} projects, how much does adopting TypeScript change defect rates?
-The \emph{Average Treatment Effect on the Treated} (ATT), $\text{ATT} = E[Y(1) - Y(0) \mid D = 1]$, answers: Among projects that \emph{actually adopted} TypeScript, how much did it change their defect rates?
+To get over this problem, researchers seek to estimate \emph{population-level summaries}.
+One option is the \emph{Average Treatment Effect} (ATE), $\text{ATE} = E[Y(1)] - E[Y(0)]$, which answers questions like: On average across \emph{all} projects, how much does adopting TypeScript change defect rates?
+Another option is the \emph{Average Treatment Effect on the Treated} (ATT), $\text{ATT} = E[Y(1) - Y(0) \mid D = 1]$, which answers questions like: Among projects that \emph{actually adopted} TypeScript, how much did adopting TypeScript change their defect rates?
 ATE and ATT coincide only under homogeneous effects or independence of treatment assignment.
-Other estimands include the \emph{Local Average Treatment Effect} (LATE) for the subpopulation affected by an instrument, and \emph{conditional average treatment effects} (CATEs) for specific subgroups.
-Which estimand to target is a substantive decision, not a statistical one: An SE researcher must decide whether the question concerns the average effect across all projects (ATE), the effect on adopters (ATT), or the effect on the subpopulation induced to adopt by a specific mechanism (LATE).
+Other estimands include the \emph{Local Average Treatment Effect} (LATE) for the subpopulation affected by an instrument, and \emph{conditional average treatment effects} (CATEs) for specific subgroups.\footnote{The LATE theorem, which shows that instrumental variables identify the causal effect for the subpopulation of \emph{compliers}, was introduced by \citet{angrist1996identification}; see \citet[Ch.~4, \S4.4--4.5]{angrist2009mostly} for a textbook treatment.
+For CATEs and heterogeneous treatment effects more broadly, see \citet[Ch.~10]{huntingtonklein2021effect} for an accessible introduction and \citet{athey2016recursive} for the causal forest methodology.}
+Which estimand to target is a substantive decision, not a statistical one: The researcher must decide whether the question concerns the average effect across all projects (ATE), the effect on adopters (ATT), or the effect on the subpopulation induced to adopt by a specific mechanism (LATE).
 
-\paragraph{From Estimands to Identification.}
-The naive comparison decomposes as:
-\begin{align}
-    E[Y \mid D\!=\!1] - E[Y \mid D\!=\!0] &= \underbrace{E[Y(1) - Y(0) \mid D\!=\!1]}_{\text{ATT}} + \underbrace{E[Y(0) \mid D\!=\!1] - E[Y(0) \mid D\!=\!0]}_{\text{Selection Bias}}
-    \label{eq:selection-bias}
-\end{align}
-Selection bias arises because treated and control groups may differ systematically in baseline potential outcomes---e.g., high-ability developers may adopt functional languages precisely because they are high-ability.
-
-In a \emph{randomized controlled trial} (RCT), $(Y(1), Y(0)) \perp D$, so selection bias vanishes and the naive comparison identifies the ATE\@.
+One particular power of the potential outcomes formalism is that it allows researchers to derive the \emph{identifying assumptions} needed for the study results to carry a causal interpretation.
+For example, in a \emph{randomized controlled trial} (RCT), the formal identifying assumption is $(Y(1), Y(0)) \perp D$ (i.e., treatment is as-if randomly assigned), so selection bias vanishes and the naive comparison identifies the ATE\@.
 A valid RCT additionally requires the \emph{Stable Unit Treatment Value Assumption} (SUTVA)---no interference between units and a well-defined treatment.
-
-When randomization is infeasible---as is typical in SE---the researcher invokes \emph{conditional ignorability}---the assumption that, conditional on observed covariates $X$, treatment assignment is independent of potential outcomes:
-\begin{equation}
-    (Y(1), Y(0)) \perp D \mid X
-    \label{eq:cond-ignorability}
-\end{equation}
-Under this assumption plus overlap ($0 < P(D\!=\!1 \mid X\!=\!x) < 1$), the ATE is identified:
-\begin{equation}
-    \text{ATE} = E_X\!\big[E[Y \mid D\!=\!1, X] - E[Y \mid D\!=\!0, X]\big]
-\end{equation}
-Credibility hinges on whether all confounders are captured in $X$---a question the graphical framework addresses.
-
+For the family of regression and matching methods, the formal identifying assumption is \emph{conditional ignorability}---the assumption that, conditional on observed covariates $X$, treatment assignment is independent of potential outcomes: $(Y(1), Y(0)) \perp D \mid X$.
+Under this assumption, plus overlap ($0 < P(D\!=\!1 \mid X\!=\!x) < 1$ for all $x$ in the support of $X$), the ATE is identified through differencing the predicted outcome based on $X$:
+In practice, this assumption means that all confounders must be captured in $X$ for the regression to produce a credible causal estimate, whose plausibility can be assessed through the graphical causal framework (Section~\ref{sec:primer-dags}) and complementary sensitivity analysis.\footnote{For textbook proofs that randomization identifies the ATE and that conditional ignorability identifies the ATE via regression, see \citet[Ch.~2]{angrist2009mostly} and \citet[Chs.~2--3]{hernan2020causal}.
+Several methods exist to probe whether the conditional ignorability assumption is plausible:
+\emph{Rosenbaum bounds}~\cite{rosenbaum2002observational} quantify how strong an unmeasured confounder would have to be to alter the study's conclusions;
+\emph{coefficient stability}~\cite{oster2019unobservable} assesses whether point estimates shift substantially as controls are added, with large shifts suggesting important omitted variables;
+the \emph{E-value}~\cite{vanderweele2017sensitivity} reports the minimum strength of association an unmeasured confounder would need with both treatment and outcome to explain away an observed effect;
+and the \emph{robustness value}~\cite{cinelli2020making} generalizes this logic to partial $R^2$ measures, indicating how much residual variation a confounder must explain to nullify the result.
+None of these methods can \emph{prove} that all confounders are measured, but they transform the unverifiable assumption into a quantitative question---\emph{how much} confounding would be required---that reviewers and readers can evaluate against in a specific setting using their domain knowledge.}
 
 \subsubsection{Graphical Causal Models and DAGs}
 \label{sec:primer-dags}
