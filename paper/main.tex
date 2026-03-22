@@ -351,16 +351,16 @@ The interventionist view yields \emph{identification conditions}---formal criter
 The target trial view yields \emph{research design}---a concrete protocol for evaluating whether a study's design is adequate for the causal question.
 Together, they form the conceptual backbone of the three technical pillars introduced in Section~\ref{sec:primer-toolkit}: Potential outcomes formalize the counterfactual view (Section~\ref{sec:primer-po}), DAGs formalize the interventionist view (Section~\ref{sec:primer-dags}), and design-based identification operationalizes the target trial view (Section~\ref{sec:primer-design}).
 
-\subsection{Why Naïve Approaches Fail}
+\subsection{Why Cannot We Use Descriptive and Correlational Evidence?}
 \label{sec:primer-naive}
 
 Before introducing the toolkit, we must understand why the approaches dominant in SE research fail to convincingly establish causation.
-Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery of Sections~\ref{sec:primer-toolkit}--\ref{sec:primer-stance}.
+Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery in Sections~\ref{sec:primer-toolkit}.
 
 Consider again the TypeScript question: Suppose a researcher compares defect rates in a group of TypeScript projects against another group of JavaScript projects and finds that TypeScript projects have fewer bugs.
 Can this comparison support the claim that TypeScript \emph{causes} fewer defects?
 Almost certainly not, because the two groups were never comparable to begin with.
-For example, it is possible that teams that choose to adopt TypeScript differ systematically from those that do not---they may be more experienced, more disciplined about code review, more invested in tooling, and more likely to work in organizations that value software quality.
+It is very likely that teams that choose to adopt TypeScript differ systematically from those that do not---they may be more experienced, more disciplined about code review, more invested in tooling, and more likely to work in organizations that value software quality.
 These characteristics are \emph{confounders}: They influence both the decision to adopt TypeScript (the treatment) and the defect rate (the outcome), creating an association between TypeScript and fewer defects even if TypeScript itself has zero causal effect.
 The observed difference in defect rates is a mixture of any genuine TypeScript effect and the \emph{selection bias} arising from systematic differences between the compared groups---and a simple group comparison cannot disentangle the two.
 
@@ -368,7 +368,7 @@ The natural response is to ``control for'' these confounders using multivariate 
 This strategy is by far the most common approach to causal questions in empirical SE research, yet it suffers from at least four distinct problems plaguing many observational studies:
 \begin{itemize}[leftmargin=15pt]
     \item \emph{Unobserved Confounders.}
-    Regression can only adjust for variables that are measured, yet many confounders plausibly affecting both language choice and defect rates---developer expertise, team culture, organizational practices, code review discipline, testing maturity---are largely unmeasurable from repository data.
+    Regression can only adjust for variables that are measured, yet many confounders plausibly affecting both language choice and defect rates---e.g., developer expertise, team culture, organizational practices, code review discipline---are largely unmeasurable from repository data.
     No amount of observed controls can compensate for these missing variables, and the resulting bias can be arbitrarily large in either direction.\footnote{Formally, if the true causal model includes an unobserved confounder $U$, the regression coefficient on the treatment converges to $\hat{\tau} \xrightarrow{p} \tau + \gamma \cdot \text{Cov}(D, U|X) / \text{Var}(D|X)$, where $\gamma$ is the effect of $U$ on the outcome and $\text{Cov}(D, U|X)/\text{Var}(D|X)$ captures the residual association between treatment and the omitted variable after partialling out the included controls (see~\citet[Ch.~3, \S3.2.2]{angrist2009mostly} for a formal derivation and \citet{cinelli2020making} for a modern sensitivity-analysis extension).
     The bias is large whenever $U$ strongly predicts both treatment $D$ and outcome $Y$.}
     \item \emph{Collider Bias.}
