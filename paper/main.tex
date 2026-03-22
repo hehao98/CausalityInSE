@@ -357,54 +357,34 @@ Together, they form the conceptual backbone of the three technical pillars intro
 Before introducing the toolkit, we must understand why the approaches dominant in SE research fail to convincingly establish causation.
 Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery of Sections~\ref{sec:primer-toolkit}--\ref{sec:primer-stance}.
 
-\paragraph{Why Comparing Outcomes Across Groups Fails.}
-A comparison across two groups with/without an intervention (e.g., TypeScript vs. JavaScript projects) suffers from \emph{confounding}, \emph{reverse causality}, and \emph{selection bias}. 
-A third variable $Z$ that causally affects both treatment $X$ and outcome $Y$ induces an association even absent a direct causal relationship.
-Developer expertise is a plausible confounder: Experienced developers may both prefer functional languages and write fewer bugs.
-Let $Y$ denote defect density, $X$ denote language choice, and $Z$ denote expertise.
-The observed association decomposes as:
-\begin{equation}
-    E[Y | X\!=\!1] - E[Y | X\!=\!0] = \underbrace{\tau}_{\text{causal effect}} + \underbrace{\big(E[Z | X\!=\!1] - E[Z | X\!=\!0]\big)}_{\text{selection difference}} \cdot \underbrace{\frac{\partial Y}{\partial Z}}_{\text{effect of } Z}
-\end{equation}
-If $\tau = 0$ but functional language adopters have higher expertise and expertise reduces defects, the observed correlation is a pure artifact of selection.
+Consider again the TypeScript question: A researcher compares defect rates in TypeScript projects against JavaScript projects and finds that TypeScript projects have fewer bugs.
+Can this comparison support the claim that TypeScript \emph{causes} fewer defects?
+Almost certainly not, because the two groups were never comparable to begin with.
+Teams that choose to adopt TypeScript differ systematically from those that do not---they tend to be more experienced, more disciplined about code review, more invested in tooling, and more likely to work in organizations that value software quality.
+These characteristics are \emph{confounders}: They influence both the decision to adopt TypeScript (the treatment) and the defect rate (the outcome), creating an association between TypeScript and fewer defects even if TypeScript itself has zero causal effect.
+The observed difference in defect rates is a mixture of any genuine TypeScript effect and the \emph{selection bias} arising from systematic differences between the compared groups---and a simple group comparison cannot disentangle the two.
 
-\emph{Reverse Causality.}
-The association may reflect $Y$ causing $X$: Teams with persistent quality problems may switch to ``rigorous'' languages like Haskell to impose discipline.
-Cross-sectional data cannot distinguish $X \to Y$ from $Y \to X$.
+The natural response is to ``control for'' these confounders using multivariate regression---include developer experience, project size, team size, and other covariates, and interpret the remaining coefficient on TypeScript as the causal effect.
+This strategy is by far the most common approach to causal questions in empirical SE research, yet it suffers from at least five distinct problems.
+\emph{Unobserved confounders.}
+Regression can only adjust for variables that are measured, yet the confounders most plausibly affecting both language choice and defect rates---developer expertise, team culture, organizational practices, code review discipline, testing maturity---are largely unmeasurable from repository data.
+No amount of observed controls can compensate for these missing variables, and the resulting bias can be arbitrarily large in either direction.
+\emph{Collider bias.}
+Conditioning on a variable that is a common \emph{effect} of both treatment and outcome creates spurious associations.
+Analyzing only ``successful'' GitHub projects (say, those with more than 1,000 stars) conditions on project popularity---a variable influenced by both language novelty and code quality---and can manufacture an apparent relationship between language and defects even where none exists in the full population.
+\emph{Mediator bias.}
+Conditioning on a variable that lies \emph{on the causal pathway} from treatment to outcome blocks part of the genuine effect.
+If TypeScript reduces defects partly by enabling better tooling and type checking, then controlling for tooling quality attenuates or eliminates the very signal the researcher seeks to detect.
+\emph{Reverse causality.}
+Regression on cross-sectional data cannot determine whether TypeScript reduces defects or whether teams with persistent quality problems switch to ``safer'' languages to impose discipline; no set of cross-sectional controls can distinguish these two causal directions.
+\emph{The Table~2 Fallacy.}
+\citet{westreich2013table2} identified a pervasive error in which researchers interpret \emph{all} coefficients in a regression table as though each has a valid causal interpretation.
+A regression may be properly specified to identify the effect of one variable (say, language choice), but the coefficients on the control variables are generally confounded by their own omitted causes; presenting them as ``effects'' of those covariates is unjustified without a separate identification argument for each.
+The common thread across all five problems is that without a \emph{causal model} specifying the relationships among variables, researchers cannot determine which controls help, which hurt, and which coefficients admit causal interpretation---a regression with 100 covariates is not more causally credible than one with five~\cite{wysocki2022statistical}.
 
-\emph{Selection Bias.}
-Conditioning on a \emph{collider}---a variable caused by both $X$ and $Y$---induces spurious associations.
-Analyzing only ``successful'' GitHub projects---e.g., $>$1,000 stars---conditions on a post-treatment variable that depends on both language choice and code quality, generating artifactual correlations that reveal nothing about the causal effect of language choice.
-
-\paragraph{Why Regression Does Not Solve the Problem.}
-Confronted with confounding, researchers often ``control for'' confounders via multivariate regression.
-This approach has fundamental limitations.
-Regression can only adjust for \emph{observed} confounders, and confounders plausibly affecting both language choice and defect rates---developer expertise, team culture, project complexity, code review practices, testing discipline---are largely unmeasurable from repository data.
-If the true model includes an unobserved confounder $U$, the estimated coefficient converges to:
-\begin{equation}
-    \hat{\tau} \xrightarrow{p} \tau + \gamma \cdot \frac{\text{Cov}(X, U \mid Z)}{\text{Var}(X \mid Z)}
-\end{equation}
-Unless $\text{Cov}(X, U \mid Z) = 0$, the estimate remains biased regardless of how many observed controls are included.
-
-Worse, including the \emph{wrong} controls can introduce bias.
-\emph{Mediator bias} arises from conditioning on a variable on the causal pathway ($X \to M \to Y$): Controlling for immutable data structure usage when studying functional languages blocks part of the effect.
-\emph{Collider bias} arises from conditioning on a common effect of treatment and outcome ($X \to C \leftarrow Y$): Controlling for project popularity, which depends on both language novelty and quality, induces a spurious association.
-Without a causal model specifying the relationships among variables, researchers cannot determine which controls are appropriate; a regression with 100 covariates is not more causally credible than one with five~\cite{wysocki2022statistical}.
-
-\paragraph{When Can Regression Support Causal Claims?}
-Regression identifies causal effects under \emph{conditional ignorability}---selection on observables:
-\begin{equation}
-    (Y(1), Y(0)) \perp D \mid X
-    \label{eq:cond-ignorability}
-\end{equation}
-This requires that all confounders be measured and correctly included, no post-treatment variables contaminate the model, and sufficient overlap exists between groups.
-Propensity score matching~\cite{rosenbaum1983central}, inverse probability weighting, and regression adjustment all rest on this same assumption.
-When the assumed data-generating process is encoded as a causal DAG (Section~\ref{sec:primer-dags}), the \emph{back-door criterion} provides a formal basis for determining whether a set of covariates suffices for identification---turning regression from an ad hoc modeling exercise into a principled identification strategy.
-In practice, however, the required covariates are often unmeasured in SE settings, which is precisely why design-based methods (Section~\ref{sec:primer-design}) are typically more credible: Their assumptions---parallel trends, exclusion restrictions, continuity---are more transparent and partially testable than the assumption that all confounders are observed.
-
-These failures motivate a more careful approach.
-Before worrying about \emph{how} to estimate a causal effect, we must first define \emph{what} we want to estimate---the \emph{estimand}---and specify the assumptions under which our estimate admits a causal interpretation.
-The next section introduces the three pillars of the causal inference toolkit that enable this.
+Despite these concerns, multivariate regression is not inherently incapable of supporting causal claims---under specific conditions, it can be a valid identification strategy~\cite{angrist2009mostly, cunningham2021causal}.
+However, determining whether those conditions hold requires the formal frameworks introduced in Section~\ref{sec:primer-toolkit}: The \emph{potential outcomes framework} (Section~\ref{sec:primer-po}) defines precisely what causal quantity the researcher seeks to estimate, and the \emph{graphical causal model} framework (Section~\ref{sec:primer-dags}) provides a principled basis---through the \emph{back-door criterion}---for determining which covariates must be included, which must be excluded, and whether the remaining assumptions are plausible.
+We defer the technical details to those sections, where the formalisms make the conditions precise and where design-based alternatives (Section~\ref{sec:primer-design}) offer a path forward for the many SE settings in which the regression requirements cannot be met.
 
 
 \subsection{The Causal Inference Toolkit}
@@ -447,7 +427,11 @@ Selection bias arises because treated and control groups may differ systematical
 In a \emph{randomized controlled trial} (RCT), $(Y(1), Y(0)) \perp D$, so selection bias vanishes and the naive comparison identifies the ATE\@.
 A valid RCT additionally requires the \emph{Stable Unit Treatment Value Assumption} (SUTVA)---no interference between units and a well-defined treatment.
 
-When randomization is infeasible---as is typical in SE---the researcher invokes conditional ignorability (Equation~\ref{eq:cond-ignorability}).
+When randomization is infeasible---as is typical in SE---the researcher invokes \emph{conditional ignorability}---the assumption that, conditional on observed covariates $X$, treatment assignment is independent of potential outcomes:
+\begin{equation}
+    (Y(1), Y(0)) \perp D \mid X
+    \label{eq:cond-ignorability}
+\end{equation}
 Under this assumption plus overlap ($0 < P(D\!=\!1 \mid X\!=\!x) < 1$), the ATE is identified:
 \begin{equation}
     \text{ATE} = E_X\!\big[E[Y \mid D\!=\!1, X] - E[Y \mid D\!=\!0, X]\big]
