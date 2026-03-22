@@ -576,10 +576,10 @@ Regression Discontinuity
 Panel Fixed Effects
   & ATE \scriptsize{(within-unit)}
   & Strict exogeneity: conditional on unit FE, treatment is uncorrelated with time-varying unobservables; no time-varying confounders \\
-\addlinespace
-Synthetic Control
-  & ATT \scriptsize{(treated unit)}
-  & Synthetic control tracks treated unit's counterfactual trajectory; no interference; no anticipation \\
+%\addlinespace
+%Synthetic Control
+%  & ATT \scriptsize{(treated unit)}
+%  & Synthetic control tracks treated unit's counterfactual trajectory; no interference; no anticipation \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -587,30 +587,34 @@ Synthetic Control
 Table~\ref{tab:methods-summary} summarizes the methods most relevant to SE research, along with their formal estimand and identifying assumptions derived from the potential outcomes framework (see \citet[Chs.~2--6]{angrist2009mostly} and \citet[Chs.~4--9]{cunningham2021causal} for formal proofs and detailed treatments of each method).
 In this section, we illustrate the high-level idea of each method with SE examples to build intuition:
 
-\paragraph{Difference-in-Differences (DiD).}
-DiD compares changes in outcomes over time between a treated group and a control group.
-In SE: Compare defect trends before and after TypeScript migration in treatment projects versus comparable JavaScript projects that did not migrate.
-The key assumption---\emph{parallel trends}---requires that, absent the migration, both groups would have followed the same defect trajectory.
-Pre-treatment trend tests can partially assess this assumption, and modern estimators handle staggered adoption~\cite{callaway2021difference, roth2023whats}.
+\begin{itemize}[leftmargin=15pt]
+    \item \emph{Difference-in-Differences (DiD).}
+    DiD compares changes in outcomes over time between a treated group and a control group, e.g., comparing defect trends before and after TypeScript migration in treatment projects versus comparable JavaScript projects that did not migrate.
+    The key assumption---\emph{parallel trends}---requires that, absent the migration, both groups would have followed the same outcome trajectory.
+    This assumption can be partially assessed through pre-treatment trend tests, and modern estimators leverage staggered adoption to build natural experiments among treated units with different adoption timing~\cite{callaway2021difference, roth2023whats}.
+    The DiD methodology has been successfully applied in SE settings to study the impact of social media promotion on open-source project popularity and contributor attraction~\cite{DBLP:conf/icse/FangLHV22}, the impact of core contributor disengagement on open-source project workflows~\cite{DBLP:conf/icse/ChenSSGT26}, and the causal effect of LLM coding agent adoption on development velocity and code quality~\cite{DBLP:conf/msr/HeMAKV26}.
 
-\paragraph{Instrumental Variables (IV).}
-IV uses an \emph{instrument}---a variable that affects the treatment but influences the outcome only through the treatment---to isolate exogenous variation.
-In SE: A policy change at a company that mandates TypeScript for new projects could serve as an instrument, provided the mandate affects defects only through TypeScript adoption.
-The IV estimand is the LATE---the effect on projects whose language choice was changed by the instrument~\cite{angrist1996identification}.
+    \item \emph{Instrumental Variables (IV).}
+    IV uses an \emph{instrument}---a variable that affects the treatment but influences the outcome only through the treatment---to isolate exogenous variation.
+    The IV estimand is the LATE---the effect on units whose treatment status was changed by the instrument~\cite{angrist1996identification}.
+    \citet{DBLP:journals/tosem/GrafVlachyW24} provide a comprehensive tutorial on applying IV and two-stage estimation in SE research, using the observed correlation between indentation style (tabs vs. spaces) and developer salary---where programming language acts as an omitted confounder---to illustrate how IV can recover consistent causal estimates when conventional regression is biased by endogeneity.
 
-\paragraph{Regression Discontinuity (RDD).}
-RDD exploits sharp thresholds in treatment assignment.
-In SE: If projects exceeding a certain complexity threshold are required to undergo formal code review, comparing projects just above and just below the threshold provides a quasi-experimental contrast.
-Identification requires that potential outcomes are continuous at the threshold and that units cannot precisely manipulate their position relative to the cutoff.
+    \item \emph{Regression Discontinuity (RDD).}
+    RDD exploits \emph{sharp} thresholds in treatment assignment to create a quasi-experimental contrast in the outcome between units just above and just below the threshold.
+    For example, if open-source projects exceeding a certain popularity threshold are eligible for a certain sponsorship program, comparing projects just above and just below the threshold provides a quasi-experimental contrast in the outcome of the sponsorship program.
+    Identification requires that potential outcomes are continuous at the threshold and that units cannot precisely manipulate their position relative to the cutoff.
+    To our knowledge, we are unaware of a successful RDD appication in an SE setting (see previous footnote in Section~\ref{sec:bg-adoption} for a discussion of terminology misuses).
 
-\paragraph{Panel Fixed Effects.}
-Panel FE uses repeated observations of the same unit over time, absorbing all \emph{time-invariant} characteristics through unit-specific intercepts.
-In SE: Observing the same developer writing code in multiple languages across different projects removes confounding from all stable developer traits---experience, cognitive style, training---that cross-sectional comparisons cannot address.
-The identifying assumption is \emph{strict exogeneity}: Conditional on unit fixed effects, the treatment is uncorrelated with time-varying unobservables.
+    \item \emph{Panel Fixed Effects.}
+    Panel fixed effects models compare repeated observations of the same unit over time, absorbing all \emph{time-invariant} characteristics through unit-specific intercepts.
+    For example, observing the same developer writing code in multiple languages across different projects removes confounding from all stable developer traits---experience, cognitive style, training---that cross-sectional comparisons cannot address.
+    The identifying assumption is \emph{strict exogeneity}: Conditional on unit fixed effects, the treatment is uncorrelated with time-varying unobservables (i.e., no time-varying confounders that are left unmeasured).\footnote{This assumption differs from the conditional ignorability assumption from selection-on-observables methods: Panel fixed effects automatically absorb all time-invariant confounders without requiring them to be measured, but the researcher must still argue---using domain knowledge or a DAG---that no unmeasured time-varying confounders remain and that past outcomes do not feed back into future treatment assignment.}
+    Panel fixed effects models have been applied in SE settings to study the causal impact of code quality on developer productivity at Google~\cite{DBLP:conf/sigsoft/ChengMCJGKZ022}.
 
-\paragraph{Synthetic Control.}
-Synthetic control constructs a weighted combination of untreated units to serve as a counterfactual for a single treated unit.
-In SE: To estimate the effect of a major framework's migration to TypeScript, one could construct a ``synthetic'' control from similar frameworks that did not migrate, weighted to match the treated framework's pre-migration defect trajectory.
+%    \item \emph{Synthetic Control.}
+%    Synthetic control constructs a weighted combination of untreated units to serve as a counterfactual for a single treated unit.
+%    In SE: To estimate the effect of a major framework's migration to TypeScript, one could construct a ``synthetic'' control from similar frameworks that did not migrate, weighted to match the treated framework's pre-migration defect trajectory.
+\end{itemize}
 
 \section{A Pragmatic Stance of Causal Inference in Empirical SE Research}
 \label{sec:framework}
