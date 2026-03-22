@@ -429,7 +429,7 @@ Which estimand to target is a substantive decision, not a statistical one: The r
 One particular power of the potential outcomes formalism is that it allows researchers to derive the \emph{identifying assumptions} needed for the study results to carry a causal interpretation.
 For example, in a \emph{randomized controlled trial} (RCT), the formal identifying assumption is $(Y(1), Y(0)) \perp D$ (i.e., treatment is as-if randomly assigned), so selection bias vanishes and the naive comparison identifies the ATE\@.
 A valid RCT additionally requires the \emph{Stable Unit Treatment Value Assumption} (SUTVA)---no interference between units and a well-defined treatment.
-For the family of regression and matching methods, the formal identifying assumption is \emph{conditional ignorability}---the assumption that, conditional on observed covariates $X$, treatment assignment is independent of potential outcomes: $(Y(1), Y(0)) \perp D \mid X$.
+For the family of regression, matching, and inverse probability weighting methods (for which we jointly refer to as the \emph{selection-on-observables} family), the formal identifying assumption is \emph{conditional ignorability}---the assumption that, conditional on observed covariates $X$, treatment assignment is independent of potential outcomes: $(Y(1), Y(0)) \perp D \mid X$.
 Under this assumption, plus overlap ($0 < P(D\!=\!1 \mid X\!=\!x) < 1$ for all $x$ in the support of $X$), the ATE is identified through differencing the predicted outcome based on $X$:
 In practice, this assumption means that all confounders must be captured in $X$ for the regression to produce a credible causal estimate, whose plausibility can be assessed through the graphical causal framework (Section~\ref{sec:primer-dags}) and complementary sensitivity analysis.\footnote{For textbook proofs that randomization identifies the ATE and that conditional ignorability identifies the ATE via regression, see \citet[Ch.~2]{angrist2009mostly} and \citet[Chs.~2--3]{hernan2020causal}.
 Several methods exist to probe whether the conditional ignorability assumption is plausible:
@@ -442,58 +442,68 @@ None of these methods can \emph{prove} that all confounders are measured, but th
 \subsubsection{Graphical Causal Models and DAGs}
 \label{sec:primer-dags}
 
-The potential outcomes framework defines estimands but offers limited guidance on \emph{which} variables to condition on.
-\citeauthor{pearl2009causality}'s~\cite{pearl2009causality} graphical framework addresses this by encoding causal assumptions as \emph{directed acyclic graphs} (DAGs), formalizing the interventionist view of causation introduced in Section~\ref{sec:primer-causality}.
+For the selection-on-observables family of methods---regression, matching, inverse probability weighting---the potential outcomes framework defines the estimand but offers limited guidance on \emph{which} variables to condition on.
+As Section~\ref{sec:primer-naive} illustrated, conditioning on the wrong variables can introduce bias rather than remove it.
+\citeauthor{pearl2009causality}'s~\cite{pearl2009causality} graphical framework addresses this gap by encoding causal assumptions as \emph{directed acyclic graphs} (DAGs), formalizing the interventionist view of causation introduced in Section~\ref{sec:primer-causality}.
 
 \paragraph{Directed Acyclic Graphs.}
 A DAG consists of nodes (variables) and directed edges ($\to$) representing direct causal effects.
 Every arrow is a substantive claim; every absent arrow asserts no direct effect.
-This transparency is the central value of DAGs for SE research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
-In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
-
-Figure~\ref{fig:pl-dag} presents a plausible DAG for the language--defect question.
-Language affects Defect Proneness indirectly through Tooling/Type Safety; Domain, Team Skill, Org Culture, and Codebase Age each influence both Language choice and Defect Proneness, making them confounders.
+This transparency is the central value of DAGs for applied research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
+%In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
+As a pedagogical example (without aiming completeness), Figure~\ref{fig:pl-dag} presents a plausible DAG for the central causal question of whether adopting a programming language affects defect proneness.
+In this DAG, Language affects Defect Proneness through two \emph{mediators}---Type Safety and Tooling; Domain, Team Skill, Org Culture, and Codebase Age each influence both Language choice and Defect Proneness, making them \emph{confounders}; and both Language and Defect Proneness influence Popularity (e.g., GitHub stars), making Popularity a \emph{collider}.
+Since we care about the language--defect problem, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.
 
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-    var/.style={draw, rounded corners, minimum width=1.6cm, minimum height=0.55cm, font=\small, align=center},
+    var/.style={draw, rounded corners, minimum width=2.2cm, minimum height=0.55cm, font=\small, align=center},
     arr/.style={->, >=stealth, semithick},
-    node distance=1cm and 2cm
 ]
-\node[var] (lang) {Language};
-\node[var, right=2.8cm of lang] (tool) {Tooling /\\Type Safety};
-\node[var, right=2.8cm of tool] (defect) {Defect\\Proneness};
-\node[var, above left=1.6cm and 0.8cm of lang] (org) {Org Culture};
-\node[var, above=2cm of tool] (domain) {Domain};
-\node[var, above right=1.6cm and 0.2cm of defect] (age) {Codebase\\Age};
-\node[var, below left=1.6cm and 0cm of lang] (skill) {Team Skill};
-\node[var, below=1.8cm of tool] (complex) {Project\\Complexity};
+% Main causal chain (middle row)
+\node[var] (lang) at (0, 0) {Language};
+\node[var] (type) at (4.8, 0.45) {Type Safety};
+\node[var] (tool) at (4.8, -0.45) {Tooling};
+\node[var] (defect) at (9.6, 0) {Defect Proneness};
+% Confounders (top row)
+\node[var] (org) at (0, 2) {Org Culture};
+\node[var] (skill) at (3.2, 2) {Team Skill};
+\node[var] (domain) at (6.4, 2) {Domain};
+\node[var] (age) at (9.6, 2) {Codebase Age};
+% Collider (bottom)
+\node[var] (pop) at (4.8, -1.7) {Popularity};
+% Causal paths through mediators
+\draw[arr] (lang) -- (type);
 \draw[arr] (lang) -- (tool);
+\draw[arr] (type) -- (defect);
 \draw[arr] (tool) -- (defect);
-\draw[arr] (domain) -- (lang);
-\draw[arr] (domain) -- (defect);
+% Confounders → Language
 \draw[arr] (org) -- (lang);
-\draw[arr] (org) to[out=-5, in=155] (defect);
-\draw[arr] (age) to[out=195, in=40] (lang);
-\draw[arr] (age) -- (defect);
 \draw[arr] (skill) -- (lang);
-\draw[arr] (skill) to[out=10, in=-135] (tool);
-\draw[arr] (skill) to[out=-10, in=-155] (defect);
-\draw[arr] (skill) -- (complex);
-\draw[arr] (complex) -- (defect);
+\draw[arr] (domain) -- (lang);
+\draw[arr] (age) -- (lang);
+% Confounders → Defect Proneness
+\draw[arr] (org) -- (defect);
+\draw[arr] (skill) -- (defect);
+\draw[arr] (domain) -- (defect);
+\draw[arr] (age) -- (defect);
+% Collider paths
+\draw[arr] (lang) -- (pop);
+\draw[arr] (defect) -- (pop);
 \end{tikzpicture}
 \caption{A plausible causal DAG for the programming language and defect proneness problem.
 Arrows represent hypothesized direct causal effects.
-The causal path of interest runs Language $\to$ Tooling/Type Safety $\to$ Defect Proneness.
-All other paths connecting Language to Defect Proneness are back-door paths that must be blocked for causal identification.}
+The causal paths of interest run through two mediators: Language $\to$ Type Safety/Tooling $\to$ Defect Proneness.
+Back-door paths through common causes (e.g., Language $\leftarrow$ Team Skill $\to$ Defect Proneness) must be blocked for causal identification.
+Popularity is a \emph{collider} (Language $\to$ Popularity $\leftarrow$ Defect Proneness): Conditioning on it opens a spurious path and must be avoided.}
 \label{fig:pl-dag}
 \end{figure}
 
-\paragraph{Causal Paths and Back-Door Paths.}
-\emph{Causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:pl-dag}, the sole causal path is Language $\to$ Tooling/Type Safety $\to$ Defect Proneness.
-\emph{Back-door paths} connect treatment to outcome through a common cause---e.g., Language $\leftarrow$ Team Skill $\to$ Defect Proneness---transmitting spurious associations.
-A naive comparison conflates the genuine causal effect with these spurious associations.
+%\paragraph{Causal Paths and Back-Door Paths.}
+%\emph{Causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:pl-dag}, the causal paths run Language $\to$ Type Safety $\to$ Defect Proneness and Language $\to$ Tooling $\to$ Defect Proneness.
+%\emph{Back-door paths} connect treatment to outcome through a common cause---e.g., Language $\leftarrow$ Team Skill $\to$ Defect Proneness---transmitting spurious associations.
+%A naive comparison conflates the genuine causal effect with these spurious associations.
 
 \paragraph{The Back-Door Criterion.}
 A set $Z$ satisfies the \emph{back-door criterion}~\cite{pearl2009causality} if: (1)~no variable in $Z$ is a descendant of the treatment, and (2)~$Z$ blocks every back-door path.
@@ -502,15 +512,13 @@ When satisfied, the causal effect is identified:
     P(Y \mid do(X = x)) = \sum_z P(Y \mid X = x, Z = z)\, P(Z = z)
 \end{equation}
 In Figure~\ref{fig:pl-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{Org Culture},\, \text{Codebase Age}\}$ satisfies this criterion.
-Tooling/Type Safety should \emph{not} be conditioned on---it is a mediator, and conditioning on it blocks part of the effect.
-
-\paragraph{Connecting DAGs to Potential Outcomes.}
+Type Safety and Tooling should \emph{not} be conditioned on---they are mediators, and conditioning on either blocks part of the causal effect.
 When $Z$ satisfies the back-door criterion, the potential outcomes are independent of treatment conditional on $Z$---the graphical counterpart to conditional ignorability.
 The two frameworks are complementary: Potential outcomes define \emph{what} to estimate; DAGs argue \emph{why} the required assumptions hold.
 
 \paragraph{Alternative Explanations as Alternative DAGs.}
 Alternative explanations correspond to alternative graph structures.
-A critic might add developer motivation as an unmeasured confounder, or remove the Language $\to$ Tooling/Type Safety edge entirely.
+A critic might add developer motivation as an unmeasured confounder, or remove the Language $\to$ Type Safety edge entirely.
 These disagreements are productive because each alternative DAG implies testable conditional independence relations.
 
 \paragraph{Limitations of DAGs.}
@@ -519,14 +527,17 @@ First, DAGs require \emph{domain knowledge} to construct---they encode the resea
 Second, a DAG's validity depends on the completeness of the variables included; omitting an important confounder renders the back-door criterion unreliable.
 Third, DAGs encode qualitative causal structure (which variables affect which) but say nothing about the \emph{magnitude} or functional form of effects.
 Despite these limitations, DAGs remain the most practical tool for making causal assumptions transparent and debatable~\cite{rohrer2018thinking, tennant2021dags}.
+For selection-on-observables methods, DAGs are indispensable: The back-door criterion provides the only principled basis for deciding which covariates to include and which to exclude.
+When identification instead derives from features of the research design (Section~\ref{sec:primer-design}), DAGs play a supporting but still valuable role---clarifying which confounders the design absorbs and which remain as threats.
 
 
 \subsubsection{Design-Based Identification}
 \label{sec:primer-design}
 
-The methods introduced above---regression with the back-door criterion, propensity score matching---all require that every confounder be observed.
-In SE, where key confounders such as developer skill, team culture, and organizational practices are largely unmeasurable, this requirement is rarely credible.
-\emph{Design-based identification} takes a different approach: Rather than attempting to measure and adjust for all confounders, it exploits features of the research setting---temporal variation, natural experiments, assignment thresholds---that provide quasi-random variation in treatment assignment.
+The preceding section showed how DAGs guide covariate selection for regression and matching---methods that identify causal effects under the assumption that \emph{all} confounders are observed and adjusted for.
+In SE, where key confounders such as developer skill, team culture, and organizational practices are largely unmeasurable from repository data, this assumption is rarely credible.
+\emph{Design-based identification} takes a fundamentally different approach: Rather than attempting to measure and adjust for all confounders, it exploits features of the research setting---temporal variation, natural experiments, assignment thresholds---that provide quasi-random variation in treatment assignment.
+The credibility of these methods derives not from the completeness of the covariate set but from the transparency and partial testability of their design-specific assumptions~\cite{angrist2010credibility}.
 
 Table~\ref{tab:methods-summary} summarizes the methods most relevant to SE research.
 
@@ -600,9 +611,9 @@ In SE: To estimate the effect of a major framework's migration to TypeScript, on
 
 \paragraph{Choosing Among Methods.}
 Three points deserve emphasis.
-First, different methods estimate different quantities---DiD identifies the ATT, IV recovers the LATE for compliers, RDD identifies an effect at the threshold---so the choice should be guided by the research setting, not convention.
-Second, design-based methods derive credibility from features of the research setting rather than covariate completeness, making their assumptions more transparent and partially testable~\cite{angrist2010credibility}.
-Third, quasi-experimental methods are not assumption-free; they replace untestable no-unobserved-confounders assumptions with different ones (parallel trends, exclusion restrictions, continuity) whose plausibility must be argued substantively.
+First, different methods estimate different quantities---DiD identifies the ATT, IV recovers the LATE for compliers, RDD identifies an effect at the threshold---so the choice should be guided by the research question and available data structure, not convention.
+Second, design-based methods are not assumption-free; they replace the untestable no-unobserved-confounders assumption with different assumptions (parallel trends, exclusion restrictions, continuity) that must be argued substantively---but these design-specific assumptions are typically more transparent and partially testable than the selection-on-observables requirement.
+Third, DAGs remain valuable even when identification derives from the research design: They clarify which confounders the design absorbs, whether design-specific assumptions hold (e.g., the exclusion restriction for IV, or the absence of time-varying confounders for panel FE), and which mechanisms mediate the treatment effect.
 
 \paragraph{The Internal--External Validity Trade-Off.}
 Every study navigates a tension between internal validity (causal confidence) and external validity (generalizability).
@@ -878,6 +889,18 @@ No existing study of real-world PL effects exploits within-repository panel vari
 \appendix
 
 \section{Frequently Asked Questions}
+
+\subsection{In science, it is often difficult for researchers to develop a complete causal theory. For complex problems, there may be 1000 plausible nodes in the causal graph. Does that mean that science is doomed if we cannot prove the completeness of causal theory? What is the philosophical perspective on this?}
+
+\subsection{What if you have a 0.99 $R^2$ model? Does that mean that you have controlled all the suffient confounders? What is the relationship between the completeness of the causal theory and the $R^2$ of the model?}
+
+\subsection{Let's say that I have a multivariate regression model with 1000 covariates. Does that mean that I have controlled all the suffient confounders? What is the relationship between the number of covariates and the completeness of the causal theory?}
+
+\subsection{What is the relevant role of DAGs in the selection-on-observables and design-based identification frameworks, respectively?}
+
+DAGs + back-door criterion: What must we condition on, assuming we can measure everything relevant? (The "selection-on-observables" world.)
+Design-based identification: What can we do when we cannot plausibly measure everything? (The "credibility revolution" world.)
+But: DAGs remain useful in both worlds---in the first for covariate selection, in the second for reasoning about what the design does and does not address.
 
 \end{document}
 \endinput
