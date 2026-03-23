@@ -173,12 +173,12 @@ Our tutorial fills this gap with an integrative treatment, covering multiple int
 \subsubsection{The Development of the Causal Inference Toolkit}
 \label{sec:bg-causal-history}
 
-The modern causal inference toolkit emerged over a century through contributions from three intellectual traditions---statistics, econometrics, and computer science---each addressing a distinct aspect of the causal inference: experimental foundations, credibility evolution, and graphic modeling.
+The modern causal inference toolkit emerged over a century through contributions from three intellectual traditions---statistics, econometrics, and computer science---each addressing a distinct aspect of causal inference: experimental foundations, credibility evolution, and graphical modeling.
 
 First of all, statisticians laid the \emph{experimental foundations}.
 \citet{neyman1923application} defined the causal effect as the difference between two potential outcomes---only one of which is ever observed---and \citet{fisher1935design} established randomization as the principled basis for causal attribution.
 Extending causal reasoning to observational settings, \citet{hill1965environment} proposed viewpoints for evaluating whether observed associations reflect genuine causal relationships, \citet{rubin1974estimating} formalized \emph{conditional ignorability} as the identifying assumption for observational studies, and \citet{rosenbaum1983central} introduced the propensity score as a practical dimension-reducing device for covariate adjustment.
-Yet, the family of selection-on-observables methods fundamentally cannot address confounding from \emph{unobserved variables} plaguing many economic and societal problems~\cite{heckman1979sample}---e.g., one's (arguably unmeasureable) inherent ability affects both their educational attainment and future earnings~\cite{card1999causal}---a limitation that motivated economists to develop design-based alternatives.
+Yet, the family of selection-on-observables methods fundamentally cannot address confounding from \emph{unobserved variables} plaguing many economic and societal problems~\cite{heckman1979sample}---e.g., one's (arguably unmeasurable) inherent ability affects both their educational attainment and future earnings~\cite{card1999causal}---a limitation that motivated economists to develop design-based alternatives.
 
 Then, econometricians drove the \emph{credibility revolution}, shifting the basis of causal claims from statistical modeling to research design.
 \citet{leamer1983let} first diagnosed the field's credibility problem, arguing that the sensitivity of regression results to specification choices undermined confidence in empirical findings.
@@ -199,9 +199,9 @@ Our tutorial treats both traditions as essential for SE research: Design-based i
 
 In recent years, psychology and health research have confronted a strikingly similar problem---the disconnect between causal ambition and methodological practice---that we identify in SE, and their experience reveals both consequences and remedies relevant to the SE community.
 
-The reform began with diagnosing the causal language problem.
+The reform began with the diagnosis of the causal language problem.
 \citet{hernan2018cword} challenged the epidemiological norm of replacing causal language with associational euphemisms, arguing that this evasion does not prevent causal interpretation but merely obscures the causal question and blocks transparent discussion of identification assumptions.
-\citet{grosz2020taboo} documented a parallel ``taboo'' in psychology: The norm against explicit causal inference pushes causal reasoning underground, resulting in impaired study design and disconnect between findings and downstream interpretation.
+\citet{grosz2020taboo} documented a parallel ``taboo'' in psychology: The norm against explicit causal inference pushes causal reasoning underground, resulting in impaired study design and a disconnect between findings and downstream interpretation.
 \citet{haber2022causal} provided large-scale empirical evidence that this taboo fails on its own terms---among 1,170 articles from 18 high-profile health journals, 52\% of abstracts implied moderate or strong causality despite ostensibly associational language.
 The SE community exhibits the same pattern, as we will show in Section~\ref{sec:bg-adoption}.
 
@@ -225,7 +225,7 @@ To quantify the gap between causal ambition and methodological practice, we cond
 We do not aim to achieve methodological perfection in this analysis, but even a simple exploration reveals a picture strikingly similar to the problems reported in psychology~\cite{grosz2020taboo} and epidemiology~\cite{haber2022causal} research.
 
 \paragraph{Corpus and Classification.}
-For each venue (ICSE, FSE, ASE), we obtained a paper list, paper titles, and DOIs from DBLP, and retrieved the paper abstracts via the Semantic Scholar batch API with OpenAlex as a backfill source.
+For each venue (ICSE, FSE, ASE), we obtained a list of papers, paper titles, and DOIs from DBLP, and retrieved the paper abstracts via the Semantic Scholar batch API, using OpenAlex as a backfill source.
 This produced a corpus of 5,341 papers.
 Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, (2)~whether it is a mining software repositories (MSR) study, and (3)~whether it investigates a causal research question, employs a causal inference method, or both.
 For papers tagged as using causal methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
@@ -357,7 +357,7 @@ Together, they form the conceptual backbone of the three technical pillars intro
 Before introducing the toolkit, we must understand why the approaches dominant in SE research fail to convincingly establish causation.
 Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery in Sections~\ref{sec:primer-toolkit}.
 
-Consider again the TypeScript question: Suppose a researcher compares defect rates in a group of TypeScript projects against another group of JavaScript projects and finds that TypeScript projects have fewer bugs.
+Consider the TypeScript question again: Suppose a researcher compares defect rates in a group of TypeScript projects against another group of JavaScript projects and finds that TypeScript projects have fewer bugs.
 Can this comparison support the claim that TypeScript \emph{causes} fewer defects?
 Almost certainly not, because the two groups were never comparable to begin with.
 It is very likely that teams that choose to adopt TypeScript differ systematically from those that do not---they may be more experienced, more disciplined about code review, more invested in tooling, and more likely to work in organizations that value software quality.
@@ -368,7 +368,7 @@ The natural response is to ``control for'' these confounders using multivariate 
 This strategy is by far the most common approach to causal questions in empirical SE research, yet it suffers from at least four distinct problems plaguing many observational studies:
 \begin{itemize}[leftmargin=15pt]
     \item \emph{Unobserved Confounders.}
-    Regression can only adjust for variables that are measured, yet many confounders plausibly affecting both language choice and defect rates---e.g., developer expertise, team culture, organizational practices, code review discipline---are largely unmeasurable from repository data.
+    Regression can only adjust for measured variables, yet many confounders that plausibly affect both language choice and defect rates---e.g., developer expertise, team culture, organizational practices, code review discipline---are largely unmeasurable from repository data.
     No amount of observed controls can compensate for these missing variables, and the resulting bias can be arbitrarily large in either direction.\footnote{Formally, if the true causal model includes an unobserved confounder $U$, the regression coefficient on the treatment converges to $\hat{\tau} \xrightarrow{p} \tau + \gamma \cdot \text{Cov}(D, U|X) / \text{Var}(D|X)$, where $\gamma$ is the effect of $U$ on the outcome and $\text{Cov}(D, U|X)/\text{Var}(D|X)$ captures the residual association between treatment and the omitted variable after partialling out the included controls (see~\citet[Ch.~3, \S3.2.2]{angrist2009mostly} for a formal derivation and \citet{cinelli2020making} for a modern sensitivity-analysis extension).
     The bias is large whenever $U$ strongly predicts both treatment $D$ and outcome $Y$.}
     \item \emph{Collider Bias.}
@@ -426,7 +426,7 @@ Other estimands include the \emph{Local Average Treatment Effect} (LATE) for the
 For CATEs and heterogeneous treatment effects more broadly, see \citet[Ch.~10]{huntingtonklein2021effect} for an accessible introduction and \citet{athey2016recursive} for the causal forest methodology.}
 Which estimand to target is a substantive decision, not a statistical one: The researcher must decide whether the question concerns the average effect across all projects (ATE), the effect on adopters (ATT), or the effect on the subpopulation induced to adopt by a specific mechanism (LATE).
 
-One particular power of the potential outcomes formalism is that it allows researchers to derive the \emph{identifying assumptions} needed for the study results to carry a causal interpretation.
+One particular power of the potential outcomes formalism is that it allows researchers to derive the \emph{identifying assumptions} required for the study's results to have a causal interpretation.
 For example, in a \emph{randomized controlled trial} (RCT), the formal identifying assumption is $(Y(1), Y(0)) \perp D$ (i.e., treatment is as-if randomly assigned), so selection bias vanishes and the naive comparison identifies the ATE\@.
 A valid RCT additionally requires the \emph{Stable Unit Treatment Value Assumption} (SUTVA), i.e., no interference between units and a well-defined treatment, and \emph{full compliance}, i.e., the research units are truly following their assigned treatment status.
 For the family of regression, matching, and inverse probability weighting methods (for which we jointly refer to as the \emph{selection-on-observables} family), the formal identifying assumption is \emph{conditional ignorability}---the assumption that, conditional on observed covariates $X$, treatment assignment is independent of potential outcomes: $(Y(1), Y(0)) \perp D \mid X$.
@@ -451,7 +451,7 @@ A DAG encodes \emph{the researcher's beliefs about the true data-generating proc
 Every arrow is a substantive claim; every absent arrow asserts no direct effect.
 This transparency is the central value of DAGs for applied research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
 %In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
-As a pedagogical example (without aiming completeness), Figure~\ref{fig:pl-dag} presents a plausible DAG for the central causal question of whether adopting a programming language affects defect proneness.
+As a pedagogical example (without aiming for completeness), Figure~\ref{fig:pl-dag} presents a plausible DAG for the causal question of whether adopting a programming language affects defect proneness.
 In this DAG, Language affects Defect Proneness through two \emph{mediators}---Type Safety and Tooling; Domain, Team Skill, Org Culture, and Codebase Age each influence both Language choice and Defect Proneness, making them \emph{confounders}; and both Language and Defect Proneness influence Popularity (e.g., GitHub stars), making Popularity a \emph{collider}.
 Since we care about the language--defect problem, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.
 
@@ -505,7 +505,7 @@ In a DAG, a \emph{causal paths} follow arrows from treatment to outcome; in Figu
 These paths transmit the genuine causal effect.
 A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, Language $\leftarrow$ Team Skill $\to$ Defect Proneness.
 These back-door paths transmit spurious associations: Even if Language had zero effect on Defect Proneness, the fact that skilled teams both choose certain languages and produce fewer defects creates an observed correlation between language choice and defect rates.
-A naive comparison conflates the genuine causal effect flowing through the causal paths with these spurious associations flowing through the back-door paths.
+A naive comparison conflates the genuine causal effect that flows through the causal paths with the spurious associations that flow through the back-door paths.
 
 The \emph{back-door criterion}~\cite{pearl2009causality} provides a principled rule for which variables to condition on in order to block all back-door paths without inadvertently blocking the causal paths.
 A set $Z$ satisfies the criterion if (1)~no variable in $Z$ is a descendant of the treatment, and (2)~conditioning on $Z$ blocks every back-door path.
@@ -513,7 +513,7 @@ In Figure~\ref{fig:pl-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{O
 Two types of variables must \emph{not} be included in $Z$.
 Type Safety and Tooling are \emph{mediators} on the causal path: Conditioning on either blocks the very effect the researcher seeks to estimate.
 Popularity is a \emph{collider}: Conditioning on it \emph{opens} a spurious path rather than closing one.
-When $Z$ satisfies the back-door criterion, it provides a justifiable basis that a selection on observables method satisfies the conditional ignorability assumption derived from the potential outcomes framework (Section~\ref{sec:primer-po}).
+When $Z$ satisfies the back-door criterion, it provides a justifiable basis that a selection-on-observables method satisfies the conditional ignorability assumption derived from the potential outcomes framework (Section~\ref{sec:primer-po}).
 
 %the potential outcomes are independent of treatment conditional on $Z$---the graphical counterpart to the conditional ignorability assumption from Section~\ref{sec:primer-po}.
 %The two frameworks are complementary: Potential outcomes define \emph{what} to estimate; DAGs determine \emph{which} variables must be conditioned on for the estimate to be valid.
@@ -591,7 +591,7 @@ In this section, we illustrate the high-level idea of each method with SE exampl
     \item \emph{Difference-in-Differences (DiD).}
     DiD compares changes in outcomes over time between a treated group and a control group, e.g., comparing defect trends before and after TypeScript migration in treatment projects versus comparable JavaScript projects that did not migrate.
     The key assumption---\emph{parallel trends}---requires that, absent the migration, both groups would have followed the same outcome trajectory.
-    This assumption can be partially assessed through pre-treatment trend tests, and modern estimators leverage staggered adoption to build natural experiments among treated units with different adoption timing~\cite{callaway2021difference, roth2023whats}.
+    This assumption can be partially assessed using pre-treatment trend tests, and modern estimators leverage staggered adoption to construct natural experiments among treated units with different adoption timings~\cite {callaway2021difference, roth2023whats}.
     The DiD methodology has been successfully applied in SE settings to study the impact of social media promotion on open-source project popularity and contributor attraction~\cite{DBLP:conf/icse/FangLHV22}, the impact of core contributor disengagement on open-source project workflows~\cite{DBLP:conf/icse/ChenSSGT26}, and the causal effect of LLM coding agent adoption on development velocity and code quality~\cite{DBLP:conf/msr/HeMAKV26}.
 
     \item \emph{Instrumental Variables (IV).}
@@ -601,9 +601,9 @@ In this section, we illustrate the high-level idea of each method with SE exampl
 
     \item \emph{Regression Discontinuity (RDD).}
     RDD exploits \emph{sharp} thresholds in treatment assignment to create a quasi-experimental contrast in the outcome between units just above and just below the threshold.
-    For example, if open-source projects exceeding a certain popularity threshold are eligible for a certain sponsorship program, comparing projects just above and just below the threshold provides a quasi-experimental contrast in the outcome of the sponsorship program.
+    For example, if open-source projects exceeding a certain popularity threshold are eligible for a sponsorship program, comparing projects just above and just below the threshold provides a quasi-experimental contrast in the program's outcomes.
     Identification requires that potential outcomes are continuous at the threshold and that units cannot precisely manipulate their position relative to the cutoff.
-    To our knowledge, we are unaware of a successful RDD appication in an SE setting (see previous footnote in Section~\ref{sec:bg-adoption} for a discussion of terminology misuses).
+    To our knowledge, we are unaware of a successful RDD application in an SE setting (see previous footnote in Section~\ref{sec:bg-adoption} for a discussion of terminology misuses).
 
     \item \emph{Panel Fixed Effects.}
     Panel fixed effects models compare repeated observations of the same unit over time, absorbing all \emph{time-invariant} characteristics through unit-specific intercepts.
