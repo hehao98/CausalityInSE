@@ -1,0 +1,13 @@
+---
+description: Plan management conventions
+globs: plans/*.md
+alwaysApply: true
+---
+
+# Plan Management Convention
+
+- All specialized project plans, such as literature review and methodology plans, must be stored in the `plans/` directory.
+- The task backlog, however, should be kept in the main `README.md`.
+- Use the naming convention `YYYYMMDD - {Few Words Plan Summary}.md` for all plan files (e.g., `260323 - Literature Review Plan.md`).
+- Do not store detailed sub-plans directly in the `README.md`. Instead, leave a pointer in `README.md` and place the detailed plan in the `plans/` directory.
+- Each plan file should concisely describe the status of tasks, with checked and unchecked markdown checklists.

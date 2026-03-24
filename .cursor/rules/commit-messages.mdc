@@ -1,0 +1,36 @@
+---
+description: Git commit message conventions for the project
+alwaysApply: true
+---
+
+# Git Commit Message Standards
+
+When generating git commit messages, you MUST adhere to the following formatting rules:
+
+1. **Title Length Limit**: The first line (title/subject) MUST be 80 characters or fewer.
+2. **Title Style**: Use imperative mood for the title (e.g., "Add feature" not "Added feature" or "Adds feature").
+3. **Empty Line**: Leave the second line completely blank.
+4. **Detailed Description**: Provide a detailed description starting on the third line.
+5. **Body Wrapping**: Wrap the body text at 80 characters for better readability.
+6. **Content**: Explain *why* the change is being made and *what* it does, not just how it's implemented.
+
+### Examples
+
+❌ **BAD** (Title too long, no empty line, descriptive mood)
+```text
+Added the new user authentication module and fixed the login bug that was causing users to be logged out randomly when navigating between pages
+Now the system uses JWT tokens with a 24-hour expiration instead of session cookies. I also updated the database schema to store refresh tokens.
+```
+
+✅ **GOOD**
+```text
+Add JWT-based user authentication and fix session dropping
+
+Replace the legacy session-cookie authentication system with JWT tokens
+(24-hour expiration) to resolve the bug where users are randomly logged out
+during page navigation.
+
+Updates the database schema to securely store and validate refresh tokens.
+```---
+alwaysApply: true
+---
