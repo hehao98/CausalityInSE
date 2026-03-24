@@ -619,9 +619,9 @@ In this section, we illustrate the high-level idea of each method with SE exampl
 \subsection{A Pragmatic Stance for SE Research}
 \label{sec:primer-stance}
 
-The preceding subsections introduced a rich but potentially daunting toolkit: Potential outcomes define estimands, DAGs encode assumptions, and design-based methods exploit quasi-random variation.
+The preceding subsections introduced a rich but potentially daunting toolkit: Potential outcomes define estimands, DAGs encode mechanisms, and design-based methods exploit quasi-random variation.
 An SE researcher encountering these ideas for the first time faces an immediate practical question: \emph{How do I actually use this?}
-There is no universal recipe---causal inference requires both methodological rigor and creative problem-solving, and the ``right'' approach depends on the specific features of the data and setting.
+In general, there is no universal recipe for causal inquiries in \emph{any} research setting---causal inference requires both methodological rigor and creative problem-solving, and the ``right'' approach depends on the specific features of the data and setting.
 Drawing on the emerging consensus across econometrics~\cite{imbens2020potential, angrist2010credibility}, epidemiology~\cite{hernan2020causal}, and sociology~\cite{lundberg2021estimand}, we recommend a pragmatic synthesis tailored to the realities of empirical SE research.
 
 \paragraph{Use Counterfactual Reasoning to Frame Research Designs.}
@@ -633,24 +633,25 @@ The target trial framework is especially natural for SE researchers who are alre
 \paragraph{Use DAGs to Reason About Mechanisms and Covariate Selection.}
 Once the target trial is articulated, construct a DAG encoding the assumed causal structure.
 The DAG identifies which covariates must be controlled for (back-door criterion), which must \emph{not} be controlled for (mediators and colliders), and makes every assumption explicit so that reviewers can challenge specific edges rather than raising vague concerns.
-For design-based methods, the DAG is less central to identification but remains valuable for reasoning about which confounders the design absorbs and which remain as threats.
+While the DAG is less central to identification for design-based methods, it remains valuable for reasoning about which confounders the design absorbs, what remaining threat existings, and more importantly, what is the actual \emph{mechanism} behind the observed cause and effect.
+A genuine and rigorous reasoning on causal mechanisms often reveal important design considerations and practical implications, as we will show in the second worked example on the effect of TypeScript (Section~\ref{sec:example-b}). 
 
-\paragraph{Use Design-Based Identification Whenever the Setting Permits.}
+\paragraph{Use Design-Based Identification When the Setting Permits.}
 When the data contain temporal variation (panel data), staggered adoption events (DiD), plausible instruments (IV), or assignment thresholds (RDD), exploit these features rather than relying solely on covariate adjustment.
 Different methods estimate different quantities---DiD identifies the ATT, IV recovers the LATE, RDD identifies an effect at the threshold---so the choice should be guided by the research question and available data structure, not convention.
 Design-based methods are not assumption-free; they replace the untestable no-unobserved-confounders assumption with different assumptions (parallel trends, exclusion restrictions, continuity) that must be argued substantively---but these assumptions are typically more transparent and partially testable.
 Every study navigates a tension between internal validity (causal confidence) and external validity (generalizability), and the pragmatic researcher chooses the strongest credible design and builds confidence through \emph{triangulation}: convergent findings across complementary designs, data sources, and populations~\cite{shadish2002experimental}.
 
-\paragraph{Why This Stance Fits SE.}
+\paragraph{Why This Stance Fits SE}
 Four features of the SE research landscape make this synthesis particularly appropriate.
 First, SE's observational data is plagued by unmeasured confounders---developer skill, team culture, organizational practices---that render selection-on-observables strategies fragile; design-based methods sidestep this by exploiting quasi-random variation.
 Second, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
 Third, DAGs align with the SE mindset: Software systems are themselves structured as dependency graphs, and the idea of encoding causal relationships as a directed graph is congenial to computer scientists.
 Fourth, the target trial framework bridges SE researchers' existing intuitions about controlled experiments to the observational settings where most SE data originates.
-Section~\ref{sec:guide} operationalizes this pragmatic stance as a practical guide, and Appendix~\ref{sec:appendix-standard} provides a concrete empirical standard for structured assessment.
+Section~\ref{sec:guide} operationalizes this pragmatic stance as a practical guide, and Appendix~\ref{sec:appendix-standard} provides a concrete empirical standard for structured assessment of research works.
 
 
-\section{A Guide for Conducting Credible Causal Inquiry in SE}
+\section{A Guide for Conducting Credible Causal Inquiries in Software Engineering}
 \label{sec:guide}
 
 The primer in Section~\ref{sec:primer} provides the vocabulary of causal inference; the pragmatic stance in Section~\ref{sec:primer-stance} provides the grammar.
@@ -1016,10 +1017,10 @@ Design-based identification: What can we do when we cannot plausibly measure eve
 But: DAGs remain useful in both worlds---in the first for covariate selection, in the second for reasoning about what the design does and does not address.
 
 
-\section{An Empirical Standard for Causal Inquiry in SE}
+\section{An Empirical Standard for Causal Inquiries in Software Engineering}
 \label{sec:appendix-standard}
 
-This appendix presents an empirical standard for SE studies making causal claims from observational data, written in the format of the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} so it can be directly proposed as a new standard.
+This appendix presents an empirical standard for SE studies making causal claims from observational data, written in the format of the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} so it can be directly incorporated into the ACM SIGSOFT Empirical Standards collection as a new standard.
 Where the guide in Section~\ref{sec:guide} conveys the reasoning, this standard provides the minimum requirements that authors, reviewers, and editors can verify.
 
 \subsection{Application}
@@ -1140,7 +1141,7 @@ External validity is important but should not override internal validity for cau
     \item \citet{DBLP:conf/sigsoft/ChengMCJGKZ022}: Panel fixed effects analysis of code quality and developer productivity at Google.
     \item \citet{DBLP:conf/icse/FangLHV22}: Difference-in-differences analysis of social media promotion on open-source project outcomes.
     \item \citet{DBLP:conf/icse/ChenSSGT26}: Difference-in-differences analysis of core contributor disengagement on open-source workflows.
-    \item \citet{DBLP:conf/msr/HeMAKV26}: Difference-in-differences analysis of LLM coding agent adoption on development velocity and code quality.
+    \item \citet{DBLP:conf/msr/HeMAKV26}: Difference-in-differences analysis of LLM coding agents on development velocity and code quality.
     \item \citet{DBLP:journals/tosem/FuriaTF24}: Structural causal models applied to programming language and defect data.
 \end{itemize}
 
