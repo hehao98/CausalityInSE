@@ -1,0 +1,9 @@
+Add Section 4 revision plan and update README pointer
+
+Draft a detailed plan for revising Section 4 to shift from a prescriptive
+four-step recipe to a decision-guided workflow with branching paths. This
+makes the framework more approachable and honestly reflects the creative nature
+of causal inference in SE contexts.
+
+Updates the task backlog in README.md to point to the new plan file in the
+plans directory, adhering to the plan management conventions.

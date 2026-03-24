@@ -61,14 +61,8 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 
 - [x] Write Introduction (Section 1)
 - [x] Write Background & Related Work (Section 2), informed by LR1--LR4
-- [ ] **Write the Causal Inference Primer (Section 3)**
-  - [ ] Restructure Section 3 according to the detailed plan above
-  - [ ] Write new Section 3.1: "What Does It Mean for X to Cause Y?" (conceptual perspectives, SE-grounded)
-  - [ ] Revise Section 3.2: Consolidate correlation != causation and regression limitations; add DAG-informed regression pointer
-  - [ ] Revise Section 3.3: Restructure as "Three Pillars" with sub-subsections for PO, DAGs, design-based identification; add SE examples for each method
-  - [ ] Write new Section 3.4: "A Pragmatic Stance for SE Research" (potential outcomes for validity, DAGs for mechanisms, design-based identification when possible)
-  - [ ] Write opening paragraph positioning Section 3 relative to Section 2 and scoping coverage
-- [ ] Write the Four-Step Framework (Section 4) --- *currently drafted but may need revision after Section 3 is finalized*
+- [x] Write the Causal Inference Primer (Section 3)
+- [ ] Write the Four-Step Framework (Section 4) --- *currently drafted but needs revision; see `plans/20260323 - Revising Section 4.md`*
 
 ### Phase 2: Worked Example A --- Ray et al. + Panel FE (Section 5)
 
