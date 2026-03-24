@@ -46,7 +46,7 @@ The current Section 4 lines 619--667 contain three blocks that belong in Section
 
 The tone should convey that the primer in Section 3 is the *vocabulary*; the pragmatic stance is the *grammar*; and Section 4 is the *conversation*---showing how to think in this language, not just recite it.
 
-- [ ] Revise and relocate "Choosing Among Methods," "Internal--External Validity," and current 4.1 into Section 3.4 with a clear narrative arc
+- [x] Revise and relocate "Choosing Among Methods," "Internal--External Validity," and current 4.1 into Section 3.4 with a clear narrative arc
 
 ---
 
@@ -286,13 +286,13 @@ The worked examples should explicitly call back to the guide: "As the guide in S
 
 ## Actionable Tasks
 
-- [ ] Revise and relocate "Choosing Among Methods," "Internal--External Validity," and current 4.1 into Section 3.4 with a clear narrative arc (see Section 3 merge description above)
-- [ ] Draft 4.1 "Start with the Causal Question" with domain-neutral SE vignettes
-- [ ] Draft 4.2.1 "Path A: DAG-Based Identification"
-- [ ] Draft 4.2.2 "Path B: Design-Based Identification" with data-feature-to-method table
-- [ ] Draft 4.2.3 "When Neither Path Is Clean"
-- [ ] Draft 4.3 "Probing Credibility: Limitations and Alternatives"
-- [ ] Draft appendix as a full ACM Empirical Standard for Causal Inquiry (Application, Specific Attributes, Quality Criteria, Acceptable Deviations, Antipatterns, Invalid Criticisms, Suggested Readings, Exemplars)
-- [ ] Update cross-references in Sections 5--6 to reference the guide's subsections instead of "Step 1" / "Step 2"
-- [ ] Update abstract and introduction: replace "four-step framework" with "guide" language
-- [ ] Update README.md paper vision and task backlog to reflect the revised framing
+- [x] Revise and relocate "Choosing Among Methods," "Internal--External Validity," and current 4.1 into Section 3.4 with a clear narrative arc (see Section 3 merge description above)
+- [x] Draft 4.1 "Start with the Causal Question" with domain-neutral SE vignettes
+- [x] Draft 4.2.1 "Path A: DAG-Based Identification"
+- [x] Draft 4.2.2 "Path B: Design-Based Identification" with data-feature-to-method table
+- [x] Draft 4.2.3 "When Neither Path Is Clean"
+- [x] Draft 4.3 "Probing Credibility: Limitations and Alternatives"
+- [x] Draft appendix as a full ACM Empirical Standard for Causal Inquiry (Application, Specific Attributes, Quality Criteria, Acceptable Deviations, Antipatterns, Invalid Criticisms, Suggested Readings, Exemplars)
+- [x] Update cross-references in Sections 5--6 to reference the guide's subsections instead of "Step 1" / "Step 2"
+- [x] Update abstract and introduction: replace "four-step framework" with "guide" language
+- [x] Update README.md paper vision and task backlog to reflect the revised framing

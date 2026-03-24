@@ -73,11 +73,11 @@ Empirical software engineering (SE) research frequently investigates causal ques
 This disconnect between causal ambition and methodological practice mirrors a well-documented crisis in psychology and health research, but the SE community lacks an accessible, unified introduction to the causal inference toolkit for substantiating causal claims.
 This tutorial paper addresses that gap.
 We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies (difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects).
-Taking the stance that no causal inquiry is perfect by design, we introduce a four-step framework for \emph{assessing} the credibility of causal claims in SE research: (1)~derive an explicit causal theory from SE domain knowledge, (2)~define the causal estimand and specify identifying assumptions for causal interpretation, (3)~honestly acknowledge and mitigate limitations, and (4)~thoughtfully navigate alternative explanations.
-We demonstrate the framework's diagnostic and constructive power through two worked examples drawn from the programming-language and code-quality debate.
-In the first example, we apply the four steps to diagnose the identification controversy in \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, yield identification more robust to common unobserved confounders in the SE context.
+We then present a practical guide for conducting credible causal inquiry in SE, structured around three stages: articulating the causal question (target trial, estimand, DAG), choosing an identification strategy (DAG-based or design-based), and probing the strategy's credibility through sensitivity analysis and engagement with alternative explanations.
+We demonstrate the guide's diagnostic and constructive power through two worked examples drawn from the programming-language and code-quality debate.
+In the first example, we apply the guide to diagnose the identification controversy in \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, yield identification more robust to common unobserved confounders in the SE context.
 In the second example, we diagnose the selection bias in Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
-Both examples illustrate how the framework systematically improves prior research designs.
+Both examples illustrate how the guide systematically improves prior research designs.
 As a result, we hope this paper will provide a methodological blueprint for future empirical SE research, illustrating how to balance rigor with practicality to generate actionable, trustworthy evidence for important empirical SE questions.
 \end{abstract}
 
@@ -135,9 +135,9 @@ This tutorial paper fills that gap.
 
 We make three contributions.
 First, we provide a self-contained primer on causal inference for SE researchers (Section~\ref{sec:primer}), covering the potential outcomes framework, graphical causal models, and design-based identification strategies using SE-specific examples.
-Second, we introduce a four-step causal credibility assessment framework (Section~\ref{sec:framework}) that guides researchers to (1)~derive an explicit causal theory from domain knowledge, (2)~define the causal estimand and specify identifying assumptions, (3)~honestly acknowledge and mitigate limitations, and (4)~thoughtfully navigate alternative explanations.
-Third, we demonstrate the framework's diagnostic and constructive power through two worked examples from the programming language debate.
-In Example~A (Section~\ref{sec:example-a}), we apply the four steps to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s study, showing how the cross-sectional design limits causal interpretation and how panel fixed effects on the same data strengthen identification by absorbing time-invariant confounders.
+Second, we present a practical guide for conducting credible causal inquiry in SE (Section~\ref{sec:guide}), structured around three stages: articulating the causal question with precision, choosing an identification strategy (DAG-based or design-based), and probing the strategy's credibility through sensitivity analysis and engagement with alternative explanations.
+Third, we demonstrate the guide's diagnostic and constructive power through two worked examples from the programming language debate.
+In Example~A (Section~\ref{sec:example-a}), we apply the guide to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s study, showing how the cross-sectional design limits causal interpretation and how panel fixed effects on the same data strengthen identification by absorbing time-invariant confounders.
 \TODO{Report the empirical results of the panel FE demonstration.}
 In Example~B (Section~\ref{sec:example-b}), we diagnose the selection bias in \citeauthor{DBLP:conf/msr/BognerM22}'s~\cite{DBLP:conf/msr/BognerM22} cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the specific ``type system adoption'' intervention, and redesign the study as a difference-in-differences analysis of TypeScript migration events.
 \TODO{Report the empirical results of the TypeScript DiD demonstration.}
@@ -145,7 +145,7 @@ In Example~B (Section~\ref{sec:example-b}), we diagnose the selection bias in \c
 The remainder of this paper is organized as follows.
 Section~\ref{sec:background} reviews the background and related work.
 Section~\ref{sec:primer} presents our causal inference primer.
-Section~\ref{sec:framework} introduces the four-step framework.
+Section~\ref{sec:guide} introduces the practical guide for causal inquiry.
 Sections~\ref{sec:example-a} and~\ref{sec:example-b} present the worked examples.
 Section~\ref{sec:discussion} discusses implications for SE research practices, and Section~\ref{sec:conclusion} concludes.
 
@@ -165,7 +165,7 @@ A subsequent special issue~\cite{journals/infsof/SiebertTGWKS25} confirmed that 
 These diagnostic efforts focus exclusively on Pearl's graphical paradigm, leaving the design-based credibility revolution and the potential outcomes framework unaddressed.
 
 On the prescriptive side, individual tutorials have introduced specific methods for causal inference or for strengthening causal credibility to SE audiences---including a tutorial on instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, a discussion of strategies for mitigating omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, and the use of causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}---but each addresses a single method or concern without situating it in the broader causal inference landscape.
-Our tutorial fills this gap with an integrative treatment, covering multiple intellectual traditions of causal inference (potential outcomes, graphical causal models, design-based identification, Section~\ref{sec:primer}) and a practical framework for SE research (Section~\ref{sec:framework}).
+Our tutorial fills this gap with an integrative treatment, covering multiple intellectual traditions of causal inference (potential outcomes, graphical causal models, design-based identification, Section~\ref{sec:primer}) and a practical guide for conducting credible causal inquiry in SE (Section~\ref{sec:guide}).
 
 \subsection{The Causal Inference Challenge in Econometrics, Psychology and Epidemiology Research}
 \label{sec:bg-psychology}
@@ -616,47 +616,30 @@ In this section, we illustrate the high-level idea of each method with SE exampl
 %    In SE: To estimate the effect of a major framework's migration to TypeScript, one could construct a ``synthetic'' control from similar frameworks that did not migrate, weighted to match the treated framework's pre-migration defect trajectory.
 \end{itemize}
 
-\section{A Pragmatic Stance of Causal Inference in Empirical SE Research}
-\label{sec:framework}
-
-\paragraph{Choosing Among Methods.}
-Three points deserve emphasis.
-First, different methods estimate different quantities---DiD identifies the ATT, IV recovers the LATE for compliers, RDD identifies an effect at the threshold---so the choice should be guided by the research question and available data structure, not convention.
-Second, design-based methods are not assumption-free; they replace the untestable no-unobserved-confounders assumption with different assumptions (parallel trends, exclusion restrictions, continuity) that must be argued substantively---but these design-specific assumptions are typically more transparent and partially testable than the selection-on-observables requirement.
-Third, DAGs remain valuable even when identification derives from the research design: They clarify which confounders the design absorbs, whether design-specific assumptions hold (e.g., the exclusion restriction for IV, or the absence of time-varying confounders for panel FE), and which mechanisms mediate the treatment effect.
-
-\paragraph{The Internal--External Validity Trade-Off.}
-Every study navigates a tension between internal validity (causal confidence) and external validity (generalizability).
-A controlled experiment assigning developers to different languages achieves strong internal validity but may not reflect production environments; a large-scale GitHub study captures real-world variation but cannot rule out selection bias.
-A hierarchy of evidence organizes this trade-off: Randomized experiments provide the strongest causal evidence, followed by quasi-experimental designs---DiD, IV, RDD---with partially testable assumptions, then observational studies with careful controls, and finally descriptive and correlational analyses.
-This hierarchy ranks \emph{causal} evidence, not overall scientific value---execution quality matters as much as design choice.
-The pragmatic researcher chooses the strongest credible design and builds confidence through \emph{triangulation}: convergent findings across complementary designs, data sources, and populations~\cite{shadish2002experimental}.
-
 \subsection{A Pragmatic Stance for SE Research}
 \label{sec:primer-stance}
 
-The preceding subsections introduced three pillars of causal inference as distinct conceptual tools.
-In practice, applied researchers combine them into an integrated workflow.
+The preceding subsections introduced a rich but potentially daunting toolkit: Potential outcomes define estimands, DAGs encode assumptions, and design-based methods exploit quasi-random variation.
+An SE researcher encountering these ideas for the first time faces an immediate practical question: \emph{How do I actually use this?}
+There is no universal recipe---causal inference requires both methodological rigor and creative problem-solving, and the ``right'' approach depends on the specific features of the data and setting.
 Drawing on the emerging consensus across econometrics~\cite{imbens2020potential, angrist2010credibility}, epidemiology~\cite{hernan2020causal}, and sociology~\cite{lundberg2021estimand}, we recommend a pragmatic synthesis tailored to the realities of empirical SE research.
 
-\paragraph{Use Counterfactual Reasoning to Evaluate Research Designs.}
+\paragraph{Use Counterfactual Reasoning to Frame Research Designs.}
 Before analyzing data, articulate the \emph{target trial}: What randomized experiment would you ideally run?
 What is the treatment, the population, the outcome, and the timing?
-This exercise forces clarity about aspects that SE studies often leave implicit.
-In the programming language debate, the target trial might randomly assign JavaScript teams to adopt TypeScript and measure defect rates over the following year.
-Articulating this trial immediately reveals that ``language choice'' is a compound treatment conflating the type system, the ecosystem, and the developer community---a decomposition that motivates the sharper ``type system adoption'' framing in our Worked Example~B (Section~\ref{sec:example-b}).
-The target trial framework is especially natural for SE researchers who are already comfortable with controlled experiments~\cite{DBLP:books/sp/WohlinRHORW24}: It simply asks them to describe the experiment they wish they could run and then evaluate how far their observational design departs from this ideal.
+This exercise forces clarity about aspects that SE studies often leave implicit---for example, whether ``language choice'' refers to the type system, the ecosystem, or the developer community.
+The target trial framework is especially natural for SE researchers who are already familiar with controlled experiments~\cite{DBLP:books/sp/WohlinRHORW24}: It simply asks them to describe the experiment they wish they could run and then evaluate how far their observational design departs from this ideal.
 
 \paragraph{Use DAGs to Reason About Mechanisms and Covariate Selection.}
 Once the target trial is articulated, construct a DAG encoding the assumed causal structure.
-The DAG serves three purposes: It identifies which covariates must be controlled for (back-door criterion), identifies which covariates must \emph{not} be controlled for (mediators and colliders), and makes every assumption explicit so that reviewers can challenge specific edges rather than raising vague concerns.
-For design-based methods---DiD, IV, RDD---the DAG is less central to identification, since the design itself provides the quasi-random variation.
-Even so, a DAG remains valuable for reasoning about which confounders the design does and does not address and for decomposing the causal mechanisms through which the treatment operates.
+The DAG identifies which covariates must be controlled for (back-door criterion), which must \emph{not} be controlled for (mediators and colliders), and makes every assumption explicit so that reviewers can challenge specific edges rather than raising vague concerns.
+For design-based methods, the DAG is less central to identification but remains valuable for reasoning about which confounders the design absorbs and which remain as threats.
 
 \paragraph{Use Design-Based Identification Whenever the Setting Permits.}
 When the data contain temporal variation (panel data), staggered adoption events (DiD), plausible instruments (IV), or assignment thresholds (RDD), exploit these features rather than relying solely on covariate adjustment.
-SE data is rich in exactly the kinds of variation that design-based methods exploit: Repositories evolve over time, developers contribute across projects, tools are adopted in waves, and policy changes create natural experiments.
-The credibility revolution's core lesson---that research design trumps statistical modeling~\cite{angrist2010credibility}---applies with full force to SE\@.
+Different methods estimate different quantities---DiD identifies the ATT, IV recovers the LATE, RDD identifies an effect at the threshold---so the choice should be guided by the research question and available data structure, not convention.
+Design-based methods are not assumption-free; they replace the untestable no-unobserved-confounders assumption with different assumptions (parallel trends, exclusion restrictions, continuity) that must be argued substantively---but these assumptions are typically more transparent and partially testable.
+Every study navigates a tension between internal validity (causal confidence) and external validity (generalizability), and the pragmatic researcher chooses the strongest credible design and builds confidence through \emph{triangulation}: convergent findings across complementary designs, data sources, and populations~\cite{shadish2002experimental}.
 
 \paragraph{Why This Stance Fits SE.}
 Four features of the SE research landscape make this synthesis particularly appropriate.
@@ -664,73 +647,200 @@ First, SE's observational data is plagued by unmeasured confounders---developer 
 Second, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
 Third, DAGs align with the SE mindset: Software systems are themselves structured as dependency graphs, and the idea of encoding causal relationships as a directed graph is congenial to computer scientists.
 Fourth, the target trial framework bridges SE researchers' existing intuitions about controlled experiments to the observational settings where most SE data originates.
-The four-step framework in Section~\ref{sec:framework} operationalizes this pragmatic stance: Step~1 constructs the DAG, Step~2 defines the estimand via potential outcomes and selects the identification strategy, Step~3 probes the assumptions through sensitivity analysis, and Step~4 considers alternative DAGs.
-
-This section synthesizes the preceding foundations into a practical framework that serves both as a \emph{diagnostic} tool for evaluating existing studies and a \emph{constructive} guide for designing stronger ones.
-We illustrate each step using the language--defect question; Sections~\ref{sec:example-a} and~\ref{sec:example-b} demonstrate the framework on published studies.
-
-\subsection{Step 1: Derive an Explicit Causal Theory from Domain Knowledge}
-\label{sec:framework-step1}
-
-Before fitting any model, the researcher should articulate the assumed data-generating process so that every causal assumption is visible and debatable: What are the confounders?
-Which variables are mediators?
-What alternative structures could generate the same associations?
-
-SE papers typically embed these assumptions in prose, making them difficult to evaluate systematically.
-A DAG (Section~\ref{sec:primer-dags}) encodes the same assumptions as a formal structure where each arrow is a substantive claim.
-For regression-based studies, a DAG is essential because the back-door criterion provides a formal basis for covariate selection, and conditioning on the wrong variables can introduce bias~\cite{wysocki2022statistical}.
-For quasi-experimental designs (DiD, RDD), a complete DAG is less critical since identification derives from the design itself, but even a partial DAG clarifies which confounders the design does and does not address.
-
-The plausibility of any causal theory rests on \emph{domain knowledge}~\cite{pearl2009causality}---in SE, this means prior descriptive and qualitative research on the factors shaping adoption, team behavior, and outcomes~\cite{DBLP:conf/icse/Devanbu0B16}.
-For the language--defect problem, Figure~\ref{fig:pl-dag} encodes the theory, and the back-door criterion identifies the required adjustment set.
+Section~\ref{sec:guide} operationalizes this pragmatic stance as a practical guide, and Appendix~\ref{sec:appendix-standard} provides a concrete empirical standard for structured assessment.
 
 
-\subsection{Step 2: Define the Causal Estimand and Specify Identifying Assumptions}
-\label{sec:framework-step2}
+\section{A Guide for Conducting Credible Causal Inquiry in SE}
+\label{sec:guide}
 
-The researcher defines the causal estimand in potential outcomes notation and specifies the assumptions under which the estimate is causally interpretable, operationalizing the \emph{estimand-first} principle~\cite{lundberg2021estimand}.
-The dominant SE practice of defining research goals as regression coefficients---``the coefficient on language type in Model 3''---prevents readers from evaluating whether the procedures are appropriate.
+The primer in Section~\ref{sec:primer} provides the vocabulary of causal inference; the pragmatic stance in Section~\ref{sec:primer-stance} provides the grammar.
+This section is the conversation---a practical guide that walks the SE researcher through the reasoning process of designing, executing, and evaluating a causal study.
+The guide serves two audiences: researchers designing a new study and researchers or reviewers evaluating an existing study's causal claims.
+It is self-contained and domain-neutral; Sections~\ref{sec:example-a} and~\ref{sec:example-b} revisit the guide's structure with concrete worked examples from the programming-language debate.
 
-In the language--defect setting, the estimand might be the ATE of language adoption on defect density.
-The back-door criterion applied to Figure~\ref{fig:pl-dag} identifies the adjustment set and operationalizes conditional ignorability (Equation~\ref{eq:cond-ignorability}).
+The guide proceeds in three stages.
+First, articulate the causal question with precision (Section~\ref{sec:guide-question}).
+Second, find an identification strategy that is credible given the data and setting (Section~\ref{sec:guide-identification}).
+Third, honestly probe the strategy's credibility and engage with rival explanations (Section~\ref{sec:guide-credibility}).
+These stages are presented sequentially but the process is iterative: Insights at any stage may send the researcher back to refine earlier decisions.
 
-This step also determines method choice.
-If panel data are available, fixed effects can absorb time-invariant confounders; if the setting features staggered migration events, a DiD design can exploit within-project variation under parallel-trends assumptions that should be probed with pre-trend tests~\cite{roth2023whats}.
-Each method's assumptions should be stated explicitly and connected to the causal theory from Step~1.
+\subsection{Start with the Causal Question}
+\label{sec:guide-question}
 
+The universal first move in any causal inquiry---whether designing a new study or evaluating an existing one---is to articulate the causal question with precision.
+Ambiguity in the question propagates into ambiguity in the conclusions.
 
-\subsection{Step 3: Honestly Acknowledge and Mitigate Limitations}
-\label{sec:framework-step3}
+\paragraph{Articulate the Target Trial.}
+Before touching data, describe the hypothetical randomized experiment the study attempts to emulate.
+This forces clarity on four dimensions: What is the treatment?
+What is the population?
+What is the outcome?
+What is the timing?
+For example, suppose a researcher wants to know whether adopting continuous integration reduces post-release defects.
+The target trial would randomly assign teams to adopt CI and compare defect rates over the following year.
+Articulating this trial immediately reveals ambiguities: What counts as ``adopting CI''---a single pipeline or full integration?
+Which teams---greenfield or legacy?
+What defect metric---customer-reported or commit-linked?
+Each ambiguity is a decision the researcher must make explicitly.
 
-No study achieves perfect identification, especially in SE where treatments are complex and key constructs---defect proneness, productivity, code quality---lack universally accepted definitions~\cite{DBLP:journals/queue/ForsgrenSMZHB21} and are proxied by noisy repository metrics~\cite{DBLP:journals/ese/KalliamvakouGBS16}.
+\paragraph{Define the Estimand.}
+State the causal quantity of interest---ATE, ATT, or LATE---using the potential outcomes language from Section~\ref{sec:primer-po}.
+Choosing the estimand is a \emph{substantive} decision reflecting the research question, not a statistical technicality.
+The ATE asks: On average across all projects, how much does the treatment change outcomes?
+The ATT asks: Among projects that actually adopted the treatment, how much did it change their outcomes?
+The LATE asks: Among projects whose adoption was induced by a specific mechanism, what was the effect?
+Each answers a different question, and the choice constrains which identification strategies are feasible.
 
-In the language--defect example, limitations include: unmeasured developer motivation may violate conditional ignorability; the treatment is imprecise in polyglot repositories~\cite{DBLP:conf/wcre/KochharWL16}; and defect proneness is proxied by bug-fix commits, which are noisy and potentially correlated with project-level bug-tracking practices~\cite{DBLP:journals/toplas/BergerHMVV19}.
+\paragraph{Construct a Preliminary DAG.}
+Even before choosing an identification strategy, sketch a DAG encoding the researcher's beliefs about the causal structure.
+This DAG immediately surfaces confounders, mediators, and colliders; reveals whether the treatment is well-defined or compound; and makes assumptions visible for critique.
+The DAG will be refined as the researcher works through the identification strategy.
 
-Limitations should be mitigated, not merely listed.
-Sensitivity analysis provides principled tools: Rosenbaum bounds~\cite{rosenbaum2002observational} quantify the hidden bias required to alter conclusions; \citeauthor{oster2019unobservable}'s~\cite{oster2019unobservable} coefficient stability framework assesses robustness as controls are added; and \citeauthor{cinelli2020making}'s~\cite{cinelli2020making} robustness value indicates the minimum confounder strength needed to nullify a result.
-The goal is to communicate honestly how confident readers should be in the causal interpretation.
+\paragraph{Iteration.}
+These three activities---target trial, estimand, DAG---are presented sequentially but are often iterative.
+Constructing the DAG may reveal that the treatment is poorly defined, sending the researcher back to reformulate the target trial.
+Defining the estimand may reveal that the question of interest (e.g., ATT vs.\ ATE) changes which identification strategy is feasible.
+This iterative refinement is not a failure of planning but an integral part of rigorous causal reasoning.
 
+\subsection{Two Paths to Identification}
+\label{sec:guide-identification}
 
-\subsection{Step 4: Thoughtfully Navigate Alternative Explanations}
-\label{sec:framework-step4}
+The preliminary DAG from Section~\ref{sec:guide-question} reveals the confounders and mechanisms.
+The researcher now faces the key strategic question: \emph{How will I argue that my estimate has a causal interpretation?}
+Two broad families of strategies exist, and the choice depends on the data structure and the plausibility of the required assumptions.
 
-The researcher should consider rival causal structures that could explain the findings and derive \emph{testable implications} that discriminate among them.
-The goal is not to eliminate all alternatives but to engage with the most plausible ones transparently.
+There is no algorithm for this choice.
+The researcher must assess the specific features of their data and setting---this is where domain expertise and methodological creativity intersect.
+A good causal study is not one that mechanically follows a recipe but one that \emph{finds} an identification strategy that is credible in its specific context.
 
-In the language--defect example, three challenges illustrate this:
-\begin{enumerate}
+\subsubsection{Path A: DAG-Based Identification (Selection-on-Observables)}
+\label{sec:guide-path-a}
+
+Path~A is appropriate when the researcher believes they can measure all important confounders identified in the DAG, or can argue persuasively that unmeasured confounders are negligible.
+
+\paragraph{Procedure.}
+Apply the back-door criterion to the DAG to identify the sufficient adjustment set.
+Choose an estimation method---regression, matching, inverse probability weighting, or doubly robust estimation---suited to the data structure.
+Justify covariate selection explicitly using the DAG: Every included variable should block a back-door path; every excluded variable should be justified as a mediator, collider, or irrelevant node.
+``Throwing in everything available'' is not a valid strategy---it risks conditioning on mediators or colliders, introducing bias rather than removing it~\cite{wysocki2022statistical}.
+
+\paragraph{Sensitivity Analysis.}
+Because the key assumption---conditional ignorability---is untestable, conduct sensitivity analysis to probe vulnerability to unmeasured confounding.
+Rosenbaum bounds~\cite{rosenbaum2002observational} quantify the hidden bias required to alter conclusions; \citeauthor{cinelli2020making}'s~\cite{cinelli2020making} robustness values indicate the minimum confounder strength needed to nullify the result; and \citeauthor{oster2019unobservable}'s~\cite{oster2019unobservable} coefficient stability framework assesses whether point estimates shift substantially as controls are added.
+
+\paragraph{Honest Caveat.}
+In many SE settings, key confounders---developer skill, team culture, organizational practices---are unmeasurable from repository data.
+When the DAG reveals important unmeasured confounders, selection-on-observables is fragile and the researcher should consider Path~B, combine approaches, or acknowledge the limitation prominently.
+Honesty about this fragility is itself a contribution: It clarifies the field's epistemic state rather than papering over it with false confidence.
+
+\paragraph{SE-Specific Guidance.}
+DAG-based identification works best when rich survey, organizational, or telemetry data is available---not just repository mining.
+Even with repository data, DAGs remain valuable for \emph{justifying} which variables to include and exclude, even when full identification is not achieved.
+
+\subsubsection{Path B: Design-Based Identification (Quasi-Experimental)}
+\label{sec:guide-path-b}
+
+Path~B is appropriate when the data contain features that provide quasi-random variation in treatment assignment---temporal variation (panel data), staggered adoption (DiD), plausible instruments (IV), or assignment thresholds (RDD).
+
+\paragraph{Identify the Quasi-Experimental Variation.}
+The creative step is recognizing what feature of the setting provides as-if-random variation in treatment.
+The researcher must look at their data through the lens of ``what natural experiments does this setting contain?''
+A dataset that looks like a cross-section may, on closer inspection, contain panel structure or staggered adoption events that enable a much stronger design.
+Table~\ref{tab:design-features} maps common data features to design-based methods with SE examples.
+
+\begin{table}[t]
+\centering
+\caption{Mapping data features to design-based identification strategies.}
+\label{tab:design-features}
+\footnotesize
+\begin{tabular}{@{} p{3.8cm} p{2.2cm} p{6.5cm} @{}}
+\toprule
+\textbf{Data Feature} & \textbf{Method} & \textbf{SE Example} \\
+\midrule
+Same units observed over time & Panel FE & Developers contributing in multiple languages across projects \\
+\addlinespace
+Staggered adoption events & DiD & Teams adopting a linter at different times \\
+\addlinespace
+External shock affecting treatment & IV & Platform policy mandating a practice \\
+\addlinespace
+Threshold-based assignment & RDD & Eligibility for a program based on project size \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{State and Argue Assumptions.}
+Each method carries specific assumptions that must be stated explicitly and argued for using domain knowledge and the DAG from Section~\ref{sec:guide-question}: parallel trends for DiD, the exclusion restriction for IV, continuity at the threshold for RDD, and strict exogeneity for panel FE\@.
+Where possible, conduct partial tests: pre-trend tests for DiD~\cite{roth2023whats}, first-stage F-tests for IV, and McCrary density tests for RDD\@.
+The DAG clarifies which confounders the design absorbs and which remain as threats.
+
+\paragraph{Honest Caveat.}
+Design-based methods are not assumption-free.
+They replace the untestable ``all confounders measured'' with different assumptions that must be argued substantively.
+The assumptions are typically more transparent and partially testable than those of selection-on-observables, but they are not automatically satisfied.
+
+\paragraph{SE-Specific Guidance.}
+SE data is \emph{rich} in the temporal and structural variation that design-based methods exploit: Repositories evolve over time, developers contribute across projects, tools are adopted in waves, and platform policies create natural experiments.
+The researcher should actively seek these features in their data---the credibility revolution's core lesson is that research design trumps statistical modeling~\cite{angrist2010credibility}.
+
+\subsubsection{When Neither Path Is Clean}
+\label{sec:guide-neither}
+
+Many SE settings do not neatly fit either path---the DAG reveals unmeasured confounders \emph{and} no quasi-experimental variation is available.
+This is not a failure; it is the norm.
+
+\paragraph{Pragmatic Strategies.}
+When neither path offers clean identification, the researcher should use the best available strategy---often DAG-based with careful sensitivity analysis---and be transparent about the limitations and the direction of likely bias.
+Conclusions should be framed as ``consistent with a causal interpretation under assumptions X, Y, Z'' rather than as definitive causal claims.
+
+\paragraph{Reformulation.}
+The researcher should also consider whether the causal question can be \emph{reformulated} to exploit available variation.
+This reformulation is often the most creative and valuable act in a causal inquiry: It can transform an intractable question into a tractable one.
+For example, ``Does language affect code quality?'' is intractable from cross-sectional data, but ``Does adopting a type system reduce defects?'' can be studied with DiD if migration events are observable.
+
+\paragraph{Triangulation.}
+Multiple imperfect approaches that converge on the same conclusion provide stronger evidence than any single approach.
+An honest, well-argued correlational analysis that explicitly states its identification limitations is more valuable than a spurious claim of causation.
+Transparent uncertainty is a contribution; false certainty is a liability.
+
+\subsection{Probing Credibility: Limitations and Alternatives}
+\label{sec:guide-credibility}
+
+After choosing an identification strategy, the researcher must honestly assess its fragility and engage with rival explanations.
+The mark of a credible causal study is not the absence of limitations but the transparency and rigor with which they are addressed.
+
+\paragraph{Limitations.}
+No study achieves perfect identification, especially in SE where treatments are complex, key constructs lack universal definitions~\cite{DBLP:journals/queue/ForsgrenSMZHB21}, and outcomes are proxied by noisy repository metrics~\cite{DBLP:journals/ese/KalliamvakouGBS16}.
+Limitations should be \emph{mitigated}, not merely listed---a bare-bones ``threats to validity'' section that catalogues every conceivable problem without engaging with their severity or providing mitigation strategies fails the reader.
+
+\paragraph{Sensitivity Analysis.}
+Sensitivity analysis provides principled tools for quantifying fragility:
+\begin{itemize}[leftmargin=15pt]
+    \item \emph{Rosenbaum bounds}~\cite{rosenbaum2002observational}: How strong must an unmeasured confounder be to alter the conclusion?
+    \item \emph{Coefficient stability}~\cite{oster2019unobservable}: Do point estimates shift substantially as controls are added?
+    \item \emph{Robustness values}~\cite{cinelli2020making}: What is the minimum confounder strength to nullify the result?
+    \item \emph{Pre-trend tests} (for DiD)~\cite{roth2023whats}: Is the parallel trends assumption plausible?
+    \item \emph{Over-identification tests} (for IV): Are the exclusion restrictions credible?
+\end{itemize}
+
+\paragraph{SE-Specific Measurement Challenges.}
+SE research faces distinctive measurement challenges that every causal study must address: noisy proxies for latent constructs (e.g., bug-fix commits as a proxy for defect proneness), construct validity issues (e.g., lines of code as a measure of project complexity), and potential SUTVA violations in interconnected software ecosystems where one project's treatment can spill over to affect another's outcomes.
+
+\paragraph{Alternative Explanations.}
+The researcher should consider rival causal structures---alternative DAGs---that could generate the same observed patterns, and derive testable implications that discriminate among them.
+The goal is not to eliminate all alternatives but to engage transparently with the most plausible ones.
+Three common patterns of alternative explanations arise in SE research:
+\begin{enumerate}[leftmargin=15pt]
     \item \emph{Alternative mechanism.}
-    If the benefit of static typing operates through ecosystem maturity rather than the type system itself, conditioning on ecosystem quality proxies should attenuate the language effect.
-
+    The treatment effect operates through a different pathway than hypothesized.
+    If so, conditioning on the alternative mediator should attenuate the effect.
+    For example, if a tool's benefit operates through team coordination rather than the tool's technical features, the effect should diminish when team communication measures are included.
     \item \emph{Unmeasured confounding.}
-    If developer motivation drives both language choice and quality, sensitivity analysis can quantify the required confounding strength.
-    \emph{Falsification tests}~\cite{oster2019unobservable} further probe this: If motivation were the driver, one would expect spurious ``effects'' for language features irrelevant to defects---e.g., syntax style.
-
+    A hidden variable drives both treatment and outcome.
+    Sensitivity analysis quantifies the required strength; falsification tests~\cite{oster2019unobservable} probe whether the confounding story predicts spurious effects on unrelated outcomes.
     \item \emph{Reverse causality.}
-    If defect-prone projects migrate to ``safer'' languages, panel data should reveal language switches following defect spikes---a testable temporal signature.
+    The outcome drives the treatment rather than the reverse.
+    Panel data can reveal temporal signatures---for example, does the outcome change \emph{before} the treatment?---that distinguish causal direction.
 \end{enumerate}
-
-The DAG framework channels disagreements into questions about specific edges and paths rather than vague objections about ``lurking variables''---the kind of structured discourse that could have advanced the subsequent debate~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} surrounding \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s study.
 
 
 % =============================================================================
@@ -766,18 +876,19 @@ No existing study of real-world PL effects exploits within-repository panel vari
 
 
 % (Regression $\to$ Panel Fixed Effects)
-% TODO: Introduction connecting to Section 2.4 and the framework.
+% TODO: Introduction connecting to Section 2.4 and the guide.
 
-\subsection{Diagnostic Assessment: Applying the Four Steps to \citeauthor{DBLP:conf/sigsoft/RayPFD14}}
+\subsection{Diagnostic Assessment: Applying the Guide to \citeauthor{DBLP:conf/sigsoft/RayPFD14}}
 \label{sec:example-a-diagnostic}
 
-% TODO: Walk through all four steps showing identification limitations.
-% Step 1: Unmeasured confounders (developer skill, org culture).
-% Step 2: Ill-defined estimand --- ``effect of language'' conflates
+% TODO: Walk through the guide showing identification limitations.
+% Section~\ref{sec:guide-question}: Unmeasured confounders (developer skill, org culture);
+%         ill-defined estimand --- ``effect of language'' conflates
 %         type system, ecosystem, paradigm, community.
-% Step 3: Measurement challenges, SUTVA violations
-%         in polyglot projects.
-% Step 4: Debate lacked explicit causal structures to guide productive discourse.
+% Section~\ref{sec:guide-identification}: Cross-sectional design precludes Path B;
+%         Path A fragile due to unmeasured confounders.
+% Section~\ref{sec:guide-credibility}: Measurement challenges, SUTVA violations
+%         in polyglot projects; debate lacked explicit causal structures.
 
 \subsection{Downstream Causal Misinterpretation}
 \label{sec:example-a-citations}
@@ -788,7 +899,7 @@ No existing study of real-world PL effects exploits within-repository panel vari
 \subsection{Constructive Improvement: From Regression to Panel Fixed Effects}
 \label{sec:example-a-constructive}
 
-% TODO: How the framework guides toward panel FE on the same data.
+% TODO: How the guide's Path B (Section~\ref{sec:guide-path-b}) directs toward panel FE.
 % GitHub data already contains developer IDs, timestamps,
 % multi-language contributions -> panel structure.
 % Panel FE absorbs time-invariant confounders.
@@ -808,16 +919,18 @@ No existing study of real-world PL effects exploits within-repository panel vari
 \section{Worked Example B: TypeScript and Code Quality (Cross-Sectional $\to$ DiD)}
 \label{sec:example-b}
 
-% TODO: Introduction connecting to Section 2.4 and the framework.
+% TODO: Introduction connecting to Section 2.4 and the guide.
 
-\subsection{Diagnostic Assessment: Applying the Four Steps to \citeauthor{DBLP:conf/msr/BognerM22}}
+\subsection{Diagnostic Assessment: Applying the Guide to \citeauthor{DBLP:conf/msr/BognerM22}}
 \label{sec:example-b-diagnostic}
 
-% TODO: Walk through all four steps showing selection bias.
-% Step 1: TS adoption is endogenous (skill, quality culture, complexity).
-% Step 2: Confounded estimand --- cross-sectional JS-vs-TS comparison.
-% Step 3: ``Surprising'' finding likely reflects better bug-tracking.
-% Step 4: Selection explanation is more plausible than literal interpretation.
+% TODO: Walk through the guide showing selection bias.
+% Section~\ref{sec:guide-question}: TS adoption is endogenous (skill, quality culture, complexity);
+%         confounded estimand --- cross-sectional JS-vs-TS comparison.
+% Section~\ref{sec:guide-identification}: Cross-sectional design precludes Path B;
+%         Path A fragile due to selection on TS adoption.
+% Section~\ref{sec:guide-credibility}: ``Surprising'' finding likely reflects better bug-tracking;
+%         selection explanation more plausible than literal interpretation.
 
 \subsection{Treatment Decomposition: From ``Language'' to ``Type System Adoption''}
 \label{sec:example-b-decomposition}
@@ -839,12 +952,12 @@ No existing study of real-world PL effects exploits within-repository panel vari
 
 % TODO: Brief empirical demonstration on GitHub data.
 
-\subsection{Synthesis: How the Framework Upgrades Research Designs}
+\subsection{Synthesis: How the Guide Upgrades Research Designs}
 \label{sec:example-b-synthesis}
 
 % TODO: From cross-sectional to panel FE (Example A) and from
 % cross-sectional to DiD with a sharper treatment (Example B).
-% How the framework generates different improved designs depending
+% How the guide generates different improved designs depending
 % on data structure and research question.
 
 
@@ -873,7 +986,7 @@ No existing study of real-world PL effects exploits within-repository panel vari
 
 % TODO: Write conclusion.
 % - Summarize contributions
-% - Reiterate the four-step framework
+% - Reiterate the guide and empirical standard
 % - Call to action for the SE community
 
 
@@ -901,6 +1014,135 @@ No existing study of real-world PL effects exploits within-repository panel vari
 DAGs + back-door criterion: What must we condition on, assuming we can measure everything relevant? (The "selection-on-observables" world.)
 Design-based identification: What can we do when we cannot plausibly measure everything? (The "credibility revolution" world.)
 But: DAGs remain useful in both worlds---in the first for covariate selection, in the second for reasoning about what the design does and does not address.
+
+
+\section{An Empirical Standard for Causal Inquiry in SE}
+\label{sec:appendix-standard}
+
+This appendix presents an empirical standard for SE studies making causal claims from observational data, written in the format of the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} so it can be directly proposed as a new standard.
+Where the guide in Section~\ref{sec:guide} conveys the reasoning, this standard provides the minimum requirements that authors, reviewers, and editors can verify.
+
+\subsection{Application}
+
+This standard applies to empirical SE studies that:
+\begin{itemize}[leftmargin=15pt]
+    \item investigate a causal research question (i.e., whether an intervention, practice, tool, or design decision affects an outcome),
+    \item use observational data (not a randomized controlled experiment) to draw causal conclusions, and
+    \item employ an identification strategy to argue that the estimate has a causal interpretation.
+\end{itemize}
+This standard does not apply to purely descriptive or predictive studies, randomized controlled experiments (see the Experiments standard), or studies that explicitly disclaim any causal intent.
+If a study uses observational data and makes causal claims---even implicitly---this standard applies in addition to any method-specific standard (e.g., Repository Mining, Data Science, Longitudinal).
+
+\subsection{Specific Attributes}
+
+\paragraph{Essential.}
+\begin{itemize}[leftmargin=15pt]
+    \item Explicitly states a causal research question (not merely correlational or predictive).
+    \item Articulates the target trial: describes the hypothetical experiment the observational analysis attempts to emulate, specifying treatment, population, outcome, and timing.
+    \item Defines the causal estimand (e.g., ATE, ATT, LATE) using potential outcomes notation or an equivalent plain-language definition.
+    \item Names the identification strategy used (e.g., selection-on-observables, difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects).
+    \item States the formal identifying assumptions required by the strategy (e.g., conditional ignorability, parallel trends, exclusion restriction, strict exogeneity).
+    \item EITHER justifies covariate selection using a causal model (e.g., back-door criterion applied to a DAG) OR provides a substantive argument for why each included covariate blocks a confounding path and each excluded covariate is not a confounder.
+    \item Discusses which confounders the design absorbs and which remain as potential threats.
+    \item For selection-on-observables: conducts sensitivity analysis quantifying vulnerability to unmeasured confounding (e.g., Rosenbaum bounds, E-value, robustness value, coefficient stability).
+    \item For DiD: tests and reports pre-treatment trends.
+    \item For IV: reports first-stage strength (e.g., F-statistic) and argues exclusion restriction plausibility.
+    \item For RDD: argues continuity at the threshold; reports a density test (e.g., McCrary) or equivalent.
+    \item Limitations are not merely listed but \emph{mitigated} with quantitative tools (e.g., sensitivity analysis, robustness checks, falsification tests).
+    \item At least one plausible alternative explanation is considered and addressed with evidence or argument.
+    \item Discusses measurement validity: whether proxies adequately capture the constructs of interest.
+    \item Causal conclusions are appropriately qualified given the strength of the identification strategy.
+    \item Reports effect sizes, not just statistical significance.
+    \item Distinguishes clearly between causal and associational claims in its language.
+\end{itemize}
+
+\paragraph{Desirable.}
+\begin{itemize}[leftmargin=15pt]
+    \item Presents a causal DAG (or equivalent causal model) encoding the assumed data-generating process.
+    \item Discusses whether the treatment is well-defined or acknowledges compound treatment ambiguity.
+    \item Discusses SUTVA (no interference between units) or justifies why interference is negligible.
+    \item Discusses the internal--external validity trade-off: how the identification strategy constrains generalizability.
+    \item Conducts robustness checks under alternative specifications (e.g., different control sets, functional forms, sample restrictions).
+    \item Conducts falsification or placebo tests (e.g., testing for effects on outcomes the treatment should not affect).
+    \item Discusses the direction and likely magnitude of remaining bias.
+    \item Provides data and code for reproduction.
+    \item For design-based methods: discusses the extent to which the quasi-experimental variation approximates random assignment.
+\end{itemize}
+
+\paragraph{Extraordinary.}
+\begin{itemize}[leftmargin=15pt]
+    \item Triangulates across multiple identification strategies (e.g., both selection-on-observables and design-based) on the same question.
+    \item Conducts formal sensitivity analysis using multiple methods (e.g., both Rosenbaum bounds and robustness values).
+    \item Pre-registers the identification strategy and analysis plan.
+\end{itemize}
+
+\subsection{General Quality Criteria}
+
+Internal validity (strength of causal identification), construct validity (quality of treatment and outcome measurement), transparency of assumptions, and appropriate qualification of conclusions.
+External validity is important but should not override internal validity for causal claims.
+
+\subsection{Examples of Acceptable Deviations}
+
+\begin{itemize}[leftmargin=15pt]
+    \item A DAG is not presented if the identification strategy is design-based (e.g., DiD, RDD) and the design-specific assumptions are argued substantively, though a DAG is still desirable.
+    \item Formal sensitivity analysis is not conducted if the study honestly qualifies its conclusions as associational or ``consistent with a causal interpretation under stated assumptions'' rather than claiming definitive causation.
+    \item A formally defined estimand (ATE, ATT, LATE) is not provided if the study clearly describes in plain language what causal quantity is being targeted and for what population.
+    \item Pre-treatment trend tests are not reported for DiD if the treatment is a one-time event with only one pre-treatment period, provided the limitation is acknowledged.
+\end{itemize}
+
+\subsection{Antipatterns}
+
+\begin{itemize}[leftmargin=15pt]
+    \item Interpreting regression coefficients as causal effects without stating identifying assumptions (the ``Table~2 fallacy''~\cite{westreich2013table2}).
+    \item Including covariates without causal justification; ``throwing in everything available'' increases the risk of conditioning on mediators, colliders, or their descendants.
+    \item Claiming to ``control for confounders'' using regression without arguing that all important confounders are measured.
+    \item Acknowledging that ``correlation does not imply causation'' in the limitations section but writing the discussion and implications as if the findings are causal.
+    \item Using causal language (``X affects Y,'' ``X leads to Y,'' ``the impact of X on Y'') while disclaiming any causal intent---the mismatch between language and method misleads readers.
+    \item Listing threats to validity without engaging with their severity, direction of bias, or mitigation.
+    \item Conducting sensitivity analysis but only reporting it when results are robust, suppressing cases where conclusions are fragile.
+\end{itemize}
+
+\subsection{Invalid Criticisms}
+
+\begin{itemize}[leftmargin=15pt]
+    \item The study does not use a randomized controlled experiment.
+    The purpose of causal inference methods for observational data is to draw credible causal conclusions when randomization is infeasible.
+    \item The study does not measure all possible confounders.
+    No observational study can measure all confounders; what matters is whether the identification strategy and sensitivity analysis provide a credible argument.
+    \item The study ``only'' estimates a local effect (LATE, effect at the threshold).
+    Local effects are valid causal estimates; criticizing generalizability is appropriate but rejecting on this basis alone is not.
+    \item The study's causal conclusions are ``too cautious'' or ``too hedged.''
+    Appropriate qualification of causal claims is a strength, not a weakness.
+    \item The effect size is small.
+    Small effects can be practically important at scale and are not grounds for rejection if precisely estimated.
+    \item The study uses an ``old'' or ``simple'' method (e.g., DiD instead of a newer estimator).
+    What matters is whether the method's assumptions are credible in the specific context, not whether a more complex method exists.
+\end{itemize}
+
+\subsection{Suggested Readings}
+
+\begin{itemize}[leftmargin=15pt]
+    \item \citet{angrist2009mostly}: Textbook on design-based causal inference (potential outcomes, IV, DiD, RDD).
+    \item \citet{cunningham2021causal}: Accessible introduction to causal inference with applications.
+    \item \citet{hernan2020causal}: Target trial framework and causal inference for observational studies.
+    \item \citet{pearl2009causality}: Graphical causal models, DAGs, and do-calculus.
+    \item \citet{rosenbaum2002observational}: Sensitivity analysis for observational studies.
+    \item \citet{lundberg2021estimand}: The estimand-first principle for empirical research.
+    \item \citet{cinelli2020making}: Robustness values and sensitivity to unobserved confounding.
+    \item \citet{roth2023whats}: Modern DiD methods and pre-trend testing.
+    \item \citet{imbens2020potential}: Comparison of potential outcomes and DAG approaches.
+    \item \citet{DBLP:journals/tosem/GrafVlachyW24}: IV tutorial for SE researchers.
+\end{itemize}
+
+\subsection{Exemplars}
+
+\begin{itemize}[leftmargin=15pt]
+    \item \citet{DBLP:conf/sigsoft/ChengMCJGKZ022}: Panel fixed effects analysis of code quality and developer productivity at Google.
+    \item \citet{DBLP:conf/icse/FangLHV22}: Difference-in-differences analysis of social media promotion on open-source project outcomes.
+    \item \citet{DBLP:conf/icse/ChenSSGT26}: Difference-in-differences analysis of core contributor disengagement on open-source workflows.
+    \item \citet{DBLP:conf/msr/HeMAKV26}: Difference-in-differences analysis of LLM coding agent adoption on development velocity and code quality.
+    \item \citet{DBLP:journals/tosem/FuriaTF24}: Structural causal models applied to programming language and defect data.
+\end{itemize}
 
 \end{document}
 \endinput
