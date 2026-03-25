@@ -5,7 +5,8 @@
       "WebFetch(domain:dblp.uni-trier.de)",
       "WebFetch(domain:dblp.dagstuhl.de)",
       "Bash(curl *)",
-      "Bash(python -c *)"
+      "Bash(python -c *)",
+      "Bash(git commit:*)"
     ]
   }
 }
