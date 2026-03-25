@@ -81,48 +81,81 @@ Rewrite to:
 
 ---
 
-## Section 2.2 --- Move to Appendix
+## Section 2.2 --- Condense and Reorganize
 
-### What to Move
+### The Problem with the Current Section 2.2
 
-The entire `\subsubsection{The Methodological Reform in Psychology and Epidemiology}` (lines 197--218) moves to a new appendix section, titled something like "The Methodological Reform in Psychology and Epidemiology" or "Parallels with Other Disciplines."
+The current `\subsection{The Causal Inference Challenge in Econometrics, Psychology and Epidemiology Research}` contains two subsubsections:
 
-### What to Retain in the Main Text
+1. **2.2.1 The Development of the Causal Inference Toolkit** (lines 173--195): A ~1.5 page historical narrative tracing contributions from Neyman (1923) through the 2021 Nobel Prize, organized by three intellectual traditions (statistics, econometrics, CS).
+2. **2.2.2 The Methodological Reform in Psychology and Epidemiology** (lines 197--218): Parallels between SE and psychology/epidemiology's causal-language problem.
 
-The key references and insights from Section 2.2 should be woven into the new introduction narrative (Paragraph 2--3) and into Section 2.1 (bg-tutorials), rather than dropped entirely:
+Both are problematic in their current form:
 
+- **2.2.2** draws an overly aggressive SE--psychology crisis analogy (see Problem Diagnosis above).
+- **2.2.1** front-loads a wall of unfamiliar names (Neyman, Fisher, Rubin, Heckman, Leamer, Card, Angrist, Pearl) *before* the reader has seen a single potential outcome, DAG, or SE example. Nearly every concept reappears in Section 3 with proper SE-motivated introductions, so the detailed history is redundant with the primer. The overlap is substantial:
 
-| Current Section 2.2 Point                                                                                                | Where It Goes                                                              |
-| ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Hernán's "C-word" argument: avoiding causal language doesn't prevent causal interpretation, it just obscures assumptions | Intro Paragraph 2 (the downstream-interpretation problem)                  |
-| Grosz's "taboo" finding: pushing causal reasoning underground impairs study design                                       | Intro Paragraph 2 or 4 (briefly, to motivate the gap)                      |
-| Haber et al.'s evidence that 52% of health abstracts imply causality despite associational language                      | Intro Paragraph 2 (parallel to SE's own pattern)                           |
-| Rohrer's DAGs for psychology; Wysocki's collider bias warning                                                            | Keep in Section 2.1 (related work on tutorials/guides) or Section 3 primer |
-| Lundberg's estimand-first principle                                                                                      | Keep in Section 2.1 or Section 4 guide                                     |
-| Lederer's editorial guidance                                                                                             | Keep in Discussion (FAQ about "why should I change?")                      |
-| Rohrer 2024 tutorial as closest analog                                                                                   | Keep in Section 2.1 (related work)                                         |
-| Killingsworth-Rohrer income-happiness case study                                                                         | Can be mentioned in intro briefly, or moved to appendix with Section 2.2   |
+| Concept | Section 2.2.1 (History) | Section 3 (Primer) |
+|---|---|---|
+| Neyman, Rubin, potential outcomes | Historical origin | Full technical treatment (3.3.1) |
+| Pearl, DAGs, do-calculus, back-door | Historical origin | Full technical treatment (3.3.2) |
+| Credibility revolution, Card, Angrist, DiD, IV | Historical origin | Full technical treatment (3.3.3) |
+| Target trial (Hernán) | One-sentence mention | Full treatment as 4th perspective (3.1) |
+| Sensitivity analysis tools | Catalogue of recent advances | Used concretely in Section 4 guide |
 
+### Decision: Condense 2.2.1 + Move 2.2.2 to Appendix
+
+We apply **different treatments** to the two subsubsections:
+
+**Section 2.2.2 (Psychology/Epidemiology Reform) → Move to appendix.** This section's SE-crisis-analogy framing conflicts with the new narrative. Move it near-verbatim to a new appendix section. Retain key references in the intro and Section 2.1 (see redistribution table below).
+
+**Section 2.2.1 (Toolkit History) → Condense to 1--2 paragraphs in Section 2.** The first-time SE reader needs *some* orientation before Section 3 (what traditions exist, that they are mature, where to find textbooks) but does *not* need the detailed historical narrative. Specifically:
+
+- **Keep** (condensed): The framing that three intellectual traditions contributed complementary tools---statistics → potential outcomes, econometrics → design-based identification, CS → graphical models. One sentence establishing that these are mature, Nobel-Prize-recognized ideas. The textbook pointers (Angrist & Pischke, Hernán & Robins, Cunningham, Huntington-Klein). The closing sentence that this tutorial treats both traditions as essential for SE.
+- **Move to appendix**: The paragraph-per-tradition detailed history (Neyman → Fisher → Hill → Rubin → Rosenbaum → Heckman → Leamer → Card → Angrist → Pearl → Morgan → Imbens). The catalogue of recent advances (DML, causal forests, modern DiD estimators, sensitivity analysis tools). These belong in the appendix for readers who want the intellectual genealogy.
+
+The condensed version (1--2 paragraphs) serves as a roadmap for Section 3 without front-loading names that mean nothing to the reader yet.
+
+### What to Retain from 2.2.2 in the Main Text
+
+Key references and insights from the Psychology/Epidemiology Reform section should be woven into the intro and Section 2.1, not dropped:
+
+| Current Section 2.2.2 Point | Where It Goes |
+|---|---|
+| Hernán's "C-word" argument: avoiding causal language doesn't prevent causal interpretation, it just obscures assumptions | Intro Paragraph 2 (the downstream-interpretation problem) |
+| Grosz's "taboo" finding: pushing causal reasoning underground impairs study design | Intro Paragraph 2 or 4 (briefly, to motivate the gap) |
+| Haber et al.'s evidence that 52% of health abstracts imply causality despite associational language | Intro Paragraph 2 (parallel to SE's own pattern) |
+| Rohrer's DAGs for psychology; Wysocki's collider bias warning | Keep in Section 2.1 (related work on tutorials/guides) or Section 3 primer |
+| Lundberg's estimand-first principle | Keep in Section 2.1 or Section 4 guide |
+| Lederer's editorial guidance | Keep in Discussion (FAQ about "why should I change?") |
+| Rohrer 2024 tutorial as closest analog | Keep in Section 2.1 (related work) |
+| Killingsworth-Rohrer income-happiness case study | Can be mentioned in intro briefly, or moved to appendix with Section 2.2.2 |
 
 ### Appendix Placement
 
-- Add as a new appendix section (e.g., `\section{Parallels with Methodological Reform in Other Disciplines}` in the appendix).
-- The appendix version can be almost verbatim from the current Section 2.2, with minor edits to adjust forward/backward references.
-- Add a brief forward pointer from the intro or Section 2: "For a detailed discussion of parallel methodological reforms in psychology and epidemiology, see Appendix~X."
+- Add a new appendix section titled something like "The Causal Inference Toolkit: Historical Development and Parallels with Other Disciplines."
+- The appendix combines: (a) the detailed historical narrative from current 2.2.1 (the paragraph-per-tradition treatment and recent-advances catalogue) and (b) the near-verbatim current 2.2.2 (Psychology/Epidemiology Reform).
+- Minor edits to adjust forward/backward references for the appendix context.
+- Add a brief forward pointer from Section 2.2: "For a detailed historical account and parallels with methodological reforms in other disciplines, see Appendix~X."
 
 ---
 
 ## Section 2 Restructuring
 
-After the move, Section 2 becomes:
+After the condensation and move, Section 2 becomes:
 
 > **Section 2: Background and Related Work**
 >
-> 2.1 Existing Tutorials and Methodological Guides in SE (keep, lightly expand with some 2.2 references)
-> 2.2 The Development of the Causal Inference Toolkit (currently 2.2.1, promoted to 2.2)
+> 2.1 Existing Tutorials and Methodological Guides in SE (keep, lightly expand with some 2.2.2 references)
+> 2.2 The Causal Inference Toolkit: Origins and Scope (condensed from current 2.2.1 to 1--2 paragraphs)
 > 2.3 Causal Inference Adoption in SE to Date (currently 2.3, keep as is)
 
-The "Psychology and Epidemiology" section becomes an appendix. Section 2.2.1 (History of the toolkit) is promoted from subsubsection to subsection since it no longer has a sibling.
+The condensed Section 2.2 should contain:
+
+1. **One paragraph** establishing the three intellectual traditions and their complementary roles: statistics (potential outcomes: define *what* to estimate), econometrics / credibility revolution (design-based identification: exploit quasi-random variation), computer science (graphical causal models / DAGs: encode *why* assumptions hold). Mention the 2021 Nobel Prize in one sentence as a credibility marker.
+2. **One paragraph** listing the accessible textbooks (Angrist & Pischke, Hernán & Robins, Cunningham, Huntington-Klein) and closing with the forward pointer: Section 3 presents these tools in detail with SE examples, and Appendix~X provides the full historical account.
+
+The detailed history and the psychology/epidemiology parallel both move to the appendix.
 
 ---
 
@@ -140,7 +173,7 @@ The following cross-references and language must be updated after the restructur
 | Section 2.3 Implications (line 225) | "a picture strikingly similar to the problems reported in psychology and epidemiology"                             | Soften or remove the comparison                                                                      |
 | Section 2.3 Implications (line 303) | "mirrors the pattern that Haber documented in health research and that Grosz described as a 'taboo' in psychology" | Rewrite to stand alone without the psychology parallel                                               |
 | Section 3 opener (line 311)         | "psychology and epidemiology have undergone a methodological reform that SE has yet to experience"                 | Rewrite: focus on the toolkit's maturity and the gap in SE adoption                                  |
-| Section 3 (line 314)                | "the textbooks listed in Section~\ref{sec:bg-causal-history}"                                                      | Update label if section numbering changes                                                            |
+| Section 3 (line 314)                | "the textbooks listed in Section~\ref{sec:bg-causal-history}"                                                      | Update ref to point to condensed Section 2.2 or to the appendix, whichever retains the textbook list |
 | Section 5 (line 606)                | "see previous footnote in Section~\ref{sec:bg-adoption}"                                                           | Check if still valid                                                                                 |
 | Discussion FAQ (line 1144)          | "Psychology's replication crisis led to sweeping methodological reforms"                                           | Keep but soften: present as an observation about other fields' trajectories, not as a direct analogy |
 | Discussion FAQ (line 1147)          | "Our analysis (Section~\ref{sec:bg-adoption}) shows..."                                                            | Keep, check ref still valid                                                                          |
@@ -278,10 +311,12 @@ The following were considered but are unnecessary:
 - Rewrite Intro Paragraph 3 (causal inference methods as a path forward for these questions)
 - Revise Intro Paragraph 4 (SE lacks a tutorial; weave in key 2.2 references)
 - Revise Intro Paragraph 5 (contributions --- adjust language, remove crisis framing)
-- Move Section 2.2 (`\subsubsection{The Methodological Reform in Psychology and Epidemiology}`) to a new appendix section
-- Promote Section 2.2.1 (History of the toolkit) from `\subsubsection` to `\subsection` and renumber
-- Weave key Section 2.2 references into the intro and Section 2.1 per the table above
-- Add a forward pointer from intro or Section 2 to the new appendix
+- Condense Section 2.2.1 (History of the toolkit) from ~1.5 pages to 1--2 paragraphs (three traditions + textbook pointers)
+- Move the detailed historical narrative (paragraph-per-tradition, recent-advances catalogue) to the appendix
+- Move Section 2.2.2 (Psychology/Epidemiology Reform) to the same appendix section
+- Promote the condensed history to `\subsection` level as new Section 2.2, titled "The Causal Inference Toolkit: Origins and Scope"
+- Weave key Section 2.2.2 references into the intro and Section 2.1 per the redistribution table
+- Add a forward pointer from condensed Section 2.2 to the appendix
 - Revise Section 2.3 Implications paragraph to remove direct psychology parallels
 - Revise Section 3 opening paragraph to remove "reform SE has yet to experience"
 - Update Discussion FAQ (line 1144) to soften the psychology analogy
