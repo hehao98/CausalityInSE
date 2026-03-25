@@ -3,49 +3,56 @@
 \section{The Causal Inference Toolkit: Historical Development and Parallels with Other Disciplines}
 \label{sec:appendix-history}
 
-This appendix provides a detailed account of the intellectual traditions that produced the causal inference toolkit introduced in Section~\ref{sec:bg-causal-history}, followed by a summary of methodological reforms in psychology and epidemiology that address problems analogous to those we identify in SE\@.
+This appendix provides a detailed account of the intellectual traditions that produced the causal inference toolkit introduced in Section~\ref{sec:bg-causal-history}, followed by a summary of methodological reforms in psychology and epidemiology in which they recently started to address causal infernece problems similar to those we identify in SE\@.
 
 \subsection{The Development of the Causal Inference Toolkit}
 \label{sec:appendix-toolkit-history}
 
 The modern causal inference toolkit emerged over a century through contributions from three intellectual traditions---statistics, econometrics, and computer science---each addressing a distinct aspect of causal inference: experimental foundations, credibility evolution, and graphical modeling.
 
-Statisticians laid the \emph{experimental foundations}.
+First, statisticians laid the \emph{experimental foundations}.
 \citet{neyman1923application} defined the causal effect as the difference between two potential outcomes---only one of which is ever observed---and \citet{fisher1935design} established randomization as the principled basis for causal attribution.
 Extending causal reasoning to observational settings, \citet{hill1965environment} proposed viewpoints for evaluating whether observed associations reflect genuine causal relationships, \citet{rubin1974estimating} formalized \emph{conditional ignorability} as the identifying assumption for observational studies, and \citet{rosenbaum1983central} introduced the propensity score as a practical dimension-reducing device for covariate adjustment.
 Yet, the family of selection-on-observables methods fundamentally cannot address confounding from \emph{unobserved variables} plaguing many economic and societal problems~\cite{heckman1979sample}---e.g., one's (arguably unmeasurable) inherent ability affects both their educational attainment and future earnings~\cite{card1999causal}---a limitation that motivated economists to develop design-based alternatives.
 
-Econometricians drove the \emph{credibility revolution}, shifting the basis of causal claims from statistical modeling to research design.
+Then, econometricians drove the \emph{credibility revolution}, shifting the basis of causal claims from statistical modeling to research design.
 \citet{leamer1983let} first diagnosed the field's credibility problem, arguing that the sensitivity of regression results to specification choices undermined confidence in empirical findings.
 The constructive response came through landmark natural experiments: \citeauthor{card1994minimum}'s~\cite{card1994minimum} difference-in-differences analysis of a minimum wage increase demonstrated that design-based evidence can overturn decades of cross-sectional conventional wisdom, and \citet{angrist1996identification} formalized instrumental variable identification through the LATE theorem.
 \citet{angrist2010credibility} crystallized the overarching manifesto: Design-based studies yield more credible causal evidence than advances in statistical modeling alone.
-The 2021 Nobel Prize in Economic Sciences, awarded to Card, Angrist, and Imbens for \emph{``their methodological contributions to the analysis of causal relationships''}~\cite{nobelprize2021economics}, cemented the credibility revolution as one of the most consequential intellectual movements in modern social science.
+The 2021 Nobel Prize in Economic Sciences, awarded to Card, Angrist, and Imbens for \emph{``their methodological contributions to the analysis of causal relationships''}~\cite{nobelprize2021economics}, cemented the credibility revolution as one of the most consequential intellectual movements in modern social science research.
 
 From computer science and artificial intelligence (specifically the line of research on Bayesian networks and probabilistic reasoning~\cite{pearl1988probabilistic}), \citet{pearl2009causality} developed the graphical causal model framework, representing causal relationships as directed acyclic graphs (DAGs) and introducing the \emph{do-calculus} and \emph{back-door criterion} for determining sufficient adjustment sets.
 Where the potential outcomes tradition defines \emph{what} to estimate, DAGs provide a visual language for arguing \emph{why} identification assumptions hold.
 \citet{morgan2015counterfactuals} bridged the two traditions for social science, and \citet{imbens2020potential} clarified their relative strengths, arguing that potential outcomes are more natural for design-based research while DAGs excel at encoding complex causal structures.
 
 Recent cross-disciplinary advances have extended the toolkit further: double/debiased machine learning for high-dimensional settings~\cite{chernozhukov2018double}, causal forests for heterogeneous effects~\cite{athey2016recursive}, modern DiD estimators robust to staggered adoption~\cite{callaway2021difference, roth2023whats}, and sensitivity analysis tools for assessing vulnerability to unobserved confounding~\cite{rosenbaum2002observational, oster2019unobservable, cinelli2020making}.
+A new generation of accessible textbooks~\cite{angrist2009mostly, hernan2020causal, cunningham2021causal, huntingtonklein2021effect} has demonstrated that these methods can be taught to non-specialist audiences; \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework, which asks researchers to describe the hypothetical randomized trial their observational analysis attempts to emulate, is particularly relevant to SE\@.
+Our tutorial treats both traditions as essential for SE research: Design-based identification provides credible effect estimates for SE interventions while graphical causal models help the decomposition of mechanisms in which the intervention affects the outcome---both are critical for a full understanding of empirical SE problems (Section~\ref{sec:primer}).
+
 
 \subsection{The Methodological Reform in Psychology and Epidemiology}
 \label{sec:appendix-psych-reform}
 
-Psychology and health research have confronted a problem analogous to the one we identify in SE---a disconnect between causal ambition and methodological practice---and their experience reveals both consequences and remedies relevant to the SE community.
+In recent years, psychology and health research have confronted a causal inference problem similar to what we identify in SE---the disconnect between causal ambition and methodological practice---and their experience reveals both consequences and remedies relevant to the SE community.
 
 The reform began with the diagnosis of the causal language problem.
 \citet{hernan2018cword} challenged the epidemiological norm of replacing causal language with associational euphemisms, arguing that this evasion does not prevent causal interpretation but merely obscures the causal question and blocks transparent discussion of identification assumptions.
 \citet{grosz2020taboo} documented a parallel ``taboo'' in psychology: The norm against explicit causal inference pushes causal reasoning underground, resulting in impaired study design and a disconnect between findings and downstream interpretation.
-\citet{haber2022causal} provided large-scale empirical evidence that this norm fails on its own terms---among 1,170 articles from 18 high-profile health journals, 52\% of abstracts implied moderate or strong causality despite ostensibly associational language.
+\citet{haber2022causal} provided large-scale empirical evidence that this taboo fails on its own terms---among 1,170 articles from 18 high-profile health journals, 52\% of abstracts implied moderate or strong causality despite ostensibly associational language.
+The SE community exhibits the same pattern, as we will show in Section~\ref{sec:bg-adoption}.
 
-In response, methodological reformers applied tools from the causal inference traditions described above.
+In response, methodological reformers borrowed tools from the causal inference traditions described above.
 \citet{rohrer2018thinking} introduced DAGs to psychology, and \citet{wysocki2022statistical} demonstrated that controlling for mediators, colliders, or their descendants can introduce \emph{more} bias---a finding directly applicable to SE studies that include covariates without causal justification.
 \citet{lundberg2021estimand} formalized the \emph{estimand-first} principle for sociology, requiring every study to define its target quantity outside any particular statistical model.
-Institutionally, \citet{lederer2019control} issued editor-endorsed guidance requiring authors to specify causal questions and justify covariate selection.
+Institutionally, \citet{lederer2019control} issued editor-endorsed guidance requiring authors to specify causal questions and justify covariate selection---editorial policy that does not yet exist in any SE venue.
 \citet{tennant2021dags} assessed DAG adoption in health research and found that only 21\% of articles reported target estimands, revealing a theory-practice gap that parallels \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} findings in SE\@.
 
 High-profile case studies have illustrated the consequences of ignoring causal reasoning.
 \citet{killingsworth2023income} appeared to resolve the long-standing income--happiness debate through sophisticated observational analysis, only for \citet{rohrer2024inappropriate} to demonstrate that the resolution rested on untested identification assumptions---effectively performing the causal assessment our framework codifies.
+This sequence mirrors the trajectory from \citet{DBLP:conf/sigsoft/RayPFD14} through \citeauthor{DBLP:journals/toplas/BergerHMVV19}'s~\cite{DBLP:journals/toplas/BergerHMVV19} in SE: In both cases, increasingly sophisticated correlational analyses cannot resolve causal questions without explicit identification.
 \citeauthor{rohrer2024causal}'s~\cite{rohrer2024causal} recent tutorial for psychologists is the closest existing analog to our work but does not cover design-based identification strategies or SE-specific confounding structures.
+The solutions emerging across these disciplines---explicit causal questions, DAG-based covariate justification, estimand-first workflows, sensitivity analysis, and editorial enforcement---can inform and accelerate SE's own methodological reform.
+
 
 \section{Frequently Asked Questions}
 \label{sec:appendix-faq}
@@ -54,14 +61,14 @@ High-profile case studies have illustrated the consequences of ignoring causal r
 % Category 1: Foundational and Philosophical
 % ---------------------------------------------------------------------------
 
-\subsection{A complete causal model of a software system might require thousands of variables. Does that mean causal inference is hopeless without a complete theory?}
+\subsection{A complete causal model of a sociotechnical system might require thousands of variables. Does that mean causal inference is hopeless without a complete theory?}
 
 No.
 Science has never required complete theories, and causal inference is no exception.
 The back-door criterion (Section~\ref{sec:primer-dags}) requires blocking all \emph{back-door paths} between treatment and outcome---not enumerating every variable in the universe.
 A DAG with eight well-chosen nodes can achieve identification that a regression with two hundred covariates cannot, because what matters is whether the adjustment set blocks every confounding path, not how many variables appear in the model.
-
-Design-based methods (Section~\ref{sec:primer-design}) sidestep the completeness problem entirely.
+Moreover, sensitivity analysis methods allow researchers to quantify how strong an unmeasured confounder would need to be to overturn a finding~\citep{vanderweele2017sensitivity, oster2019unobservable} so that a study can provide credible evidence even without a complete causal model.
+Meanwhile, design-based methods (Section~\ref{sec:primer-design}) sidestep the completeness problem entirely.
 Difference-in-differences, panel fixed effects, and instrumental variables derive identification from features of the research setting---temporal variation, staggered adoption, quasi-random assignment---rather than from a claim that all confounders have been measured.
 These methods require their own assumptions, but those assumptions concern the \emph{specific variation exploited}, not the completeness of the researcher's world model.
 
@@ -76,17 +83,27 @@ No.
 $R^2$ measures \emph{predictive} fit---how much variance in the outcome the model explains---not causal identification.
 These two properties are logically independent, and conflating them is a common source of false confidence.
 
-A model can achieve near-perfect $R^2$ while producing severely biased causal estimates.
+For example, suppose we want to estimate the effect of adopting code review ($T$) on post-release defect count ($Y$), and the true causal effect is $\beta_T = -5$ defects.
+Developer inexperience ($U$) is an unmeasured confounder: Teams mandate code review for junior developers, and those same developers independently produce more defects.
+We include lines of code (LOC) as a control variable, which is one of the strongest known predictors of defect counts in the empirical SE literature~\cite{DBLP:journals/tse/GravesKMS00, DBLP:journals/tse/EmamBGR01, DBLP:books/oreilly/11/HerraizH11}.
+Regressing $Y$ on $T$ and LOC yields $R^2 \approx 0.99$ because LOC absorbs nearly all variance in defect counts.
+But this near-perfect fit is causally misleading.
+If LOC is a \emph{mediator}---code review encourages cleaner and smaller codebase that would have fewer defects---then conditioning on it blocks the indirect causal path $T \to \text{LOC} \to Y$, absorbing part of the genuine treatment effect into LOC's coefficient.
+Meanwhile, the back-door path through $U$ remains wide open.
+Because inexperienced developers both receive mandatory review ($U \to T$) and produce more defects ($U \to Y$), the unmeasured confounder induces a \emph{positive} spurious association between $T$ and $Y$---an upward bias.
+Conditioning on LOC absorbs the genuine indirect effect while leaving this confounding bias intact.
+If the confounding is strong enough, it can even \emph{flip the sign}.
+A regression on $T$ and LOC may yield $\hat{\beta}_T \approx +1$, suggesting that code review \emph{increases} defects, when the true causal effect is $\beta_T = -5$.
+The $R^2$ remains $0.99$ throughout, offering no warning that the coefficient is not merely biased but directionally wrong.
+Had we instead omitted LOC and used a design-based strategy to address $U$, the model's $R^2$ might be a modest $0.35$---yet the causal estimate would be unbiased.
+
+More generally, a model can achieve near-perfect $R^2$ while producing severely biased causal estimates.
 This happens when the model includes \emph{mediators}---variables on the causal path from treatment to outcome---which block the genuine effect the researcher seeks to detect (Section~\ref{sec:primer-naive}).
 It also happens when the model includes \emph{colliders}---common effects of treatment and outcome---which open spurious paths rather than closing them.
 In both cases, $R^2$ rises because the added variable explains outcome variance, but the treatment coefficient moves \emph{away} from the true causal effect.
 Conversely, a correctly specified causal model may have low $R^2$ because many factors affect the outcome but are unrelated to the treatment---the causal estimate can be unbiased even when the model explains little overall variance.
 
-\citeauthor{oster2019unobservable}'s~\cite{oster2019unobservable} coefficient stability test exploits the \emph{pattern} of $R^2$ changes as controls are added to assess vulnerability to omitted variable bias.
-But this test uses the $R^2$ trajectory as a diagnostic signal, not $R^2$ itself as a guarantee.
-The lesson: $R^2$ tells you how well you predict; it tells you nothing about whether your treatment coefficient has a causal interpretation.
-
-\subsection{I have a multivariate regression with many covariates. Doesn't controlling for more variables always reduce bias?}
+\subsection{I have a multivariate regression with 1000 covariates measuring everything I can think of in the study setting. Does that mean that I have sufficiently controlled for the important confounders?}
 
 No---and in many cases, adding variables \emph{increases} bias.
 This counterintuitive result follows directly from the causal structure of the data-generating process.
