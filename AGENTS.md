@@ -1,7 +1,5 @@
 # AI Agent Instructions
 
-This file contains vendor-agnostic instructions and conventions for AI coding assistants working on this project. It serves as an alternative to editor-specific configuration files (like `.cursor/rules/`) to ensure consistent AI behavior across different platforms.
-
 ## Bibliography Management Conventions
 
 When editing or adding entries to BibTeX (`.bib`) files, adhere to the following conventions:
