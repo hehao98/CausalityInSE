@@ -174,7 +174,7 @@ Several common situations break or weaken the experimental guarantee, and all ar
     If participants do not follow their assigned treatment---e.g., developers assigned to use a new tool revert to the old one---the naive comparison of assigned groups estimates the intention-to-treat effect, not the treatment effect itself.
     Recovering the latter requires instrumental variable reasoning, using the random assignment as an instrument to estimate the local average treatment effect for compliers~\cite{angrist1996identification}.
     \item \emph{Non-randomizable attributes.}
-    Many SE-relevant ``treatments'' cannot be randomly assigned: developer experience, gender, educational background, programming language fluency.
+    Many SE-relevant ``treatments'' cannot be randomly assigned, e.g., developer experience, gender, educational background, programming language fluency.
     These are inherent characteristics, not interventions.
     Studying their effects requires the same observational identification strategies this tutorial covers; calling a group comparison an ``experiment'' does not change the identification problem.
     \item \emph{SUTVA violations.}
