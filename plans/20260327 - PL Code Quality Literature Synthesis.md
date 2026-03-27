@@ -19,7 +19,7 @@ Section 4.1 has been expanded from ~20 lines to ~60 lines. Changes made:
 
 ---
 
-## Section 4.2: The Misinterpretation Problem --- TODO
+## Section 4.2: The Misinterpretation Problem --- DONE
 
 Two evidence streams converging on the same conclusion.
 
@@ -121,22 +121,24 @@ Select 2--3 of the strongest examples (likely #1 for the Berger meta-quote, #4 f
 ## Writing Order
 
 1. **Run `scripts/fetch_ray_citations.py`:**
-   - [ ] Write the script
-   - [ ] Run it to produce `data/ray_citations.csv`
-   - [ ] Inspect 20--30 citation contexts to finalize classification scheme
+   - [x] Write the script
+   - [x] Run it to produce `data/ray_citations.csv` (451 papers, 339 with contexts)
+   - [x] Inspect 20--30 citation contexts to finalize classification scheme
 
-2. **Run `scripts/classify_ray_citations.py`:**
-   - [ ] Write the script with the finalized classification scheme
-   - [ ] Run it to classify all citing papers
-   - [ ] Compute summary statistics
-   - [ ] Select 3--5 representative quotes for the paper
+2. **Classify citations** (done manually instead of via LLM script):
+   - [x] Write `scripts/apply_classifications.py` with manual classifications
+   - [x] Classify all 339 citing papers with contexts
+   - [x] Compute summary statistics: 24% causal, 12% hedged, 62% neutral, 2% critical
+   - [x] Select representative quotes for the paper
 
 3. **Write Section 4.2 prose:**
-   - [ ] Stream 1 (citation analysis) --- ~2 paragraphs + table/figure
-   - [ ] Stream 2 (media examples) --- ~1 paragraph with footnotes
-   - [ ] Closing argument and transition --- ~1 paragraph
+   - [x] Stream 1 (citation analysis) --- 2 paragraphs
+   - [x] Stream 2 (media examples) --- 1 paragraph with 3 footnotes
+   - [x] Closing argument and transition --- 1 paragraph (Implications)
 
-4. **Update Introduction and Abstract** to reference the literature synthesis and misinterpretation analysis as a contribution.
+4. **Update Introduction and Abstract:**
+   - [x] Abstract: Added citation analysis mention
+   - [x] Contributions list: Added literature synthesis + citation analysis as part of third contribution
 
 ---
 
@@ -151,6 +153,6 @@ Select 2--3 of the strongest examples (likely #1 for the Berger meta-quote, #4 f
 ## Success Criteria
 
 - [x] A reader who knows nothing about the PL-quality debate can understand its full arc after reading 4.1
-- [ ] The misinterpretation problem is documented with *quantitative* evidence, not just assertion
+- [x] The misinterpretation problem is documented with *quantitative* evidence, not just assertion
 - [x] The argument flows naturally from "here is what researchers found" (4.1) -> "here is how it was misinterpreted" (4.2) -> "here is how the pragmatic stance would diagnose and fix it" (4.3--4.4)
 - [x] Both Ray et al. and Bogner & Merkel are introduced as part of the literature landscape (4.1) before being used as worked examples (4.3--4.4)
