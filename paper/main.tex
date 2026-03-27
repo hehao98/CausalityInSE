@@ -633,12 +633,12 @@ Every study navigates a tension between internal validity (causal confidence) an
 \textbf{Data Feature} & \textbf{Method} & \textbf{SE Example} \\
 \midrule
 Same units observed over time & Panel FE & Developers contributing in multiple languages across projects \\
-\addlinespace
-Staggered adoption events & DiD & Teams adopting a linter at different times \\
-\addlinespace
+[0.3em]
+Staggered adoption events & DiD & Projects adopting a linter at different times \\
+[0.3em]
 External shock affecting treatment & IV & Platform policy mandating a practice \\
-\addlinespace
-Threshold-based assignment & RDD & Eligibility for a program based on project size \\
+[0.3em]
+Threshold-based assignment & RDD & Eligibility for a program based on project size or popularity\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -652,13 +652,11 @@ This iterative refinement is not a failure of planning but an integral part of r
 
 \paragraph{When Clean Identification Is Unavailable.}
 \label{sec:guide-neither}
-Many SE settings do not neatly fit either path---the DAG reveals unmeasured confounders \emph{and} no quasi-experimental variation is available.
-This is not a failure; it is the norm.
-The pragmatic response is to use the best available strategy---often DAG-based with careful sensitivity analysis---and be transparent about the limitations and the direction of likely bias.
+Many SE settings do not neatly fit either path: For example, the DAG may reveal unmeasured confounders, the quasi-experimental variation may not control important unobserved confounders, or the treatment and outcome are not well-defined.
+This is not a failure of empirical research but rather the norm; the pragmatic response is to use the best available strategy and be transparent about the limitations and the direction of likely bias.
 Conclusions should be framed as ``consistent with a causal interpretation under assumptions X, Y, Z'' rather than as definitive causal claims.
 The researcher should also consider whether the causal question can be \emph{reformulated} to exploit available variation---often the most creative and valuable act in a causal inquiry, transforming an intractable question into a tractable one (e.g., ``Does language affect quality?'' is intractable from cross-sectional data, but ``Does adopting a type system reduce defects?'' can be studied with DiD if migration events are observable).
-An honest, well-argued correlational analysis that explicitly states its identification limitations is more valuable than a spurious claim of causation.
-Transparent uncertainty is a contribution; false certainty is a liability.
+An honest, well-argued correlational analysis or an imperfect design-based identification strategy that explicitly states its limitations is more valuable than a spurious claim of causation pretending that certain methods ``automatically bring causality.''
 
 \paragraph{Engage with Alternative Explanations.}
 \label{sec:guide-credibility}
@@ -671,18 +669,21 @@ Three common patterns of alternative explanations arise in SE research.
 SE research faces distinctive measurement challenges that compound these threats: noisy proxies for latent constructs (e.g., bug-fix commits as a proxy for defect proneness), construct validity issues (e.g., lines of code as a measure of complexity), and potential SUTVA violations in interconnected software ecosystems where one project's treatment spills over to affect another's outcomes.
 The mark of a credible causal study is not the absence of limitations but the transparency and rigor with which they are addressed.
 
-\paragraph{Why This Stance Fits SE.}
-Four features of the SE research landscape make this synthesis particularly appropriate.
-First, SE's observational data is plagued by unmeasured confounders---developer skill, team culture, organizational practices---that render selection-on-observables strategies fragile; design-based methods sidestep this by exploiting quasi-random variation.
-Second, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
-Third, DAGs align with the SE mindset: Software systems are themselves structured as dependency graphs, and the idea of encoding causal relationships as a directed graph is congenial to computer scientists.
-Fourth, the target trial framework bridges SE researchers' existing intuitions about controlled experiments to the observational settings where most SE data originates.
-Appendix~\ref{sec:appendix-standard} provides a concrete empirical standard for structured assessment of causal claims in SE research.
+\paragraph{Promises and Perils of Causal Inference in SE Research.}
+Some features of the SE research landscape make this synthesis particularly promising.
+First, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
+Second, SE ecosystems generate rich quasi-experimental variation: Company policies mandate practices, projects adopt practices in staggered waves, and migrations create sharp treatment contrasts---all of which offer credible identification strategies that purely cross-sectional analysis cannot exploit.
+Finally, SE's rich body of quantitative studies, qualitative investigations, and gray literature provides fertile ground for theory proposition and DAG formulation---decades of empirical findings, practitioner postmortems, and case studies supply the domain knowledge needed to propose plausible causal structures before any identification strategy is chosen.
 
-
-% =============================================================================
-% WORKED EXAMPLE A --- THE PL-DEFECT DEBATE
-% =============================================================================
+On the other hand, several SE-specific challenges also temper these promises and require careful consideration by the SE researcher.
+First, SE's observational data is plagued by unmeasured confounders---developer skill, team culture, organizational practices---that are rarely captured in repository data, making design-based identification or sensitivity analysis of unmeasured confounders essential.
+Second, SE treatments are often \emph{compound}: For example, ``adopting TypeScript'' bundles a type system, a compiler toolchain, a migration effort, and a self-selected team; in this case, the researcher should properly interpret the effect as such rather than from a single oversimplified treatment (e.g., ``just use TypeScript to reduce defects'').
+Third, interconnected software ecosystems create \emph{SUTVA violations}: Shared libraries propagate treatment effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
+Careful unit definition and robustness checks can bound this threat, and recent advances in causal inference under network interference provide promising tools~\cite{savje2021average, forastiere2021identification}, but adapting these methods to SE's sociotechnical structures---where spillover propagates simultaneously through dependency graphs, developer networks, and ecosystem coupling---remains an open frontier.
+Finally, SE outcomes are typically \emph{noisy proxies} for the constructs of interest: Bug-fix commits proxy for defect proneness, lines of code proxy for complexity, and star counts proxy for popularity---each introducing measurement error that may attenuate effect estimates and complicate interpretation.
+One can strengthen the evidentiary basis by triangulating across multiple outcome measures that capture different facets of the same construct~\cite{lawlor2016triangulation} and conducting measurement error analysis to bound attenuation bias~\cite{hausman2001mismeasured}.
+Importantly, each peril has a principled response within the toolkit so that SE researchers can engage with the specific threats in their settings.
+To faciliate constructive evaluation of SE studies with causal claims, we provide an empirical standard for causal inquiries following the format of the ACM SIGSOFT Empirical Standards (Appendix~\ref{sec:appendix-standard}).
 
 \section{Worked Example A: The PL--Defect Debate}
 \label{sec:example-a}

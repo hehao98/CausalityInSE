@@ -1,9 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:dblp.org)",
-      "WebFetch(domain:dblp.uni-trier.de)",
-      "WebFetch(domain:dblp.dagstuhl.de)",
+      "WebSearch",
+      "WebFetch",
       "Bash(grep *)",
       "Bash(curl *)",
       "Bash(python -c *)",
