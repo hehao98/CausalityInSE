@@ -188,14 +188,16 @@ It is the discipline of thinking clearly about what your evidence can and cannot
 
 \subsection{My paper was accepted at a top SE venue without any of this. Why should I change?}
 
-Publication norms evolve.
-In other empirical disciplines, growing awareness of the gap between causal ambition and methodological practice has led to concrete reforms---pre-registration, registered reports, estimand-first workflows, and editorial requirements for explicit identification strategies~\cite{grosz2020taboo, lederer2019control}.
-SE has not yet adopted these norms, but the trajectory toward greater methodological rigor is clear.
+This tutorial does not argue that all SE research must become causal research.
+Descriptive studies that characterize how developers work, correlational analyses that reveal associations in repository data, and qualitative investigations that surface practitioner reasoning are indispensable---they generate hypotheses, map the landscape, and provide the domain knowledge on which causal reasoning depends (Section~\ref{sec:guide}).
+Nothing in this paper diminishes their value.
 
-Our analysis (Section~\ref{sec:bg-adoption}) shows that 29\% of empirical SE papers ask causal questions but fewer than 4\% use causal methods---a gap that reviewers and editors are increasingly aware of.
-Similar expectations for explicit identification strategies will likely emerge in SE venues.
-
-Early adoption is both a contribution to the field and a practical advantage: A study that explicitly states its identification strategy, constructs a DAG, and conducts sensitivity analysis is harder to criticize, more likely to produce durable findings, and more useful to practitioners and policymakers than one that relies on regression controls and a formulaic threats-to-validity section.
+However, when a study asks an intervention-outcome question, the evidence it produces should match the claim it makes.
+Our analysis (Section~\ref{sec:bg-adoption}) shows that 29\% of empirical SE papers ask such causal questions but fewer than 4\% use methods designed to answer them.
+For this specific class of questions, correlational evidence is not inherently flawed, but it is insufficient for the conclusions that stakeholders actually draw from it.
+For researchers who already run well-designed descriptive or qualitative studies, nothing needs to change.
+For researchers who ask causal questions, this paper offers a concrete path forward: State the estimand, justify the identification strategy, and assess sensitivity to assumptions (Section~\ref{sec:guide}).
+A study that does so is harder to criticize, more likely to produce durable findings, and more useful to practitioners than one that relies on regression controls and a formulaic threats-to-validity section.
 
 % ---------------------------------------------------------------------------
 % Category 3: "SE Data Is Too Messy"
@@ -204,13 +206,8 @@ Early adoption is both a contribution to the field and a practical advantage: A 
 \subsection{SE data is noisy and poorly measured. How can any quasi-experimental design be credible here?}
 
 SE data has genuine measurement challenges---noisy defect proxies, construct validity issues, potential SUTVA violations in interconnected ecosystems---and this tutorial acknowledges them honestly (Section~\ref{sec:guide-credibility}).
-But SE data also has \emph{structural advantages} that many social science datasets lack.
-
-Repositories provide fine-grained temporal data at the commit level.
-Developers contribute across projects, creating within-person panel variation that panel fixed effects can exploit.
-Tools and practices are adopted in staggered waves, creating natural difference-in-differences settings.
-Platform policies---e.g., GitHub Actions rollout, npm security mandates, language deprecation announcements---create exogenous shocks that resemble natural experiments.
-
+But SE data also has \emph{structural advantages} that many social science fields lack.
+We have a vast corpus of open-source repositories with fine-grained temporal and semantic data; we observe developers contributing across projects which creates within-person panel variation; SE tools and practices are adopted in staggered waves, creating natural difference-in-differences settings; platform policies---e.g., GitHub Actions rollout, npm security mandates, language deprecation announcements---create exogenous shocks that resemble natural experiments.
 The question is not whether SE data is as clean as a minimum-wage natural experiment~\cite{card1994minimum} but whether the available variation, combined with domain knowledge and sensitivity analysis, supports a credible argument.
 The pragmatic stance in Section~\ref{sec:guide} walks the researcher through this assessment, and the empirical standard in Appendix~\ref{sec:appendix-standard} provides verifiable criteria for reviewers.
 
@@ -218,36 +215,46 @@ The pragmatic stance in Section~\ref{sec:guide} walks the researcher through thi
 
 This is a legitimate concern, and the tutorial does not claim that design-based identification is easy.
 The pragmatic stance (Section~\ref{sec:guide}) exists precisely to walk SE researchers through the reasoning process, and the empirical standard (Appendix~\ref{sec:appendix-standard}) provides verifiable criteria for reviewers.
-
-The pedagogical bet is that SE researchers---who are trained to reason about complex systems, dependencies, and graph structures---can learn to construct and defend identification arguments if given the right conceptual framework.
+We beleive that SE researchers, who are trained to reason about complex systems, dependencies, and graph structures, can learn to construct and defend identification arguments if given the right conceptual framework.
 The alternative---continuing to make implicit causal claims from regression without any identification strategy---is not more credible; it is simply less transparent.
 A DiD study that states the parallel trends assumption, tests it with pre-trend plots, and discusses remaining threats is epistemically superior to a regression study that makes causal claims without acknowledging any identification assumption at all.
 
 \subsection{Aren't design-based assumptions just as untestable as the no-unmeasured-confounders assumption? What have you gained?}
 
-Three things.
+This is also a very legitimate concern: Parallel trends, the exclusion restriction, and continuity at the threshold are all ultimately unverifiable.
+Pre-trends can look clean and still fail post-treatment~\cite{roth2023whats}.
+But the comparison is not between a testable assumption and an untestable one---it is between two untestable assumptions that differ in what they demand of the researcher and what diagnostics they afford.
 
-First, \emph{transparency}: Design-based assumptions are named, specific, and debatable---parallel trends, the exclusion restriction, continuity at the threshold.
-The no-unmeasured-confounders assumption is a blanket claim that every relevant variable has been measured, a claim that is both stronger and harder to evaluate.
-
-Second, \emph{partial testability}: Pre-trend tests for DiD~\cite{roth2023whats}, first-stage F-tests for IV, McCrary density tests for RDD, and overidentification tests provide empirical evidence---not proof---bearing on the assumptions.
-No analogous diagnostic exists for the claim that all confounders are measured.
-
-Third, \emph{domain-specificity}: The assumption shifts from ``I have measured everything relevant'' (which SE researchers almost never can defend from repository data) to ``the specific variation I exploit is quasi-random'' (which is a more tractable claim in settings with staggered adoption, platform shocks, or within-person variation).
-The assumptions are not weaker---they are \emph{different}, and they are different in a way that aligns with the strengths of SE data.
+For example, suppose an SE study asks whether CI adoption reduces defects.
+A selection-on-observables strategy requires the researcher to claim: ``I have measured every variable that jointly influences CI adoption and defect rates.''
+With repository data---where developer motivation, team culture, and management priorities are rarely recorded---this claim is nearly indefensible.
+A DiD design studying the same question makes a different claim: ``Absent CI adoption, defect trends in adopting and non-adopting projects would have evolved in parallel.''
+This assumption is also unverifiable, but the epistemic situation differs in two important ways: First, the assumption is \emph{falsifiable}.
+Pre-treatment trend plots, placebo tests on periods before adoption, and formal pre-trend diagnostics~\cite{roth2023whats} can reveal violations---they cannot prove the assumption holds, but they can show when it fails.
+Sensitivity analyses can quantify how much the trends would need to diverge to overturn the result~\cite{cinelli2020making, rosenbaum2002observational}.
+Second, the assumption \emph{leverages the structure of SE data rather than demanding omniscient measurement}.
+The epistemic burden shifts from ``I measured everything relevant'' to ``the specific variation I exploit is as-if random.''
+SE data is rich in exactly the kind of variation that makes this tractable: staggered tool adoption across teams, platform policy changes that affect some projects but not others, within-developer cross-project comparisons.
+The assumption is not weaker---it is \emph{narrower}, and it is narrow in a direction that plays to the strengths of software repository data rather than its weaknesses.
 
 \subsection{A clever identification strategy tells you about a local effect. Isn't that useless for practitioners?}
 
-External validity is a real limitation of design-based methods, and the tutorial discusses the internal--external validity trade-off explicitly (Section~\ref{sec:primer-stance}).
-A DiD study of TypeScript migration estimates the effect for projects that migrated, not for all projects.
-An IV study recovers the LATE for compliers, not the ATE for the population.
+External validity is a real limitation of design-based methods.
+Every identification strategy constrains the population, setting, or margin of variation about which the study can speak.
+For example, a DiD study of TypeScript migration estimates the effect for projects that migrated during the study window, not for all projects that might ever migrate.
 These are genuinely narrower than the questions practitioners might ideally like answered.
 
-But the alternative is not ``general causal knowledge from regression''---it is no causal knowledge at all, disguised as general knowledge.
-A credible local estimate (e.g., the effect of TypeScript adoption on defects among projects that migrated) is more useful to a practitioner than a biased general estimate (e.g., the raw correlation between TypeScript use and defects across all GitHub projects), because the former has a causal interpretation while the latter conflates the treatment effect with selection bias.
+This narrowness is the price of internal validity, and it is worth paying.
+The alternative is not ``general causal knowledge from regression''---it is no causal knowledge at all, disguised as general knowledge.
+A regression of defect counts on TypeScript adoption across all GitHub projects conflates the treatment effect with selection bias: Projects that adopt TypeScript differ systematically from those that do not, and no amount of covariate adjustment can guarantee that the estimate reflects the language rather than the teams who chose it.
+A credible local estimate---the effect of TypeScript adoption on defects among projects that migrated, identified through the timing of migration---is more useful to a practitioner precisely because it has a causal interpretation, even though it applies to a narrower population.
 
-Accumulating multiple credible local estimates across settings and populations---triangulation~\cite{shadish2002experimental}---is how fields build general causal knowledge.
-This is precisely how economics built its evidence base on minimum wage effects, returns to education, and health insurance coverage: not through a single definitive study but through dozens of credible local estimates that converge.
+How, then, does a field move from credible local estimates to general knowledge?
+The answer is through \emph{triangulation}: accumulating findings across complementary designs, data sources, and populations~\cite{shadish2002experimental}.
+This is how economics built its evidence base on minimum wage effects, returns to education, and health insurance coverage---not through a single definitive study but through dozens of credible local estimates that converge.
+SE is well positioned for the same strategy.
+The diversity of software ecosystems---different languages, platforms, team structures, development cultures---means that the same causal question can be studied in many independent settings, each with its own identification strategy.
+The convergence from multiple credible causal inquiries (e.g., an RCT comparing developers writing in different programming languages, a DiD study on language migrations, and a large-scale panel regression study on GitHub projects) is far more persuasive than any single study claiming to estimate a universal effect.
 
 % ---------------------------------------------------------------------------
 % Category 4: Practical Guidance
@@ -255,38 +262,39 @@ This is precisely how economics built its evidence base on minimum wage effects,
 
 \subsection{I am a new PhD student and my advisor wants me to study causal questions in SE. Where do I start?}
 
-Start with the causal question, not the method.
-Read Section~\ref{sec:primer} for the conceptual foundations, including the pragmatic stance in Section~\ref{sec:guide}.
+Start with this paper.
+Section~\ref{sec:primer} introduces the core concepts---potential outcomes, DAGs, and design-based identification---at the level of intuition needed to recognize which strategies apply to your setting.
+The pragmatic stance in Section~\ref{sec:guide} provides a concrete workflow: Articulate the target trial, sketch a DAG, identify the quasi-experimental variation in your data, and choose the method that exploits it (Table~\ref{tab:design-features}).
+This is enough to form a first research design; it is not enough to implement one.
+To delve deeper, prioritize based on what you need next.
+\citet{cunningham2021causal} is the most accessible entry point to design-based identification methods, with worked examples in R, Stata, and Python that map directly to the methods in this tutorial.
+\citet{huntingtonklein2021effect} bridges causal concepts and practical implementation, with strong coverage of DAGs and research design logic.
+\citet{hernan2020causal} is essential for the target trial framework and for understanding how causal questions constrain study design.
+\citet{angrist2009mostly} provides a rigorous treatment of the potential outcomes framework and is the standard reference for IV and LATE.
+You do not need to read all four before starting---pick the one closest to your current bottleneck and return to the others as your design matures.
+For implementation, see the next FAQ on software tools and packages.
 
-Concretely: (1)~Articulate the target trial---what experiment would you run if you could?
-(2)~Sketch a DAG encoding your beliefs about what causes what.
-(3)~Look at your data through the lens of ``what quasi-experimental variation exists?''---panel structure, staggered adoption, threshold-based assignment.
-(4)~Choose the method that matches the variation (Table~\ref{tab:design-features}).
-
-For textbooks, start with \citet{cunningham2021causal} for an accessible introduction with code examples in R, Stata, and Python, then \citet{angrist2009mostly} for deeper treatment of the potential outcomes framework.
-\citet{hernan2020causal} is essential for the target trial framework and the connection between causal questions and study design.
-\citet{huntingtonklein2021effect} provides an excellent bridge between causal concepts and practical implementation.
+The most important advice is to \emph{iterate}.
+Your first identification strategy will likely have gaps---an implausible assumption, a missing instrument, a parallel trends violation.
+This is normal.
+Sketch the design, stress-test the assumptions with your advisor and collaborators, look for alternative sources of variation, and revise.
+State-of-the-art large language models can accelerate this cycle: Use them to learn unfamiliar methods, draft and critique DAGs, explore whether your data structure supports a particular design, and prototype implementations---but always verify their output against the primary sources above, as they can hallucinate plausible-sounding but incorrect identification arguments.
 
 \subsection{What software tools and packages should I use?}
 
-The choice of tool matters far less than the choice of identification strategy---use whatever language your project already uses.
-
-For \textbf{R}: \Code{fixest} for fast panel fixed effects, DiD, and IV estimation; \Code{did} for the \citet{callaway2021difference} staggered DiD estimator; \Code{rdrobust} for regression discontinuity; \Code{MatchIt} for matching; \Code{sensemakr} for sensitivity analysis and robustness values~\cite{cinelli2020making}; and \Code{dagitty} for DAG construction and identification analysis.
-For \textbf{Python}: \Code{linearmodels} for panel FE and IV; \Code{dowhy} for end-to-end causal inference workflows; and \Code{causaldata} for textbook replication datasets.
-For \textbf{Stata}: \Code{reghdfe} for high-dimensional fixed effects; \Code{did\_multiplegt} for staggered DiD; and \Code{rdrobust} for RDD\@.
-For \textbf{DAG construction}: DAGitty (\url{https://dagitty.net}) provides a web-based interface for drawing DAGs and computing adjustment sets; TikZ in \LaTeX{} produces publication-quality figures (as in this paper).
+The choice of tool matters far less than the choice of identification strategy, but in general, R provides better support for implementing design-based identification methods and Python provides better support for machine-learning-based causal inference workflows.
+In \textbf{R}: \Code{fixest} implements fast panel fixed effects, DiD, and IV estimation; \Code{did} and \Code{didimputation} provide two modern staggered DiD estimators from \citet{callaway2021difference} and \citet{borusyak2024revisiting}; \Code{rdrobust}~\cite{calonico2014robust} assists regression discontinuity; \Code{MatchIt}~\cite{ho2007matching} implements matching; \Code{sensemakr} provides sensitivity analysis and robustness values~\cite{cinelli2020making}; and \Code{dagitty} helps with DAG construction and identification analysis.
+For \textbf{Python}: \Code{linearmodels} for panel FE and IV; \Code{dowhy}~\cite{DBLP:journals/corr/abs-2011-04216} for end-to-end causal inference workflows (model, identify, estimate, refute); \Code{econml}~\cite{econml2019} for ML-based heterogeneous treatment effect estimation via double machine learning, causal forests, and meta-learners; \Code{causalml}~\cite{DBLP:journals/softx/ZhaoL23} for uplift modeling and conditional average treatment effect estimation; \Code{causal-learn}~\cite{DBLP:journals/jmlr/ZhengH0RGCSS024} for causal discovery algorithms (PC, FCI, GES, LiNGAM); and \Code{causaldata} for textbook replication datasets.
 
 \subsection{How do I construct a DAG? I don't know all the causal relationships in my domain.}
 
 You do not need to know all causal relationships---you need to encode your \emph{assumptions} about the ones relevant to your research question.
 The DAG is a model of the researcher's beliefs, not a claim of omniscience~\cite{pearl2009causality}.
-
 Start with three nodes: treatment, outcome, and the most obvious confounder.
 Then ask three questions iteratively.
 ``What else affects both treatment and outcome?''---add those as confounders.
 ``Does the treatment affect the outcome through intermediate variables?''---add those as mediators (and remember not to condition on them).
 ``Are there common effects of treatment and outcome?''---those are colliders (and must not be conditioned on).
-
 Read prior literature to identify established relationships, talk to domain experts (e.g., developers, project managers) to surface tacit knowledge, and iterate.
 A DAG is a living document, not a one-time exercise.
 The value lies in the process of making assumptions explicit and debatable---not in getting the DAG ``right'' on the first try.
@@ -296,13 +304,11 @@ Figure~\ref{fig:pl-dag} provides a worked example of this process for the progra
 
 Cross-sectional data---a single snapshot in time---severely limits causal identification.
 Panel fixed effects (no temporal variation), difference-in-differences (no before/after comparison), and most design-based methods are unavailable.
-
 The remaining options are:
 (1)~Selection-on-observables (regression, matching, IPW) with a carefully justified DAG and sensitivity analysis~\cite{cinelli2020making}---but you must honestly acknowledge that the no-unmeasured-confounders assumption is strong and likely violated in most SE settings where key confounders are unmeasurable from repository data.
 (2)~Instrumental variables, if you can find a plausible instrument.
 (3)~Regression discontinuity, if the setting features a threshold-based assignment mechanism.
-
-Often the most productive response is to \emph{reformulate the question} to exploit available variation (Section~\ref{sec:guide-neither}).
+Often, the most productive response is to \emph{reformulate the question} to exploit available variation (Section~\ref{sec:guide-neither}).
 Can you collect panel data instead of cross-sectional data?
 Can you identify migration or adoption events that create before/after variation?
 The guide's most creative contribution is often in transforming an intractable cross-sectional question into a tractable longitudinal one---for example, ``Does language affect code quality?'' becomes ``Does adopting a type system reduce defects?'' when migration events are observable.
@@ -311,11 +317,9 @@ The guide's most creative contribution is often in transforming an intractable c
 
 Follow the empirical standard in Appendix~\ref{sec:appendix-standard}.
 At minimum: state the causal question explicitly, articulate the target trial, define the estimand, name the identification strategy, state the identifying assumptions, justify covariate selection using a DAG or substantive argument, conduct sensitivity analysis or robustness checks, and discuss at least one alternative explanation with evidence.
-
 Use causal language (``X affects Y,'' ``X reduces Y'') only when your identification strategy supports it.
 Use hedged language (``consistent with a causal interpretation under the assumption of\ldots'') when it does not---this is a strength, not a weakness (see the Invalid Criticisms section of the empirical standard).
-
-A well-structured limitations section that \emph{mitigates} threats with quantitative tools---sensitivity analysis (how strong must an unmeasured confounder be to nullify the result?), falsification tests (does the treatment ``affect'' outcomes it should not?), robustness checks (does the result survive alternative specifications?)---is far more convincing than a laundry list of potential problems accompanied by no engagement with their severity.
+Write a well-structured limitations section that \emph{mitigates} threats with quantitative tools---sensitivity analysis (how strong must an unmeasured confounder be to nullify the result?), falsification tests (does the treatment ``affect'' outcomes it should not?), robustness checks (does the result survive alternative specifications?)---is far more convincing than a laundry list of potential problems accompanied by no engagement with their severity.
 
 % ---------------------------------------------------------------------------
 % Category 5: Scope and Boundaries
@@ -325,10 +329,8 @@ A well-structured limitations section that \emph{mitigates} threats with quantit
 
 Causal discovery algorithms---such as PC, GES, and FCI~\cite{spirtes2001causation}---attempt to learn DAG structure from observational data under assumptions like faithfulness and causal sufficiency.
 They are a valid and active research direction, but they face practical challenges in SE settings.
-
-\citet{journals/ese/HulseEM25} showed that causal graph generators applied to SE data are unstable, with over half of discovered edges changing across minor data perturbations.
+For example, \citet{journals/ese/HulseEM25} showed that causal graph generators applied to SE data are unstable, with over half of discovered edges changing across minor data perturbations.
 The required assumptions---particularly faithfulness (every conditional independence in the data reflects a structural independence in the graph) and causal sufficiency (no unmeasured common causes)---are often implausible with noisy, high-dimensional SE data.
-
 This tutorial focuses on theory-driven DAGs because they leverage the researcher's \emph{domain knowledge}---the comparative advantage of SE researchers who understand the systems they study---and because they are compatible with design-based identification, which does not require learning the full causal structure.
 The two approaches are complementary: Data-driven methods can suggest edges to investigate, while domain knowledge adjudicates which edges are plausible and which are artifacts of data noise.
 
@@ -336,24 +338,12 @@ The two approaches are complementary: Data-driven methods can suggest edges to i
 
 These methods are important recent advances that the primer mentions (Section~\ref{sec:primer-toolkit}) but does not cover in depth.
 Causal forests~\cite{athey2016recursive} estimate \emph{heterogeneous} treatment effects---how the effect varies across subgroups---and double/debiased machine learning~\cite{chernozhukov2018double} allows flexible, high-dimensional functional forms while maintaining valid statistical inference.
-
 However, these methods do \emph{not} solve the identification problem.
 They still require an identification strategy---selection-on-observables or design-based---and the same identifying assumptions.
 A causal forest trained on observational data with unmeasured confounders produces biased heterogeneous effect estimates, not unbiased ones; double/debiased ML with endogenous treatment assignment produces consistent estimates of a non-causal quantity.
 The methods are estimation tools, not identification tools.
-
 For the modal SE researcher who has not yet mastered the basics of identification, learning difference-in-differences and panel fixed effects will yield more immediate returns than learning causal forests.
 Once identification is understood, these ML-based methods become powerful extensions for exploring effect heterogeneity and relaxing functional form assumptions.
-
-\subsection{How does this tutorial relate to A/B testing as practiced in industry?}
-
-A/B testing is a randomized controlled experiment---the gold standard for internal validity.
-Nothing in this tutorial replaces A/B testing when it is feasible.
-The tutorial addresses the vast majority of SE questions where A/B testing is infeasible: studying the effects of language choice, process adoption, or organizational practices in real-world settings where random assignment is impractical or unethical.
-
-The target trial framework (Section~\ref{sec:primer-causality}) bridges the two worlds: It asks ``what A/B test would I run if I could?'' and then evaluates how far the observational design departs from that ideal.
-Industry practitioners who run A/B tests can also benefit from the causal reasoning framework when analyzing the observational data that surrounds their experiments---e.g., long-term effects after the experiment ends, spillover effects on untreated teams, or generalization from the experimental population to the broader user base.
-
 
 \section{An Empirical Standard for Causal Inquiries in Software Engineering}
 \label{sec:appendix-standard}
