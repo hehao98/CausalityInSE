@@ -1,137 +1,156 @@
 # PL vs. Code Quality Literature Synthesis Plan
 
-**Date:** 2026-03-27
+**Date:** 2026-03-27 (updated 2026-03-27)
 **Scope:** Sections 4.1 (literature synthesis) and 4.2 (misinterpretation problem) of the unified Section 4.
 **Goal:** Write a literature synthesis that (a) traces the PL vs. code quality debate as a coherent narrative, (b) documents the downstream misinterpretation problem with quantitative evidence, and (c) argues that the debate's impasse is about *identification*, setting up the two worked examples.
 
 ---
 
-## Current State
+## Section 4.1: Literature Synthesis --- DONE
 
-- **Section 4.1 (three-phase narrative)** is drafted (~20 lines). Covers controlled experiments (Prechelt, Hanenberg, Nanz & Fischbach), observational studies (Ray et al., Meyerovich & Rabkin, Gao et al.), and reproduction/causal identification (Berger et al., Furia et al., Bogner & Merkel).
-- **Section 4.2 (misinterpretation)** is a placeholder with a one-line TODO comment.
-- The Introduction already previews Ray et al.'s downstream misinterpretation (lines 122--127 of main.tex) and the Hernán (2018) causal language problem (footnote on line 120).
+Section 4.1 has been expanded from ~20 lines to ~60 lines. Changes made:
 
-## What Needs to Change
+- [x] Added Endrikat et al. (2014) to controlled experiments paragraph
+- [x] Added Bhattacharya & Neamtiu (2011), Bissyandé et al. (2013), Kochhar et al. (2016) to observational studies paragraph
+- [x] Key argument added: independent replication of an association is not the same as causal identification
+- [x] Strengthened "toward causal identification" paragraph: Furia et al. (2024) finding described as "smoking gun" --- same data, same researchers, different conclusions depending on associational vs. causal analysis
+- [x] Added section-level intro connecting to the umbrella theme
+- [x] Three new BibTeX entries added to references.bib (DBLP:conf/icse/EndrikatHRS14, DBLP:conf/icse/BhattacharyaN11, DBLP:conf/compsac/BissyandeTLJR13)
 
-### Section 4.1: Expand the Literature Synthesis
+---
 
-The current draft is compact and effective but needs expansion in three areas:
+## Section 4.2: The Misinterpretation Problem --- TODO
 
-1. **Broaden the controlled experiments coverage.** Add:
-   - Endrikat et al. (2014) --- meta-analysis of type system experiments
-   - Fischer et al. (2015) --- effect of type system on API usability
-   - Mayer et al. (2012) --- visual/type error experiments (already cited but deserves more context)
-   - Key takeaway: experiments consistently show type systems help with *type-related* errors but not *semantic* errors; effect sizes are modest and dwarfed by individual differences.
+Two evidence streams converging on the same conclusion.
 
-2. **Expand the observational studies landscape.** Add:
-   - Kochhar et al. (2016) --- large-scale study of language features and bug categories
-   - Bhattacharya & Neamtiu (2011) --- early large-scale PL-quality study on open-source C/C++ projects
-   - Bissyandé et al. (2013) --- popularity, interoperability, and quality of PL ecosystems
-   - Key takeaway: multiple independent teams found similar modest associations, which makes the misinterpretation problem *worse* --- replication of an association is not the same as causal identification.
+### Stream 1: Quantitative Citation Analysis of Ray et al.
 
-3. **Strengthen the "toward causal identification" thread.** Add:
-   - Explicitly note what Furia et al. (2024) found: the causal effect was *different in direction or magnitude* from the associational estimate on the same data --- this is the smoking gun for why associations are not enough.
-   - Note the gap: no study uses panel variation or DiD on real-world project data (already stated, but make it the explicit transition to the worked examples).
+#### Data Collection: `scripts/fetch_ray_citations.py`
 
-### Section 4.2: The Misinterpretation Problem (NEW)
+Fetch ALL citing papers for both versions of the Ray et al. study from Semantic Scholar API into `data/ray_citations.csv`.
 
-This is the major new writing. Structure it as three evidence streams converging on the same conclusion:
+**Semantic Scholar details:**
+- FSE 2014 paper (DOI: 10.1145/2635868.2635922): ~424 citations, S2 ID `346e2d94b09144375e2449cf214ac34ba93bb48c`
+- CACM 2017 paper (DOI: 10.1145/3126905): ~36 citations, S2 ID `a29876e47583ef978ea415c17a67493028f8831d`
+- The `contexts` field contains citation text snippets (the sentences/passages where the citation appears)
+- Pagination: `offset`/`limit` params, max `limit=1000`
+- Both paper versions must be queried separately (different S2 IDs, non-overlapping citation lists)
+- Some papers will have empty `contexts` (no full-text access)
 
-#### Stream 1: Quantitative Citation Analysis of Ray et al.
+**Script behavior:**
+1. Query `/paper/{id}/citations?fields=title,citationCount,contexts,intents,externalIds,year,authors&limit=1000` for both paper IDs
+2. Deduplicate by S2 paper ID (a paper might cite both versions)
+3. Output CSV with columns: `s2_paper_id`, `title`, `authors`, `year`, `cited_version` (FSE/CACM/both), `citation_count`, `contexts` (JSON array of text snippets), `doi`, `arxiv_id`
+4. Add a 1-second delay between API calls to respect rate limits
+5. Report total count and how many have non-empty contexts
 
-- **Method:** Sample ~50--100 papers citing Ray et al. (2014) or the CACM version (2017) from Semantic Scholar or Google Scholar. Classify each citing paper's interpretation:
-  - *Causal*: Cites the study as evidence that language X *causes* more/fewer defects (e.g., "Ray et al. showed that functional languages cause fewer defects").
-  - *Correlational/hedged*: Cites the study as showing an association or correlation, with appropriate qualification.
-  - *Neutral/tangential*: Cites the study for context (e.g., dataset description, motivation) without interpreting the findings.
-- **Expected finding:** A substantial fraction (likely >40%, based on analogous analyses in epidemiology — Haber et al. 2022 found 52%) interpret the findings causally despite the authors' hedged language.
-- **Presentation:** Bar chart or table showing the distribution. Quote 3--5 representative examples of causal misinterpretation (with citations).
+**Expected output:** ~450--460 unique citing papers, of which roughly 50--70% will have citation context text.
 
-#### Stream 2: Media and Practitioner Discourse
+#### Classification: `scripts/classify_ray_citations.py`
 
-- Collect 3--5 examples of how Ray et al.'s findings were reported in tech media and practitioner forums. Candidates:
-  - Tech blog posts (e.g., "Which programming languages have the fewest bugs?" articles that cite Ray et al.)
-  - Hacker News / Reddit discussions
-  - Developer conference talks or company engineering blogs
-  - The "functional languages are safer" narrative in industry
-- Purpose: Show that the misinterpretation is not limited to academic papers; it flows downstream to practitioners who make tooling and language decisions based on this evidence.
+Read `data/ray_citations.csv`, classify each paper's citation interpretation, and write the classification back to the same CSV (adding new columns).
 
-#### Stream 3: Classic Misinterpretation Patterns from Other Domains
+**Classification approach:**
+1. For each citing paper with non-empty `contexts`, feed the citation text snippets to an LLM (Claude) and ask it to classify the interpretation
+2. The **specific classification scheme should be determined after inspecting the actual citation text** --- run the fetch script first, manually examine 20--30 examples, then define categories that capture the natural variation
+3. Likely categories (to be confirmed after data inspection):
+   - *Causal*: Treats the finding as evidence that language features cause quality differences
+   - *Associational/hedged*: Accurately describes the finding as a correlation or association
+   - *Neutral/tangential*: Cites for context (dataset, motivation, related work) without interpreting findings
+   - *Critical*: Cites to critique the methodology or question the findings
+4. Papers with empty contexts get classified as `no_context`
+5. Add columns: `classification`, `classification_confidence`, `representative_quote`
 
-- Briefly draw parallels to well-documented misinterpretation cases in other fields to show this is a *systemic* pattern, not a one-off:
-  - **Epidemiology:** Observational studies on hormone replacement therapy were widely interpreted as causal until RCTs (WHI) showed the opposite effect --- driven by healthy-user bias (identical in structure to the "disciplined-team bias" in PL studies).
-  - **Psychology:** The replication crisis showed that many "established" effects were artifacts of flexible analysis and selection bias.
-  - **Hernán (2018) argument:** Avoiding causal language does not prevent causal interpretation; it merely obscures assumptions. The solution is not *less* causal language but *more explicit* causal reasoning.
-- Keep this brief (1 paragraph with citations) --- the appendix already covers the psychology/epidemiology parallel in detail.
+**Output:** Updated `data/ray_citations.csv` with classification columns. Summary statistics for the paper.
 
-#### Tying It Together
+### Stream 2: Media and Practitioner Discourse Examples
 
-- Conclude Section 4.2 with the argument: The misinterpretation problem is not a failure of individual authors (Ray et al. were appropriately hedged) but a *structural consequence* of the field's lack of causal reasoning infrastructure. When a field asks causal questions but lacks the vocabulary and tools to distinguish association from causation, downstream misinterpretation is inevitable. The pragmatic stance (Section 3.4) provides exactly this infrastructure.
-- Transition: "The remainder of this section demonstrates the pragmatic stance's diagnostic and constructive power by applying it to two studies from this debate."
+The following examples have been collected for review. Each shows how Ray et al.'s hedged correlational findings were amplified into causal claims in practitioner contexts.
+
+#### Example 1: The Register (2019) --- Debunking article with Berger quote
+
+- **URL:** https://www.theregister.com/2019/01/30/programming_bugs/
+- **Title:** "Boffins debunk study claiming certain languages lead to more buggy code"
+- **Date:** January 30, 2019
+- **Key quote (Emery Berger):** "The original study purported to establish a correlation between programming languages and errors, **one that people misinterpreted as a causal relationship.**"
+- **Note:** Even the debunking article's headline uses causal language ("lead to more buggy code"). The original 2014 Register coverage (https://www.theregister.com/Print/2014/11/06/languages_dont_breed_bugs_people_breed_bugs) similarly used "breed bugs."
+- **Why useful:** Direct testimony from a reproduction study author documenting the misinterpretation phenomenon.
+
+#### Example 2: Edward Huang's Blog (2021) --- "5 Programming Languages That Produce Code Least Prone to Bugs"
+
+- **URL:** https://edward-huang.com/programming/software-development/2021/03/02/5-programming-language-that-produce-code-least-prone-to-bugs/
+- **Date:** March 2, 2021
+- **Key quotes:**
+  - Title: "5 Programming Language That **Produce** Code Least Prone to Bugs"
+  - "some programming languages have been designed ... **to help a developer do the right thing**"
+  - Cites Ray et al. CACM in the resources section
+- **Why useful:** Practitioner blog post that treats associations as intrinsic language properties, using causal verbs ("produce," "eliminate") while citing the study as empirical backing.
+
+#### Example 3: Medium (2024) --- "The Impact of Programming Languages on Bug Frequency"
+
+- **URL:** https://medium.com/@appjungle/the-impact-of-programming-languages-on-bug-frequency-a-detailed-analysis-8b714ea999bb
+- **Date:** June 28, 2024
+- **Key quotes:**
+  - "Python's readability and simplicity are major factors **contributing to** its low bug frequency."
+  - "these come at the cost of **increased bug frequency**" (about C++)
+  - Title: "The **Impact** of Programming Languages on Bug Frequency"
+- **Why useful:** Recent (2024) example showing the misinterpretation continues a decade after the original study. The causal framing ("impact," "contributing to") is embedded in the title.
+
+#### Example 4: Hacker News Discussion (November 2014, thread #8558740)
+
+- **URL:** https://news.ycombinator.com/item?id=8558740
+- **Date:** November 4--5, 2014
+- **Key quotes:**
+  - paulajohnson: "A Haskell project can expect to see 63% of the bug fixes that a C++ project would see. **I don't call a 36% drop in bugs 'small'.**" --- Treats the regression coefficient as a direct causal quantity (switching from C++ to Haskell "would" produce fewer bugs).
+  - oskarth: "The data indicates functional languages **are better than** procedural languages"
+- **Why useful:** Shows immediate causal interpretation by practitioners within days of publication. Commenters treat regression coefficients as switchable causal effects.
+
+#### Example 5: Slashdot (January 2018) --- "Which Programming Languages Are Most Prone to Bugs?"
+
+- **URL:** https://developers.slashdot.org/story/18/01/01/0242218/which-programming-languages-are-most-prone-to-bugs
+- **Date:** January 1, 2018
+- **Key observation:** The headline frames bug-proneness as an intrinsic language property ("Which Programming Languages **Are** Most Prone to Bugs?") rather than a confounded association.
+- **Why useful:** Major tech news aggregator with causal framing in the headline itself.
+
+#### Usage in Section 4.2
+
+Select 2--3 of the strongest examples (likely #1 for the Berger meta-quote, #4 for practitioner causal interpretation, and #2 or #3 for the blog-post pattern). These are footnotes or brief inline references, not the main evidence --- the quantitative citation analysis (Stream 1) carries the argument.
 
 ---
 
 ## Writing Order
 
-1. **Section 4.2 citation analysis** (do the empirical work first):
-   - [ ] Pull citing papers for Ray et al. (2014) and CACM (2017) from Semantic Scholar API
-   - [ ] Sample ~50--100 citing papers; retrieve titles and relevant text
-   - [ ] Classify interpretations (causal / hedged / neutral) using LLM + manual verification
-   - [ ] Compute proportions; select representative quotes
-   - [ ] Collect media/practitioner examples (web search)
+1. **Run `scripts/fetch_ray_citations.py`:**
+   - [ ] Write the script
+   - [ ] Run it to produce `data/ray_citations.csv`
+   - [ ] Inspect 20--30 citation contexts to finalize classification scheme
 
-2. **Write Section 4.2 prose:**
+2. **Run `scripts/classify_ray_citations.py`:**
+   - [ ] Write the script with the finalized classification scheme
+   - [ ] Run it to classify all citing papers
+   - [ ] Compute summary statistics
+   - [ ] Select 3--5 representative quotes for the paper
+
+3. **Write Section 4.2 prose:**
    - [ ] Stream 1 (citation analysis) --- ~2 paragraphs + table/figure
-   - [ ] Stream 2 (media examples) --- ~1 paragraph
-   - [ ] Stream 3 (cross-domain parallels) --- ~1 paragraph
+   - [ ] Stream 2 (media examples) --- ~1 paragraph with footnotes
    - [ ] Closing argument and transition --- ~1 paragraph
-
-3. **Revise Section 4.1:**
-   - [ ] Expand controlled experiments paragraph (add Endrikat, Fischer)
-   - [ ] Expand observational studies paragraph (add Kochhar, Bhattacharya & Neamtiu, Bissyandé)
-   - [ ] Strengthen the "toward causal identification" paragraph (emphasize Furia et al. finding)
-   - [ ] Ensure the section reads as a coherent narrative flowing into 4.2
 
 4. **Update Introduction and Abstract** to reference the literature synthesis and misinterpretation analysis as a contribution.
 
 ---
 
-## Key References to Verify/Add
-
-### Already cited (verify still in .bib):
-- Ray et al. 2014, 2017 (DBLP keys exist)
-- Berger et al. 2019 (DBLP key exists)
-- Furia et al. 2022, 2024 (DBLP keys exist)
-- Bogner & Merkel 2022 (DBLP key exists)
-- Prechelt 2000, Hanenberg 2010, Nanz & Fischbach 2015 (DBLP keys exist)
-- Gao et al. 2017 (DBLP key exists)
-- Meyerovich & Rabkin 2013 (DBLP key exists)
-- Hernán 2018, Haber et al. 2022 (non-CS keys)
-
-### Need to add (verify via DBLP / Google Scholar):
-- Endrikat et al. 2014 --- "How do API documentation and static type systems affect API usability?"
-- Bhattacharya & Neamtiu 2011 --- "Assessing programming language impact on development and maintenance"
-- Bissyandé et al. 2013 --- "Popularity, interoperability, and impact of programming languages in 100,000 open source projects"
-- Kochhar et al. 2016 --- "Large scale study of multiple programming languages and code quality" (if it exists — verify)
-- Any good tech media examples found during the search
-
-### Cross-domain references (already in appendix, may need to cite in main text):
-- WHI hormone replacement therapy reversal (Rossouw et al. 2002 or Manson et al. 2003)
-- Haber et al. 2022 causal language in observational abstracts
-
----
-
 ## Length Target
 
-- Section 4.1 (expanded): ~1.5 pages (currently ~0.75 pages)
-- Section 4.2 (new): ~2 pages (including one table or figure for citation analysis)
-- Total for 4.1 + 4.2: ~3.5 pages
+- Section 4.1 (expanded): ~1.5 pages --- DONE
+- Section 4.2 (new): ~1.5--2 pages (including one table or figure for citation analysis)
+- Total for 4.1 + 4.2: ~3--3.5 pages
 
 ---
 
 ## Success Criteria
 
-- [ ] A reader who knows nothing about the PL-quality debate can understand its full arc after reading 4.1
+- [x] A reader who knows nothing about the PL-quality debate can understand its full arc after reading 4.1
 - [ ] The misinterpretation problem is documented with *quantitative* evidence, not just assertion
-- [ ] The argument flows naturally from "here is what researchers found" (4.1) → "here is how it was misinterpreted" (4.2) → "here is how the pragmatic stance would diagnose and fix it" (4.3--4.4)
-- [ ] Both Ray et al. and Bogner & Merkel are introduced as part of the literature landscape (4.1) before being used as worked examples (4.3--4.4)
+- [x] The argument flows naturally from "here is what researchers found" (4.1) -> "here is how it was misinterpreted" (4.2) -> "here is how the pragmatic stance would diagnose and fix it" (4.3--4.4)
+- [x] Both Ray et al. and Bogner & Merkel are introduced as part of the literature landscape (4.1) before being used as worked examples (4.3--4.4)
