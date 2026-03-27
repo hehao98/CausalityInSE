@@ -2,7 +2,7 @@
 
 **Target Venue:** ACM Transactions on Software Engineering and Methodology (TOSEM)
 
-**Status:** Drafting phase --- Sections 1--3 drafted; Section 4 guide drafted; Sections 5--8 TODO.
+**Status:** Drafting phase --- Sections 1--3 drafted; Section 4.1 (PL debate review) drafted; Sections 4.2--6 TODO.
 
 ## Repository Organization
 
@@ -13,40 +13,52 @@
 
 ## Paper Vision
 
-This tutorial paper aims to provide an accessible introduction to causal inference for software engineering researchers. Using the longstanding programming language vs. defect proneness debate as a worked example, the paper walks readers through:
+This tutorial paper aims to provide an accessible introduction to causal inference for software engineering researchers. The **programming language vs. code quality debate** serves as the paper's single unifying case study --- a three-decade-old controversy that has generated controlled experiments, landmark observational studies, high-profile reproductions, and widespread downstream misinterpretation, making it the ideal vehicle for demonstrating both the diagnostic and constructive power of causal inference methods.
+
+The paper walks readers through:
 
 1. The intellectual landscape of causal inference (potential outcomes, graphical causal models, design-based approaches) and why it matters for SE,
-2. A practical guide for conducting credible causal inquiry in SE, structured around three stages: articulating the causal question (target trial, estimand, DAG), choosing an identification strategy (DAG-based or design-based), and probing the strategy's credibility through sensitivity analysis and engagement with alternative explanations,
-3. Two diagnostic-then-constructive worked examples showing the guide's power to both critically evaluate existing studies and guide improved designs:
+2. A pragmatic stance for conducting credible causal inquiry in SE, integrated into the primer (Section 3.4), which synthesizes the toolkit into actionable guidance: building on prior research and practitioner knowledge to propose causal theories, framing research designs as target trials, using DAGs to make assumptions explicit, exploiting quasi-experimental variation for identification, and honestly engaging with alternative explanations,
+3. A **literature synthesis of the PL vs. code quality debate** (Section 4.1--4.2) that:
+   - Traces the debate through three phases (controlled experiments → large-scale observational studies → reproduction and causal identification),
+   - Documents the **downstream misinterpretation problem** using Ray et al. as a case study: quantitative citation analysis showing how hedged correlational findings are reinterpreted as causal claims in downstream papers, tech media, and practitioner discourse --- illustrating a systemic pattern that extends well beyond this single study,
+   - Argues that the debate's impasse is fundamentally about **identification**, not data or statistics, and that resolving it requires the causal inference toolkit,
+4. Two diagnostic-then-constructive **worked examples** (Sections 4.3--4.4), both drawn from the PL-quality debate, showing the pragmatic stance's power to both critically evaluate existing studies and guide improved designs:
    - **Example A (Ray et al.):** Diagnoses the identification failures in the landmark PL-defect study, then shows how panel fixed effects on the *same GitHub data* would have provided stronger identification by exploiting within-developer and within-repository variation.
-   - **Example B (Bogner & Merkel):** Diagnoses the selection bias in a cross-sectional JavaScript vs. TypeScript comparison, then shows how the guide decomposes the compound "language" treatment into the sharper "type system adoption" question and redesigns the study as a TypeScript migration difference-in-differences on the *same GitHub data*.
-4. An ACM Empirical Standard for Causal Inquiry in SE (appendix), providing a concrete, verifiable checklist for authors, reviewers, and editors.
+   - **Example B (Bogner & Merkel):** Diagnoses the selection bias in a cross-sectional JavaScript vs. TypeScript comparison, decomposes the compound "language" treatment into the sharper "type system adoption" question, and redesigns the study as a TypeScript migration difference-in-differences on the *same GitHub data*.
+5. An ACM Empirical Standard for Causal Inquiry in SE (appendix), providing a concrete, verifiable checklist for authors, reviewers, and editors.
 
-The paper should be self-contained and pedagogically oriented so that an SE researcher with no prior exposure to causal inference can (a) understand the state of the art, (b) critically evaluate causal claims in existing work, and (c) apply the guide to their own research.
+The paper should be self-contained and pedagogically oriented so that an SE researcher with no prior exposure to causal inference can (a) understand the state of the art, (b) critically evaluate causal claims in existing work, and (c) apply the pragmatic stance to their own research.
 
 ## Paper Structure
 
-1. **Introduction** (Section 1) --- *Drafted.* Motivates the problem: SE practice is driven by folklore; empirical SE research produces voluminous but often inconclusive evidence because of its reliance on correlational methods. Causal inference offers a principled path forward. Three contributions: primer, practical guide, two worked examples.
+1. **Introduction** (Section 1) --- *Drafted.* Motivates the problem: SE's dominant approach (large-scale correlational analysis) cannot answer causal questions about interventions and outcomes; yet stakeholders routinely interpret findings causally. Causal inference offers transparency and principled identification. Three contributions: primer with pragmatic stance, literature synthesis of the PL-quality debate (with misinterpretation analysis), two worked examples.
 
 2. **Background & Related Work** (Section 2) --- *Drafted.* Three subsections:
    - 2.1 Existing tutorials and methodological guides in SE (positioning our contribution)
-   - 2.2 The causal inference challenge in econometrics, psychology, and epidemiology (development of the toolkit; the methodological reform movement)
+   - 2.2 The causal inference toolkit: origins and scope (development of the toolkit across three intellectual traditions)
    - 2.3 Causal inference adoption in SE to date (empirical analysis of 5,341 papers from ICSE + FSE + ASE, 2015--2025; taxonomy and trend figures)
 
-3. **A Primer on Causal Inference for SE Researchers** (Section 3) --- *Drafted.* Covers potential outcomes, graphical causal models, design-based identification, and a pragmatic stance for SE research (Section 3.4).
+3. **A Primer on Causal Inference for SE Researchers** (Section 3) --- *Drafted.* Four subsections:
+   - 3.1 What does it mean for X to cause Y? (four perspectives on causation)
+   - 3.2 Why cannot we use descriptive and correlational evidence? (four failure modes)
+   - 3.3 The causal inference toolkit (potential outcomes, DAGs, design-based identification)
+   - 3.4 A pragmatic stance for SE research (synthesizes the toolkit into actionable guidance; incorporates the former "guide" section)
 
-4. **A Guide for Conducting Credible Causal Inquiry in SE** (Section 4) --- *Drafted.* Three stages: Start with the Causal Question (4.1), Two Paths to Identification (4.2, with Path A: DAG-based, Path B: design-based, and When Neither Path Is Clean), Probing Credibility (4.3).
+4. **The Programming Language and Code Quality Debate** (Section 4) --- *Unified section; Section 4.1 drafted, rest TODO.* Single umbrella theme housing the literature synthesis and both worked examples:
+   - 4.1 Literature synthesis: three phases of PL-quality research (controlled experiments → observational studies → reproduction/causal identification) --- *Drafted.*
+   - 4.2 The misinterpretation problem: when correlations become causal claims (quantitative citation analysis of Ray et al.; media and paper examples; why hedged language fails) --- *TODO; see plan.*
+   - 4.3 Example A --- Diagnosing and improving Ray et al. (diagnostic assessment via pragmatic stance; constructive improvement via panel FE; brief empirical demonstration) --- *TODO.*
+   - 4.4 Example B --- Diagnosing and improving Bogner & Merkel (diagnostic assessment; treatment decomposition from "language" to "type system adoption"; constructive improvement via TypeScript DiD; brief empirical demonstration) --- *TODO.*
+   - 4.5 Synthesis: how the pragmatic stance upgrades research designs (connects both examples; shows different data structures → different improved designs) --- *TODO.*
 
-5. **Worked Example A: The PL--Defect Debate** (Section 5) --- *Section 5.1 (PL debate review) drafted; Sections 5.2--5.5 TODO.*
+5. **Discussion** (Section 5) --- *TODO.*
 
-6. **Worked Example B: TypeScript and Code Quality** (Section 6) --- *TODO.*
-
-7. **Discussion** (Section 7) --- *TODO.*
-
-8. **Conclusion** (Section 8) --- *TODO.*
+6. **Conclusion** (Section 6) --- *TODO.*
 
 **Appendices:**
-- Frequently Asked Questions --- *Placeholder.*
+- Historical development of causal inference and parallels with psychology/epidemiology --- *Drafted.*
+- Frequently Asked Questions (27 Q&A pairs across 5 categories) --- *Drafted.*
 - An Empirical Standard for Causal Inquiry in SE --- *Drafted.* Full ACM SIGSOFT Empirical Standards format (Application, Specific Attributes, Quality Criteria, Acceptable Deviations, Antipatterns, Invalid Criticisms, Suggested Readings, Exemplars).
 
 ---
@@ -62,56 +74,63 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 - [x] Synthesize findings from LR1--LR4 to finalize paper framing and contribution statement
 - [x] Revise paper structure based on literature review findings
 
-### Phase 1: Tutorial Drafting (Current Phase)
+### Phase 1: Tutorial Drafting (Completed)
 
 - [x] Write Introduction (Section 1)
 - [x] Write Background & Related Work (Section 2), informed by LR1--LR4
 - [x] Write the Causal Inference Primer (Section 3)
-- [x] Revise Section 4 from four-step framework to practical guide --- *see `plans/20260323 - Revising Section 4.md`*
+- [x] Merge Section 4 (Guide) into Section 3.4 (Pragmatic Stance)
 - [x] Draft the ACM Empirical Standard for Causal Inquiry appendix
+- [x] Draft the PL vs. defect proneness debate review (Section 4.1)
 
-### Phase 2: Worked Example A --- Ray et al. + Panel FE (Section 5)
+### Phase 2: PL vs. Code Quality Literature Synthesis (Section 4.1--4.2) --- Current Phase
 
-- [x] Write the PL vs. defect proneness debate review (Section 5.1)
-- [ ] Write diagnostic assessment of Ray et al. (Section 5.2): walk through guide showing identification failures
-- [ ] Conduct and write up the downstream citation analysis (Section 5.3)
-- [ ] Write constructive improvement narrative: how the guide directs from regression to panel FE (Section 5.4)
-- [ ] Construct panel dataset from Ray et al.'s GitHub data (or comparable sample): identify polyglot developers and repositories
-- [ ] Operationalize language assignment at the commit level; compute defect metrics
+- [ ] Expand Section 4.1 literature synthesis: broaden beyond the three-phase narrative to include more PL-quality literature and connect both papers' contexts --- *see `plans/20260327 - PL Code Quality Literature Synthesis.md`*
+- [ ] Write Section 4.2 --- The Misinterpretation Problem:
+  - [ ] Conduct quantitative citation analysis of Ray et al. (sample citing papers; classify causal vs. correlational interpretation)
+  - [ ] Collect classic misinterpretation examples from tech media and practitioner discourse
+  - [ ] Collect misinterpretation examples from downstream SE papers
+  - [ ] Write the narrative tying citation analysis, media, and paper examples into a systemic pattern
+  - [ ] Connect to Hernán (2018) causal language problem and the methodological reform literature
+
+### Phase 3: Worked Examples (Sections 4.3--4.5)
+
+- [ ] Write diagnostic assessment of Ray et al. (Section 4.3): walk through pragmatic stance showing identification failures
+- [ ] Write constructive improvement narrative: from regression to panel FE (Section 4.3)
+- [ ] Construct panel dataset from Ray et al.'s GitHub data (or comparable sample)
 - [ ] Implement panel FE analysis; conduct specification tests and robustness checks
-- [ ] Write up brief empirical demonstration (Section 5.5)
-
-### Phase 3: Worked Example B --- Bogner & Merkel + TypeScript DiD (Section 6)
-
-- [ ] Write diagnostic assessment of Bogner & Merkel 2022 (Section 6.1): walk through guide showing selection bias
-- [ ] Write the treatment decomposition narrative: from "language" to "type system adoption" (Section 6.2)
-- [ ] Write constructive improvement narrative: redesign as TypeScript adoption DiD (Section 6.3)
-- [ ] Identify TypeScript migration events in GitHub data (JS projects that adopted TS)
-- [ ] Construct matched treatment-control sample of JS projects; compute pre/post defect metrics
+- [ ] Write up brief empirical demonstration (Section 4.3)
+- [ ] Write diagnostic assessment of Bogner & Merkel (Section 4.4): walk through pragmatic stance showing selection bias
+- [ ] Write treatment decomposition: from "language" to "type system adoption" (Section 4.4)
+- [ ] Write constructive improvement: redesign as TypeScript adoption DiD (Section 4.4)
+- [ ] Identify TypeScript migration events; construct matched treatment-control sample
 - [ ] Implement DiD analysis with event-study plots and pre-trend tests
-- [ ] Write up brief empirical demonstration (Section 6.4)
-- [ ] Write synthesis of both examples: how the guide upgrades designs (Section 6.5)
+- [ ] Write up brief empirical demonstration (Section 4.4)
+- [ ] Write synthesis of both examples (Section 4.5): how the pragmatic stance generates different improved designs depending on data structure
 
 ### Phase 4: Integration and Submission
 
-- [ ] Write Discussion (Section 7): implications for SE research practices, how both examples generalize, relationship to methodological reform efforts, potential for the empirical standard
-- [ ] Write Conclusion (Section 8)
+- [ ] Write Discussion (Section 5)
+- [ ] Write Conclusion (Section 6)
+- [ ] Revise Introduction and Abstract to reflect final structure
 - [ ] Full paper revision and internal review
 - [ ] Submit to TOSEM
 
 ## Key Risks and Open Questions
 
-1. **Positioning relative to Furia et al. (2024):** They applied structural causal models (DAG-based adjustment) to coding competition data. Our contribution differs on three dimensions: (a) we provide a general tutorial with a practical guide, not just one application; (b) our Example A uses design-based identification (panel FE) rather than DAG-based adjustment; (c) our Example B uses a different identification strategy (DiD exploiting a natural experiment) on real-world project data. The two-example structure demonstrates that the guide generates *different* improved designs depending on the data structure and question.
+1. **Positioning relative to Furia et al. (2024):** They applied structural causal models (DAG-based adjustment) to coding competition data. Our contribution differs on three dimensions: (a) we provide a general tutorial with a pragmatic stance, not just one application; (b) our Example A uses design-based identification (panel FE) rather than DAG-based adjustment; (c) our Example B uses a different identification strategy (DiD exploiting a natural experiment) on real-world project data. The two-example structure demonstrates that the pragmatic stance generates *different* improved designs depending on the data structure and question.
 
-2. **Scope management:** Two worked examples plus a tutorial primer is ambitious. The empirical demonstrations in Sections 5.4 and 6.4 should be brief and pedagogical (not full empirical papers) --- enough to show feasibility and illustrate the framework's output, not to definitively answer the causal questions.
+2. **Scope management:** A literature synthesis + two worked examples + a tutorial primer is ambitious. The empirical demonstrations in Sections 4.3 and 4.4 should be brief and pedagogical (not full empirical papers) --- enough to show feasibility and illustrate the framework's output, not to definitively answer the causal questions.
 
-3. **Empirical feasibility --- Example A (Panel FE):** Depends on sufficient within-developer language variation in the data. Mitigation: assess variation early; even a null or weak result is pedagogically valuable (it illustrates Step 3's honesty about limitations).
+3. **Empirical feasibility --- Example A (Panel FE):** Depends on sufficient within-developer language variation in the data. Mitigation: assess variation early; even a null or weak result is pedagogically valuable (it illustrates the pragmatic stance's honesty about limitations).
 
 4. **Empirical feasibility --- Example B (TypeScript DiD):** Depends on identifying enough clean TypeScript migration events (JS projects that adopted TS) with comparable pure-JS controls. Mitigation: TypeScript adoption has been widespread since ~2017; initial scoping on GHArchive should reveal whether the sample is sufficient.
 
-5. **Framing the contribution:** This is primarily a tutorial paper whose contribution is the guide (with its companion empirical standard) and the demonstration of its diagnostic-then-constructive power. The empirical demonstrations are illustrations, not standalone empirical contributions. For TOSEM, a tutorial/survey paper category may be most appropriate.
+5. **Literature synthesis and misinterpretation analysis:** The citation analysis of Ray et al.'s downstream impact needs to be rigorous enough to be convincing but scoped enough to remain a supporting argument rather than a standalone empirical contribution. A well-chosen sample (~50--100 citing papers) with clear classification criteria should suffice.
 
-6. **Audience calibration:** The paper must be accessible to SE researchers with no causal inference background while also being rigorous enough to satisfy methodologists. The two-example structure helps: Example A (regression -> panel FE) is a gentler step; Example B (cross-sectional -> DiD with treatment decomposition) shows the guide's full power.
+6. **Framing the contribution:** This is primarily a tutorial paper whose contribution is the primer (with its pragmatic stance and companion empirical standard) and the demonstration of its diagnostic-then-constructive power through the PL-quality debate. The literature synthesis and empirical demonstrations are illustrations, not standalone contributions. For TOSEM, a tutorial/survey paper category may be most appropriate.
+
+7. **Audience calibration:** The paper must be accessible to SE researchers with no causal inference background while also being rigorous enough to satisfy methodologists. The unified PL-quality debate helps: the literature synthesis provides accessible context, Example A (regression → panel FE) is a gentler step, and Example B (cross-sectional → DiD with treatment decomposition) shows the pragmatic stance's full power.
 
 ## References (Key)
 
