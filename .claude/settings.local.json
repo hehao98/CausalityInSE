@@ -6,6 +6,7 @@
       "Bash(grep *)",
       "Bash(curl *)",
       "Bash(python -c *)",
+      "Bash(python3 -c *)",
       "Bash(git commit:*)",
       "Bash(git add:*)",
       "Bash(git push:*)",
