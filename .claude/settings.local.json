@@ -3,18 +3,22 @@
     "allow": [
       "WebSearch",
       "WebFetch",
+      "Bash(ls *)",
+      "Bash(cd *)",
       "Bash(grep *)",
       "Bash(curl *)",
       "Bash(python -c *)",
       "Bash(python3 -c *)",
-      "Bash(git commit:*)",
-      "Bash(git add:*)",
-      "Bash(git push:*)",
-      "Bash(git pull:*)",
-      "Bash(git diff:*)",
-      "Bash(git checkout:*)",
+      "Bash(git status *)",
+      "Bash(git commit *)",
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git diff *)",
+      "Bash(git checkout *)",
       "Bash(pdflatex *)",
-      "Bash(bibtex main:*)"
+      "Bash(bibtex main:*)",
+      "Bash(python scripts/*.py)"
     ]
   }
 }
