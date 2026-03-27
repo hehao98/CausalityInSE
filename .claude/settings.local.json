@@ -6,7 +6,9 @@
       "WebFetch(domain:dblp.dagstuhl.de)",
       "Bash(curl *)",
       "Bash(python -c *)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)"
     ]
   }
 }
