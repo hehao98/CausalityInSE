@@ -4,11 +4,17 @@
       "WebFetch(domain:dblp.org)",
       "WebFetch(domain:dblp.uni-trier.de)",
       "WebFetch(domain:dblp.dagstuhl.de)",
+      "Bash(grep *)",
       "Bash(curl *)",
       "Bash(python -c *)",
       "Bash(git commit:*)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git diff:*)",
+      "Bash(git checkout:*)",
+      "Bash(pdflatex *)",
+      "Bash(bibtex main:*)"
     ]
   }
 }
