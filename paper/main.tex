@@ -589,17 +589,16 @@ In this section, we illustrate the high-level idea of each method with SE exampl
 The preceding subsections introduced a rich but potentially daunting toolkit: Potential outcomes define estimands, DAGs encode mechanisms, and design-based methods exploit quasi-random variation.
 An SE researcher encountering these ideas for the first time faces an immediate practical question: \emph{How do I actually use this?}
 In general, there is no universal recipe for causal inquiries in \emph{any} research setting---causal inference requires both methodological rigor and creative problem-solving, and the ``right'' approach depends on the specific features of the data and setting.
-Drawing on the emerging consensus across econometrics~\cite{imbens2020potential, angrist2010credibility}, epidemiology~\cite{hernan2020causal}, and sociology~\cite{lundberg2021estimand}, we recommend a pragmatic synthesis tailored to the realities of empirical SE research.
+Drawing on the emerging consensus across econometrics~\cite{imbens2020potential, angrist2010credibility}, epidemiology~\cite{hernan2020causal}, and sociology~\cite{lundberg2021estimand}, we recommend a pragmatic synthesis tailored to the realities of empirical SE research as follows.
 
 \paragraph{Build on Prior Research and Practitioner Knowledge.}
 \label{sec:stance-prior-research}
 Every step of a causal inquiry---framing the question, proposing a DAG, choosing covariates---requires \emph{domain knowledge} that cannot be derived from the data alone.
 In SE, this knowledge comes from three sources.
-First, prior empirical studies---even those that are purely descriptive or correlational---provide the raw material for proposing causal structures: An observed association between static analysis adoption and lower defect rates does not itself establish causation, but it motivates a DAG edge that can then be subjected to rigorous identification.
+First, prior quantitative studies provide the raw material for proposing causal structures: An observed association between programming language adoption and defect rates does not itself establish causation, but it motivates a DAG edge that can then be subjected to rigorous identification.
 Second, gray literature---blog posts, postmortems, industry reports, conference talks---encodes rich practitioner causal beliefs (``we adopted X and Y improved'') that inform which mechanisms are plausible and which confounders are likely.
 Third, qualitative SE research---interviews, case studies, grounded theory---surfaces causal reasoning that developers and teams use in practice, providing mechanistic accounts that purely quantitative data cannot.
 These sources collectively generate the theories that causal methods then test, creating a virtuous cycle: Prior work proposes causal structures, rigorous methods evaluate them, and the findings refine theory for the next iteration.
-This framing does not dismiss the existing body of SE research; it reframes that work as the essential foundation for more rigorous causal inquiry.
 
 \paragraph{Use Counterfactual Reasoning to Frame Research Designs.}
 \label{sec:guide-question}
