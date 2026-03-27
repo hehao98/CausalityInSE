@@ -113,16 +113,13 @@ The back-door criterion provides the principled alternative: Include variables t
 \subsection{What is the role of DAGs in selection-on-observables vs.\ design-based identification?}
 
 The two identification families use DAGs differently, and understanding this distinction clarifies what each requires from the researcher.
-
 In \emph{selection-on-observables} methods---regression, matching, inverse probability weighting---DAGs are \emph{essential}.
 The back-door criterion (Section~\ref{sec:primer-dags}) is the only principled basis for deciding which covariates to include and which to exclude.
 Without a DAG, the researcher has no formal basis for determining whether the covariate set blocks all confounding paths, and covariate selection defaults to convenience, tradition, or data availability---none of which bear any necessary relationship to causal identification.
-
 In \emph{design-based identification}---difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects---DAGs play a \emph{supporting} role.
 The design itself provides identification through quasi-random variation, so the researcher does not need a complete DAG to determine the adjustment set.
 However, a partial DAG remains valuable for three purposes: clarifying which confounders the design absorbs (e.g., panel FE absorbs all time-invariant confounders), assessing whether design-specific assumptions are plausible (e.g., whether the exclusion restriction for IV holds, or whether unmeasured time-varying confounders threaten panel FE), and reasoning about the mechanisms through which the treatment affects the outcome.
-
-A researcher using DiD does not \emph{need} a complete DAG, but one who draws even a partial DAG reasons more clearly about what their design does and does not address.
+One who draws even a partial DAG reasons more clearly about what their design does and does not address.
 Both identification families benefit from making assumptions visual and debatable~\cite{imbens2020potential}.
 
 % ---------------------------------------------------------------------------
@@ -131,24 +128,23 @@ Both identification families benefit from making assumptions visual and debatabl
 
 \subsection{I already control for confounders in my regressions and report threats to validity. What does causal inference add?}
 
-Two things: discipline and tools.
-
-First, \emph{discipline}.
-Causal inference forces the researcher to define the estimand before choosing a method (Section~\ref{sec:guide-question}), construct a DAG that makes every assumption explicit, and justify each covariate on causal---not statistical---grounds.
-This discipline routinely reveals problems invisible to the standard regression workflow: The study answers a different question than intended (e.g., ATT when the research question concerns ATE), a key covariate is a mediator whose inclusion blocks the effect of interest, or a ``control variable'' is a collider whose inclusion opens a spurious path.
-The estimand-first principle~\cite{lundberg2021estimand} ensures that the statistical procedure is evaluated against a well-defined target quantity, not assessed only on internal statistical criteria.
-
-Second, \emph{tools}.
-Design-based methods---difference-in-differences, panel fixed effects, instrumental variables---can absorb entire categories of unmeasured confounders that no regression can adjust for (Section~\ref{sec:primer-design}).
-Panel fixed effects, for example, remove \emph{all} time-invariant confounders---developer experience, team culture, organizational practices---without requiring them to be measured.
-These methods are strictly more powerful than covariate adjustment in settings where SE data has the temporal or panel structure that design-based identification exploits.
+Two things: discipline and tools:
+\begin{enumerate}[leftmargin=15pt]
+    \item \emph{Discipline}:
+    Causal inference forces the researcher to define the estimand before choosing a method (Section~\ref{sec:guide-question}), construct a DAG that makes every assumption explicit, and justify each covariate on causal---not statistical---grounds.
+    This discipline routinely reveals problems invisible to the standard regression workflow: The study answers a different question than intended (e.g., ATT when the research question concerns ATE), a key covariate is a mediator whose inclusion blocks the effect of interest, or a ``control variable'' is a collider whose inclusion opens a spurious path.
+    The estimand-first principle~\cite{lundberg2021estimand} ensures that the statistical procedure is evaluated against a well-defined target quantity, not assessed only on internal statistical criteria.
+    \item \emph{Tools}:
+    Design-based methods---difference-in-differences, panel fixed effects, instrumental variables---can absorb entire categories of unmeasured confounders that no regression can adjust for (Section~\ref{sec:primer-design}).
+    Panel fixed effects, for example, remove \emph{all} time-invariant confounders---developer experience, team culture, organizational practices---without requiring them to be measured.
+    These methods are strictly more powerful than covariate adjustment in settings where SE data has the temporal or panel structure that design-based identification exploits.
+\end{enumerate}
 
 \subsection{What is wrong with interpreting regression coefficients as causal effects?}
 
 A regression coefficient has a causal interpretation \emph{only} when specific identifying assumptions are satisfied: conditional ignorability (all confounders measured), correct functional form, and no conditioning on mediators or colliders (Section~\ref{sec:primer-po}).
 Without explicitly stating and defending these assumptions, the coefficient is a descriptive association whose causal content is unknown.
-
-The dominant SE practice---fitting a regression, reporting the coefficient on the treatment variable, and interpreting it in causal language in the discussion---is exactly the pattern that the ``Table~2 fallacy''~\cite{westreich2013table2} describes.
+If a researcher simply fits a regression, reports coefficients, and interprets it in causal language in the discussion, this is exactly the pattern that the ``Table~2 fallacy''~\cite{westreich2013table2} describes.
 Being careful about modeling choices (variable selection, outlier treatment, functional form) is necessary but not sufficient: It addresses statistical concerns while leaving the causal identification question unanswered.
 A well-specified regression with all the right controls is a valid identification strategy---but the researcher must \emph{argue} that the controls are right, using a DAG or substantive domain knowledge, not hope that statistical diligence substitutes for causal reasoning.
 
@@ -167,30 +163,27 @@ SE researchers who are already comfortable with controlled experiments~\cite{DBL
 
 No.
 Randomization is powerful but not a blanket exemption from causal reasoning.
-Several common situations break or weaken the experimental guarantee, and all are prevalent in SE research.
-
-\emph{Small samples.}
-Randomization balances confounders \emph{in expectation}, but with small $n$---common in developer studies with 20--40 participants---realized imbalance can be severe.
-The ``treatment'' and ``control'' groups may differ substantially on key characteristics by chance alone.
-Checking and reporting covariate balance, and using stratified or blocked randomization, is essential~\cite{DBLP:books/sp/WohlinRHORW24}.
-
-\emph{Non-compliance.}
-If participants do not follow their assigned treatment---e.g., developers assigned to use a new tool revert to the old one---the naive comparison of assigned groups estimates the intention-to-treat effect, not the treatment effect itself.
-Recovering the latter requires instrumental variable reasoning, using the random assignment as an instrument to estimate the local average treatment effect for compliers~\cite{angrist1996identification}.
-
-\emph{Non-randomizable attributes.}
-Many SE-relevant ``treatments'' cannot be randomly assigned: developer experience, gender, educational background, programming language fluency.
-These are inherent characteristics, not interventions.
-Studying their effects requires the same observational identification strategies this tutorial covers; calling a group comparison an ``experiment'' does not change the identification problem.
-
-\emph{SUTVA violations.}
-If treated and control developers interact---on the same team, same codebase, same communication channels---the treatment can spill over, violating the stable unit treatment value assumption (Section~\ref{sec:primer-po}) that the experimental design requires.
-
-\emph{External validity.}
-A lab experiment with students on toy tasks may have clean identification but tell us nothing about production software at scale.
-The target trial framework helps evaluate this gap between the study's actual scope and the research question's intended scope.
-
-The broader lesson: Causal reasoning is not a tax imposed on observational studies that experiments get to avoid.
+Several common situations break or weaken the experimental guarantee, and all are prevalent in SE research, including:
+\begin{enumerate}[leftmargin=15pt]
+    \item \emph{Small samples.}
+    Randomization balances confounders \emph{in expectation}, but with small $n$---common in developer studies with 20--40 participants---realized imbalance can be severe.
+    The ``treatment'' and ``control'' groups may differ substantially on key characteristics by chance alone.
+    As an SE-specific example, \citet{DBLP:conf/icse-seip/ParadisGMNMMZFC25} ran an RCT with 96 Google developers to measure AI's effect on coding speed; the unadjusted comparison was statistically significant ($p = .038$), but the estimate lost significance ($p = .086$) after controlling for developer seniority and daily coding hours (i.e., $X$), illustrating how even moderate sample sizes leave room for chance imbalance to shift conclusions.
+    Checking and reporting covariate balance, and using stratified or blocked randomization, is essential~\cite{DBLP:books/sp/WohlinRHORW24}.
+    \item \emph{Non-compliance.}
+    If participants do not follow their assigned treatment---e.g., developers assigned to use a new tool revert to the old one---the naive comparison of assigned groups estimates the intention-to-treat effect, not the treatment effect itself.
+    Recovering the latter requires instrumental variable reasoning, using the random assignment as an instrument to estimate the local average treatment effect for compliers~\cite{angrist1996identification}.
+    \item \emph{Non-randomizable attributes.}
+    Many SE-relevant ``treatments'' cannot be randomly assigned: developer experience, gender, educational background, programming language fluency.
+    These are inherent characteristics, not interventions.
+    Studying their effects requires the same observational identification strategies this tutorial covers; calling a group comparison an ``experiment'' does not change the identification problem.
+    \item \emph{SUTVA violations.}
+    If treated and control group subjects interact (e.g., developers may work on the same team, same codebase, same communication channels), the treatment can spill over, violating the stable unit treatment value assumption (Section~\ref{sec:primer-po}) that a randomized controlled experimental design requires.
+    \item \emph{External validity.}
+    A lab experiment with developers on short-term tasks may have clean identification but tell us nothing about production software at scale and in the long run.
+    The target trial framework (Section~\ref{sec:primer-causality}) helps evaluate this gap between the study's actual scope and the research question's intended scope.
+\end{enumerate}
+In general, causal reasoning is not a tax imposed on observational studies that experiments get to avoid.
 It is the discipline of thinking clearly about what your evidence can and cannot show, regardless of the study design.
 
 \subsection{My paper was accepted at a top SE venue without any of this. Why should I change?}
