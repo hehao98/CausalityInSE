@@ -106,16 +106,9 @@ Conversely, a correctly specified causal model may have low $R^2$ because many f
 \subsection{I have a multivariate regression with 1000 covariates measuring everything I can think of in the study setting. Does that mean that I have sufficiently controlled for the important confounders?}
 
 No---and in many cases, adding variables \emph{increases} bias.
-This counterintuitive result follows directly from the causal structure of the data-generating process.
-
-Adding a variable can introduce three distinct problems, each formalized in the DAG framework (Section~\ref{sec:primer-dags}).
-First, \emph{mediator bias}: If a variable lies on the causal path from treatment to outcome (e.g., controlling for tooling quality when studying the effect of TypeScript adoption), conditioning on it blocks the genuine effect.
-Second, \emph{collider bias}: If a variable is a common effect of treatment and outcome (e.g., project popularity influenced by both language choice and code quality), conditioning on it opens a spurious path that creates an association where none exists in the full population.
-Third, \emph{overcontrol bias}: If a variable is a descendant of the treatment (e.g., test coverage that changes \emph{because} a team adopted a new practice), conditioning on it partially blocks the causal pathway.
-
-``Throwing in everything available'' is not a conservative strategy---it is a gamble whose expected payoff depends on the causal structure, which regression alone cannot reveal~\cite{wysocki2022statistical}.
+This counterintuitive result follows directly from the causal structure of the data-generating process, which may make adding a variable introduce \emph{mediator bias} and \emph{collider bias} while not addressing unobserved confounders (see Section~\ref{sec:primer-naive} and Section~\ref{sec:primer-dags}).
+Consequently, ``throwing in everything available'' is not a conservative strategy---it is a gamble whose expected payoff depends on the causal structure, which regression alone cannot reveal~\cite{wysocki2022statistical}.
 The back-door criterion provides the principled alternative: Include variables that block confounding paths; exclude mediators, colliders, and their descendants.
-\citet{westreich2013table2} documented the pervasiveness of this error (the ``Table~2 fallacy'') in epidemiology; the same pattern is widespread in empirical SE research.
 
 \subsection{What is the role of DAGs in selection-on-observables vs.\ design-based identification?}
 
@@ -226,12 +219,12 @@ Tools and practices are adopted in staggered waves, creating natural difference-
 Platform policies---e.g., GitHub Actions rollout, npm security mandates, language deprecation announcements---create exogenous shocks that resemble natural experiments.
 
 The question is not whether SE data is as clean as a minimum-wage natural experiment~\cite{card1994minimum} but whether the available variation, combined with domain knowledge and sensitivity analysis, supports a credible argument.
-The guide in Section~\ref{sec:guide} walks the researcher through this assessment, and the empirical standard in Appendix~\ref{sec:appendix-standard} provides verifiable criteria for reviewers.
+The pragmatic stance in Section~\ref{sec:guide} walks the researcher through this assessment, and the empirical standard in Appendix~\ref{sec:appendix-standard} provides verifiable criteria for reviewers.
 
 \subsection{Parallel trends, exclusion restrictions, strict exogeneity---these assumptions are hard enough to defend in economics. Can SE researchers defend them credibly?}
 
 This is a legitimate concern, and the tutorial does not claim that design-based identification is easy.
-The guide (Section~\ref{sec:guide}) exists precisely to walk SE researchers through the reasoning process, and the empirical standard (Appendix~\ref{sec:appendix-standard}) provides verifiable criteria for reviewers.
+The pragmatic stance (Section~\ref{sec:guide}) exists precisely to walk SE researchers through the reasoning process, and the empirical standard (Appendix~\ref{sec:appendix-standard}) provides verifiable criteria for reviewers.
 
 The pedagogical bet is that SE researchers---who are trained to reason about complex systems, dependencies, and graph structures---can learn to construct and defend identification arguments if given the right conceptual framework.
 The alternative---continuing to make implicit causal claims from regression without any identification strategy---is not more credible; it is simply less transparent.
@@ -270,7 +263,7 @@ This is precisely how economics built its evidence base on minimum wage effects,
 \subsection{I am a new PhD student and my advisor wants me to study causal questions in SE. Where do I start?}
 
 Start with the causal question, not the method.
-Read Section~\ref{sec:primer} for the conceptual foundations, then follow the guide in Section~\ref{sec:guide}.
+Read Section~\ref{sec:primer} for the conceptual foundations, including the pragmatic stance in Section~\ref{sec:guide}.
 
 Concretely: (1)~Articulate the target trial---what experiment would you run if you could?
 (2)~Sketch a DAG encoding your beliefs about what causes what.
@@ -373,7 +366,7 @@ Industry practitioners who run A/B tests can also benefit from the causal reason
 \label{sec:appendix-standard}
 
 This appendix presents an empirical standard for SE studies making causal claims from observational data, written in the format of the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} so it can be directly incorporated into the ACM SIGSOFT Empirical Standards collection as a new standard.
-Where the guide in Section~\ref{sec:guide} conveys the reasoning, this standard provides the minimum requirements that authors, reviewers, and editors can verify.
+Where the pragmatic stance in Section~\ref{sec:guide} conveys the reasoning, this standard provides the minimum requirements that authors, reviewers, and editors can verify.
 
 \subsection{Application}
 
