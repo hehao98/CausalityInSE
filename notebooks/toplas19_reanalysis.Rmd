@@ -16,7 +16,7 @@ library(knitr)
 library(kableExtra)
 library(fixest)
 
-WORKING_DIR = "./data"
+WORKING_DIR = "../data"
 
 if (!file.exists(file.path(WORKING_DIR, "commits.csv"))) {
   unzip(file.path(WORKING_DIR, "commits.csv.zip"), exdir = WORKING_DIR)
@@ -141,7 +141,7 @@ generateHTMLTable = function(df, title, model, data) {
 # Load Data
 
 ```{r, load_data_panel_1}
-data = read.csv(paste0(WORKING_DIR, "/Data/commits.csv"))
+data = read.csv(paste0(WORKING_DIR, "/commits.csv"))
 cat(sprintf("Loaded %d commits | %d languages | %d repositories | %d developers\n",
     nrow(data), length(unique(data$language)), length(unique(data$project)), length(unique(data$author))))
 ```
