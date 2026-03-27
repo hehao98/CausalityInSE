@@ -70,11 +70,13 @@
 
 \begin{abstract}
 Empirical software engineering (SE) research frequently investigates questions about the causal effects of intervention: For example, does adopting a new language reduce defects? Does code review improve quality? Does CI/CD adoption increase release reliability?
-For this specific class of questions, the field's dominant approach---large-scale descriptive and/or correlational analysis of observational repository data---cannot distinguish genuine causal effects from selection biases, confounders, and other threats to causal validity; yet, practitioners, managers, and downstream research routinely interpret the resulting findings as causal.
+For this specific class of questions, the field's dominant approach---large-scale descriptive and/or correlational analysis of observational repository data---cannot distinguish genuine causal effects from selection biases, confounders, and other threats to causal validity.
+Yet, practitioners, managers, and downstream research routinely interpret the resulting findings as causal.
 This tutorial addresses the gap between the SE community's causal ambitions and its methodological practice.
-We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies (difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects).
-The primer concludes with a pragmatic stance for SE research that synthesizes these tools into actionable guidance---building on prior research and practitioner knowledge to construct causal theories, framing research designs as target trials, using DAGs to make assumptions explicit, exploiting quasi-experimental variation for identification, and honestly engaging with alternative explanations.
-We demonstrate the primer's diagnostic and constructive power through the programming-language and code-quality debate: A citation analysis of 451 papers citing the landmark study by \citet{DBLP:conf/sigsoft/RayPFD14} reveals that causal interpretations outnumber hedged ones 2:1 among papers that engage with the finding, quantifying the downstream misinterpretation problem.
+We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies, %(difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects), 
+and concludes with a pragmatic stance for SE research that synthesizes these tools into actionable guidance. %---building on prior research and practitioner knowledge to construct causal theories, framing research designs as target trials, using DAGs to make assumptions explicit, exploiting quasi-experimental variation for identification, and honestly engaging with alternative explanations.
+We demonstrate the primer's diagnostic and constructive power through the programming-language and code-quality debate.
+A citation analysis of 451 papers citing the landmark study by \citet{DBLP:conf/sigsoft/RayPFD14} reveals that causal interpretations outnumber hedged ones 2:1 among papers that engage with their findings.
 We then apply the pragmatic stance to two worked examples from this debate.
 In the first example, we diagnose the identification controversy in \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, yield identification more robust to common unobserved confounders in the SE context.
 In the second example, we diagnose the selection bias in Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
@@ -731,35 +733,30 @@ No existing study of real-world PL effects exploits within-repository panel vari
 \label{sec:pl-misinterpretation}
 
 The literature synthesis above deliberately used hedged language---``association,'' ``relationship,'' ``modest effect''---because that is what the evidence supports.
-Yet the downstream reception of this literature tells a different story.
-We provide two streams of evidence---a quantitative citation analysis and a survey of practitioner discourse---documenting a systematic pattern in which correlational findings are reinterpreted as causal claims.
+However, \emph{the downstream reception of this literature tells a different story}.
+We provide two streams of evidence, a quantitative citation analysis and a few examples of practitioner discourse, to document a systematic pattern in which correlational findings are reinterpreted as causal claims.
 
 \paragraph{Citation Analysis.}
-We retrieved all 451 papers citing \citet{DBLP:conf/sigsoft/RayPFD14} or \citeauthor{DBLP:journals/cacm/RayPDF17}~\cite{DBLP:journals/cacm/RayPDF17} from the Semantic Scholar API and manually classified the citation context of each paper with available full-text snippets ($n = 339$) into four categories: \emph{causal} (the citing paper treats or implies the finding as causal), \emph{hedged} (accurately describes the finding as an association or correlation), \emph{neutral} (cites for context, dataset, or methodology without interpreting the PL--quality finding), and \emph{critical} (questions the methodology or findings).
-Among the 339 papers with citation contexts, 24\% use causal framing---language such as ``the effect of programming languages on software quality,'' ``statically typed languages are less error-prone,'' or ``language design impacts code quality''---while only 12\% use appropriately hedged language and 2\% engage critically with the study's identification limitations.
+We retrieved all 451 papers citing \citet{DBLP:conf/sigsoft/RayPFD14} or \citet{DBLP:journals/cacm/RayPDF17} from the Semantic Scholar API and use Claude Opus 4.6 to classify the citation context of each paper with available full-text snippets ($n = 339$) into four categories: \emph{causal} (the citing paper treats or implies the finding as causal), \emph{hedged} (accurately describes the finding as an association or correlation), \emph{neutral} (cites for context, dataset, or methodology without interpreting the PL--quality finding), and \emph{critical} (questions the methodology or findings).
+Among the 339 papers with citation contexts, 24\% use causal framing---language such as \emph{``the effect of programming languages on software quality,''} \emph{``statically-typed languages are less error-prone,''} or \emph{``the choice of programming language can significantly impact software quality''}---while only 12\% use appropriately hedged language and 2\% engage critically with the study's identification limitations.
 The remaining 62\% cite Ray et~al.\ for tangential reasons (dataset, methodology, or GitHub mining context) without interpreting the PL--quality finding.
 In other words, among papers that actually engage with the PL--quality finding, causal interpretations outnumber hedged ones by roughly 2:1.
 This ratio is striking given that neither the original study~\cite{DBLP:conf/sigsoft/RayPFD14} nor the CACM version~\cite{DBLP:journals/cacm/RayPDF17} claims to establish a causal relationship.
-The misinterpretation is not the result of a few careless citations; it is the \emph{modal} interpretation among papers that engage with the finding substantively.
+The misinterpretation is not the result of a few careless citations, but the \emph{modal} interpretation among papers that engage with the finding substantively.
 
 \paragraph{Practitioner Discourse.}
 The causal amplification extends beyond academic papers into practitioner discourse, where hedging disappears entirely.
-\citeauthor{DBLP:journals/toplas/BergerHMVV19}, in describing the motivation for their reproduction study, directly observed that Ray~et~al.'s findings were subject to a pattern where ``people misinterpreted [them] as a causal relationship.''\footnote{%
-  T.\ Claburn, ``Boffins debunk study claiming certain languages lead to more buggy code,'' \emph{The Register}, January 30, 2019.
-  Even the debunking article's headline uses causal language (``lead to more buggy code'').}
-Blog posts cite the study to rank languages by ``bug-proneness'' as if it were an intrinsic language property,\footnote{%
-  E.\ Huang, ``5 Programming Language That Produce Code Least Prone to Bugs,'' personal blog, March 2, 2021.
-  Uses causal verbs (``produce,'' ``eliminate'') while citing Ray~et~al.\ as empirical backing.}
-and within days of the original publication, practitioners on Hacker News interpreted regression coefficients as switchable causal effects---e.g., ``A Haskell project can expect to see 63\% of the bug fixes that a C++ project would see.
-I don't call a 36\% drop in bugs `small'\,''---treating the coefficient as if switching from C++ to Haskell \emph{would} directly produce fewer bugs, holding all else constant.\footnote{%
-  Hacker News discussion thread \#8558740, November 4--5, 2014.}
+\citeauthor{DBLP:journals/toplas/BergerHMVV19}, in describing the motivation for their reproduction study, directly observed that Ray~et~al.'s findings were subject to a pattern where \emph{``people misinterpreted [them] as a causal relationship''}~\cite{claburn2019register}---notably, even the article reporting this debunking uses causal language in its own headline (\emph{``lead to more buggy code''}).
+Blog posts cite the study to rank languages by ``bug-proneness'' as if it were an intrinsic language property, using causal verbs (\emph{``produce,''} \emph{``eliminate''}) while citing Ray~et~al.\ as empirical backing~\cite{huang2021bugprone}.
+Within days of the original publication, practitioners on Hacker News interpreted regression coefficients as switchable causal effects---e.g., \emph{``A Haskell project can expect to see 63\% of the bug fixes that a C++ project would see.
+I don't call a 36\% drop in bugs `small'\,''}---treating the coefficient as if switching from C++ to Haskell \emph{would} directly produce fewer bugs, holding all else constant~\cite{hn2014rayetal}.
 
 \paragraph{Implications.}
 This pattern---hedged correlational findings, causal downstream interpretation---is precisely the \emph{causal language problem} that \citet{hernan2018cword} diagnosed in epidemiology and \citet{grosz2020taboo} documented in psychology.
 The conventional response is to hedge more carefully: Replace ``effect'' with ``association,'' add caveats, and hope that readers respect the distinction.
 But our citation analysis demonstrates that this defense fails on its own terms---24\% of citing papers use causal framing despite the authors' explicit hedging, confirming \citeauthor{haber2022causal}'s~\cite{haber2022causal} large-scale finding that associational euphemisms do not prevent causal interpretation.
 The problem is not imprecise language but \emph{absent identification}.
-When a study reports that ``language class has a modest but significant effect on defect proneness'' without specifying the causal estimand, the confounding structure, or the identification strategy, it provides no framework within which readers can evaluate \emph{whether} a causal interpretation is warranted.
+When a study reports that \emph{``language class has a modest but significant effect on defect proneness''} without specifying the causal estimand, the confounding structure, or the identification strategy, it provides no framework within which readers can evaluate \emph{whether} a causal interpretation is warranted.
 Readers fill the gap with their priors, and the result is the 2:1 causal-to-hedged ratio we observe.
 The pragmatic stance we advocate (Section~\ref{sec:primer-stance}) addresses this at the source: By requiring researchers to state their causal question, draw their DAG, and argue for identification, it replaces the ``correlation vs.\ causation'' impasse with a transparent discussion of assumptions that readers can evaluate.
 The worked examples that follow demonstrate how this works in practice.
