@@ -15,6 +15,7 @@ library(sandwich)
 library(knitr)
 library(kableExtra)
 library(fixest)
+library(parallel)
 
 WORKING_DIR = "../data"
 
@@ -303,6 +304,282 @@ result_twoway_fe = adjustPValues(result_twoway_fe)
 generateHTMLTable(result_twoway_fe, "Model 4: Developer-Repository-Language Panel, Two-Way Fixed Effects", pois_dev_repo_twoway_fe, panel_dev_repo)
 ```
 
+# Sample Characterization: Dropped vs. Retained Observations
+
+Fixed-effects models drop singleton observations (units observed in only one
+language), which can cause substantial sample attrition. This section
+characterizes how the retained samples differ from the full data.
+
+```{r, sample_characterization}
+# Identify which observations survive each FE model
+retained_m2 = panel_repo$project %in% names(which(table(panel_repo$project) > 1))
+retained_m3 = panel_dev$author %in% names(which(table(panel_dev$author) > 1))
+
+# For M4, need both author and project to have >1 obs (iterative)
+# Use fixest's actual observation count as ground truth
+m4_obs = nobs(pois_dev_repo_twoway_fe)
+
+characterize = function(df, retained, unit_label) {
+    dropped = df[!retained, ]
+    kept = df[retained, ]
+    data.frame(
+        Group = c("Retained", "Dropped"),
+        Observations = c(nrow(kept), nrow(dropped)),
+        Pct = sprintf("%.1f%%", c(nrow(kept), nrow(dropped)) / nrow(df) * 100),
+        Mean_commits = sprintf("%.1f", c(mean(kept$commits), mean(dropped$commits))),
+        Mean_bugrate = sprintf("%.3f", c(
+            mean(kept$bcommits / kept$commits),
+            mean(dropped$bcommits / dropped$commits)
+        )),
+        Median_commits = c(median(kept$commits), median(dropped$commits)),
+        N_languages = c(length(unique(kept$language)), length(unique(dropped$language))),
+        stringsAsFactors = FALSE
+    )
+}
+
+cat("=== M2: Repository FE (singletons = repos with only one language) ===\n")
+char_m2 = characterize(panel_repo, retained_m2, "project")
+kable(char_m2, format = "html", caption = "M2: Retained vs. Dropped Observations") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```
+
+```{r, sample_char_m3}
+cat("=== M3: Developer FE (singletons = devs committing in only one language) ===\n")
+char_m3 = characterize(panel_dev, retained_m3, "author")
+kable(char_m3, format = "html", caption = "M3: Retained vs. Dropped Observations") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```
+
+```{r, sample_char_lang_dist}
+# Language distribution comparison for M2
+lang_dist = function(df, retained, model_label) {
+    kept = df[retained, ]
+    dropped = df[!retained, ]
+    langs = sort(unique(df$language))
+    data.frame(
+        Language = langs,
+        Retained_n = sapply(langs, function(l) sum(kept$language == l)),
+        Retained_pct = sprintf("%.1f%%", sapply(langs, function(l) mean(kept$language == l) * 100)),
+        Dropped_n = sapply(langs, function(l) sum(dropped$language == l)),
+        Dropped_pct = sprintf("%.1f%%", sapply(langs, function(l) mean(dropped$language == l) * 100)),
+        stringsAsFactors = FALSE,
+        row.names = NULL
+    )
+}
+
+cat("=== Language distribution: M2 (Repo FE) ===\n")
+kable(lang_dist(panel_repo, retained_m2, "M2"), format = "html",
+      caption = "M2: Language Distribution in Retained vs. Dropped") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+cat("\n=== Language distribution: M3 (Dev FE) ===\n")
+kable(lang_dist(panel_dev, retained_m3, "M3"), format = "html",
+      caption = "M3: Language Distribution in Retained vs. Dropped") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```
+
+# Berger-Style Bootstrap for Outcome Mislabeling
+
+Berger et al. (2019, Section 4.2.4) found that the keyword heuristic for
+labeling bug-fix commits has a **36% false positive rate** and **11% false
+negative rate**. Their bootstrap propagates this outcome measurement error
+through the model by (1) resampling projects with replacement and (2)
+regenerating bug-fix counts using Binomial draws that reflect the labeling
+noise. We apply this procedure to M1 (pooled NBR, for direct comparison with
+Berger's Table 6e) and M4 (two-way FE, our strongest specification).
+
+```{r, bootstrap_setup}
+# --- Bootstrap helper: extract language coefficients as a named vector ---
+extractLangCoefs = function(model, lang_levels) {
+    n_langs = length(lang_levels)
+    if (inherits(model, "fixest")) {
+        ct = as.data.frame(coeftable(model))
+    } else {
+        ct = as.data.frame(summary(model)$coefficients)
+    }
+    ct$name = rownames(ct)
+    lang_rows = grep("^language", ct$name)
+    lang_ct = ct[lang_rows, ]
+    modeled = lang_levels[1:(n_langs - 1)]
+    ref_coef = -sum(lang_ct[, 1])
+    coefs = setNames(c(lang_ct[, 1], ref_coef), c(modeled, lang_levels[n_langs]))
+    coefs
+}
+
+FP = 0.36  # false positive rate (Berger Section 4.1.4)
+FN = 0.11  # false negative rate
+B  = 1000  # bootstrap iterations
+n_cores = detectCores()
+cat(sprintf("Bootstrap config: %d iterations, %d CPU cores\n", B, n_cores))
+```
+
+## M1 Bootstrap (Pooled NBR)
+
+```{r, bootstrap_m1, warning=FALSE}
+lang_levels_m1 = levels(panel_repo$language)
+projects_m1 = unique(panel_repo$project)
+n_projects_m1 = length(projects_m1)
+
+# Pre-split data by project for fast resampling
+proj_rows_m1 = split(seq_len(nrow(panel_repo)), panel_repo$project)
+
+cat(sprintf("Running M1 bootstrap (%d iterations across %d cores)...\n", B, n_cores))
+t0 = Sys.time()
+
+cl = makeCluster(n_cores)
+clusterExport(cl, c("panel_repo", "proj_rows_m1", "projects_m1", "n_projects_m1",
+                     "lang_levels_m1", "FP", "FN", "extractLangCoefs"))
+clusterEvalQ(cl, { library(MASS) })
+
+# Assign reproducible per-worker seeds
+clusterSetRNGStream(cl, iseed = 42)
+
+boot_results_m1 = parLapply(cl, 1:B, function(b) {
+    sampled = sample(projects_m1, n_projects_m1, replace = TRUE)
+    idx = unlist(proj_rows_m1[as.character(sampled)])
+    boot_data = panel_repo[idx, ]
+
+    boot_data$bcommits = rbinom(nrow(boot_data), boot_data$bcommits, 1 - FP) +
+                         rbinom(nrow(boot_data), boot_data$commits - boot_data$bcommits, FN)
+
+    fit = tryCatch(
+        glm.nb(bcommits ~ lmax_commit_age + ltins + ldevs + lcommits + language,
+               contrasts = list(language = contr.sum),
+               data = boot_data),
+        error = function(e) NULL, warning = function(w) suppressWarnings(
+            glm.nb(bcommits ~ lmax_commit_age + ltins + ldevs + lcommits + language,
+                   contrasts = list(language = contr.sum),
+                   data = boot_data)
+        )
+    )
+    if (!is.null(fit)) {
+        tryCatch(extractLangCoefs(fit, lang_levels_m1),
+                 error = function(e) rep(NA, length(lang_levels_m1)))
+    } else {
+        rep(NA, length(lang_levels_m1))
+    }
+})
+
+stopCluster(cl)
+
+boot_coefs_m1 = do.call(rbind, boot_results_m1)
+colnames(boot_coefs_m1) = lang_levels_m1
+
+elapsed_m1 = difftime(Sys.time(), t0, units = "mins")
+n_success_m1 = sum(complete.cases(boot_coefs_m1))
+cat(sprintf("Done in %.1f minutes. %d/%d iterations converged.\n", elapsed_m1, n_success_m1, B))
+```
+
+## M4 Bootstrap (Two-Way FE Poisson)
+
+```{r, bootstrap_m4, warning=FALSE}
+lang_levels_m4 = levels(panel_dev_repo$language)
+projects_m4 = unique(panel_dev_repo$project)
+n_projects_m4 = length(projects_m4)
+
+# Pre-split data by project for fast resampling
+proj_rows_m4 = split(seq_len(nrow(panel_dev_repo)), panel_dev_repo$project)
+
+cat(sprintf("Running M4 bootstrap (%d iterations across %d cores)...\n", B, n_cores))
+t0 = Sys.time()
+
+cl = makeCluster(n_cores)
+clusterExport(cl, c("panel_dev_repo", "proj_rows_m4", "projects_m4", "n_projects_m4",
+                     "lang_levels_m4", "FP", "FN", "extractLangCoefs"))
+clusterEvalQ(cl, { library(fixest) })
+
+clusterSetRNGStream(cl, iseed = 123)
+
+boot_results_m4 = parLapply(cl, 1:B, function(b) {
+    sampled = sample(projects_m4, n_projects_m4, replace = TRUE)
+    idx = unlist(proj_rows_m4[as.character(sampled)])
+    boot_data = panel_dev_repo[idx, ]
+
+    boot_data$bcommits = rbinom(nrow(boot_data), boot_data$bcommits, 1 - FP) +
+                         rbinom(nrow(boot_data), boot_data$commits - boot_data$bcommits, FN)
+
+    boot_data$author = factor(boot_data$author)
+    boot_data$project = factor(boot_data$project)
+    boot_data$language = factor(boot_data$language)
+    contrasts(boot_data$language) = contr.sum(nlevels(boot_data$language))
+
+    fit = tryCatch(
+        fepois(bcommits ~ lmax_commit_age + ltins + lcommits + language | author + project,
+               data = boot_data, vcov = ~author + project),
+        error = function(e) NULL, warning = function(w) tryCatch(
+            suppressWarnings(
+                fepois(bcommits ~ lmax_commit_age + ltins + lcommits + language | author + project,
+                       data = boot_data, vcov = ~author + project)
+            ), error = function(e) NULL
+        )
+    )
+    if (!is.null(fit)) {
+        tryCatch(extractLangCoefs(fit, lang_levels_m4),
+                 error = function(e) rep(NA, length(lang_levels_m4)))
+    } else {
+        rep(NA, length(lang_levels_m4))
+    }
+})
+
+stopCluster(cl)
+
+boot_coefs_m4 = do.call(rbind, boot_results_m4)
+colnames(boot_coefs_m4) = lang_levels_m4
+
+elapsed_m4 = difftime(Sys.time(), t0, units = "mins")
+n_success_m4 = sum(complete.cases(boot_coefs_m4))
+cat(sprintf("Done in %.1f minutes. %d/%d iterations converged.\n", elapsed_m4, n_success_m4, B))
+```
+
+## Bootstrap Results
+
+```{r, bootstrap_results}
+# Summarize bootstrap: mean coef, SE (sd of bootstrap dist), Bonferroni significance
+summarizeBootstrap = function(boot_matrix, alpha = 0.01) {
+    n_langs = ncol(boot_matrix)
+    lang_names = colnames(boot_matrix)
+
+    mean_coef = colMeans(boot_matrix, na.rm = TRUE)
+    boot_se = apply(boot_matrix, 2, sd, na.rm = TRUE)
+
+    # Bonferroni-corrected quantile test (following Berger)
+    q_lo = apply(boot_matrix, 2, quantile, probs = alpha / (2 * n_langs), na.rm = TRUE)
+    q_hi = apply(boot_matrix, 2, quantile, probs = 1 - alpha / (2 * n_langs), na.rm = TRUE)
+    significant = !(q_lo <= 0 & q_hi >= 0)
+
+    data.frame(
+        Variable = lang_names,
+        coef = round(mean_coef, 3),
+        se = round(boot_se, 3),
+        q_lo = round(q_lo, 3),
+        q_hi = round(q_hi, 3),
+        sig_bonf = significant,
+        stringsAsFactors = FALSE,
+        row.names = NULL
+    )
+}
+
+boot_summary_m1 = summarizeBootstrap(boot_coefs_m1)
+boot_summary_m4 = summarizeBootstrap(boot_coefs_m4)
+
+cat("=== M1 Bootstrap (Pooled NBR + Labeling Noise) ===\n")
+cat(sprintf("Significant languages (Bonferroni): %s\n",
+    paste(boot_summary_m1$Variable[boot_summary_m1$sig_bonf], collapse = ", ")))
+cat(sprintf("Count: %d / %d\n\n", sum(boot_summary_m1$sig_bonf), nrow(boot_summary_m1)))
+
+cat("=== M4 Bootstrap (Two-Way FE Poisson + Labeling Noise) ===\n")
+cat(sprintf("Significant languages (Bonferroni): %s\n",
+    paste(boot_summary_m4$Variable[boot_summary_m4$sig_bonf], collapse = ", ")))
+cat(sprintf("Count: %d / %d\n\n", sum(boot_summary_m4$sig_bonf), nrow(boot_summary_m4)))
+
+# Display both tables
+kable(boot_summary_m1, format = "html", caption = "M1 Bootstrap: Mean Coefficients and Bonferroni CIs") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+kable(boot_summary_m4, format = "html", caption = "M4 Bootstrap: Mean Coefficients and Bonferroni CIs") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```
+
 # Summary Table: All Models
 
 ```{r, summary_table}
@@ -451,7 +728,7 @@ createSummaryTable = function(results_list, model_names, models_list, data_list,
 # Generate summary table
 createSummaryTable(
     results_list = list(result_repo, result_repo_fe, result_dev_fe, result_twoway_fe),
-    model_names = c("M2: Berger et al. 2019", "M3: Repo-Lang\n(NBR+Repo FE)", 
+    model_names = c("M2: Berger et al. 2019", "M3: Repo-Lang\n(NBR+Repo FE)",
                     "M4: Dev-Lang\n(Pois+Dev FE)", "M5: Dev-Repo-Lang\n(Pois+2way FE)"),
     models_list = list(nbr_repo, nbr_repo_fe, nbr_dev_fe, pois_dev_repo_twoway_fe),
     data_list = list(panel_repo, panel_repo, panel_dev, panel_dev_repo)
