@@ -106,6 +106,7 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 - [ ] Identify TypeScript migration events; construct matched treatment-control sample
 - [ ] Implement DiD analysis with event-study plots and pre-trend tests
 - [ ] Write up brief empirical demonstration (Section 4.4)
+  - *See `plans/20260331 - Example B TypeScript DiD Plan.md` for the detailed plan.*
 - [ ] Write synthesis of both examples (Section 4.5): how the pragmatic stance generates different improved designs depending on data structure
 
 ### Phase 4: Integration and Submission

@@ -5,6 +5,7 @@
       "WebFetch",
       "Bash(ls *)",
       "Bash(cd *)",
+      "Bash(wc -l *)",
       "Bash(grep *)",
       "Bash(curl *)",
       "Bash(python -c *)",
@@ -19,7 +20,8 @@
       "Bash(pdflatex *)",
       "Bash(bibtex main:*)",
       "Bash(python scripts/*.py)",
-      "Bash(Rscript -e *)"
+      "Bash(Rscript -e *)",
+      "Bash(\"/c/Program Files/R/R-4.3.2/bin/Rscript.exe\" _smoke_test5.R)"
     ]
   }
 }
