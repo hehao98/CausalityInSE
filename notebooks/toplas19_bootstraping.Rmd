@@ -1,0 +1,326 @@
+---
+title: "Bootstrap for Outcome Mislabeling (Berger et al. 2019)"
+output: html_document
+---
+
+This notebook runs the Berger-style bootstrap that propagates outcome
+mislabeling noise through the panel models.
+It is kept separate from `toplas19_reanalysis.Rmd` because it is slow to run.
+
+# Setup
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(MASS)
+library(fixest)
+library(parallel)
+library(knitr)
+library(kableExtra)
+
+WORKING_DIR = "../data"
+
+if (!file.exists(file.path(WORKING_DIR, "commits.csv"))) {
+  unzip(file.path(WORKING_DIR, "commits.csv.zip"), exdir = WORKING_DIR)
+}
+```
+
+# Helper Functions
+
+```{r, helper_functions}
+# Extract language coefficients as a named vector (zero-sum contrasts)
+extractLangCoefs = function(model, lang_levels) {
+    n_langs = length(lang_levels)
+    if (inherits(model, "fixest")) {
+        ct = as.data.frame(coeftable(model))
+    } else {
+        ct = as.data.frame(summary(model)$coefficients)
+    }
+    ct$name = rownames(ct)
+    lang_rows = grep("^language", ct$name)
+    lang_ct = ct[lang_rows, ]
+    modeled = lang_levels[1:(n_langs - 1)]
+    ref_coef = -sum(lang_ct[, 1])
+    coefs = setNames(c(lang_ct[, 1], ref_coef), c(modeled, lang_levels[n_langs]))
+    coefs
+}
+```
+
+# Load Data
+
+```{r, load_data}
+data = read.csv(paste0(WORKING_DIR, "/commits.csv"))
+cat(sprintf("Loaded %d commits | %d languages | %d repositories | %d developers\n",
+    nrow(data), length(unique(data$language)), length(unique(data$project)), length(unique(data$author))))
+```
+
+# Prepare Panel Data
+
+## Panel 1: Repository-Language Level (for M1)
+
+```{r, data_preparation_panel_1}
+panel_repo = data %>%
+    group_by(project, language) %>%
+    summarize(
+        commits = n(),
+        bcommits = sum(isbug),
+        tins = sum(insertion),
+        max_commit_age = max(commit_age),
+        devs = n_distinct(author),
+        .groups = "drop"
+    ) %>%
+    mutate(
+        language = factor(language),
+        project = factor(project),
+        lcommits = log(commits),
+        ltins = log(tins),
+        lmax_commit_age = log(max_commit_age),
+        ldevs = log(devs)
+    )
+
+contrasts(panel_repo$language) = contr.sum(nlevels(panel_repo$language))
+
+cat(sprintf("Repository-Language panel: %d observations | %d repositories | %d languages\n",
+    nrow(panel_repo), length(unique(panel_repo$project)), length(unique(panel_repo$language))))
+```
+
+## Panel 3: Developer-Repository-Language Level (for M4)
+
+```{r, data_preparation_panel_3}
+panel_dev_repo = data %>%
+    group_by(author, project, language) %>%
+    summarize(
+        commits = n(),
+        bcommits = sum(isbug),
+        tins = sum(insertion),
+        max_commit_age = max(commit_age),
+        .groups = "drop"
+    ) %>%
+    mutate(
+        language = factor(language),
+        author = factor(author),
+        project = factor(project),
+        lcommits = log(commits),
+        ltins = log(tins),
+        lmax_commit_age = log(max_commit_age)
+    )
+
+contrasts(panel_dev_repo$language) = contr.sum(nlevels(panel_dev_repo$language))
+
+cat(sprintf("Developer-Repository-Language panel: %d observations | %d developers | %d repositories | %d languages\n",
+    nrow(panel_dev_repo), length(unique(panel_dev_repo$author)),
+    length(unique(panel_dev_repo$project)), length(unique(panel_dev_repo$language))))
+```
+
+# Berger-Style Bootstrap for Outcome Mislabeling
+
+Berger et al. (2019, Section 4.2.4) found that the keyword heuristic for
+labeling bug-fix commits has a **36% false positive rate** and **11% false
+negative rate**. Their bootstrap propagates this outcome measurement error
+through the model by (1) resampling projects with replacement and (2)
+regenerating bug-fix counts using Binomial draws that reflect the labeling
+noise. We apply this procedure to M1 (pooled NBR, for direct comparison with
+Berger's Table 6e) and M4 (two-way FE, our strongest specification).
+
+```{r, bootstrap_setup}
+FP = 0.36  # false positive rate (Berger Section 4.1.4)
+FN = 0.11  # false negative rate
+B_m1 = 100000  # M1: replicate Berger et al.'s 100k iterations
+B_m4 = 1000    # M4: two-way FE is expensive, use fewer iterations
+n_cores = detectCores()
+
+# Set up log file following project convention
+LOG_DIR = file.path(dirname(getwd()), "log")
+dir.create(LOG_DIR, showWarnings = FALSE)
+LOG_FILE = file.path(LOG_DIR, sprintf("bootstrap_%s.log",
+    format(Sys.time(), "%Y%m%d_%H%M%S")))
+
+log_msg = function(msg, level = "INFO") {
+    line = sprintf("%s [%s] %s\n",
+                   format(Sys.time(), "%Y-%m-%d %H:%M:%S"), level, msg)
+    cat(line, file = LOG_FILE, append = TRUE)
+}
+
+log_msg(sprintf("Logging to %s", LOG_FILE))
+log_msg(sprintf("Bootstrap config: M1=%d / M4=%d iterations, %d CPU cores",
+    B_m1, B_m4, n_cores))
+```
+
+## M1 Bootstrap (Pooled NBR)
+
+```{r, bootstrap_m1, warning=FALSE}
+lang_levels_m1 = levels(panel_repo$language)
+projects_m1 = unique(panel_repo$project)
+n_projects_m1 = length(projects_m1)
+
+# Pre-split data by project for fast resampling
+proj_rows_m1 = split(seq_len(nrow(panel_repo)), panel_repo$project)
+
+log_msg(sprintf("Running M1 bootstrap (%d iterations across %d cores)...", B_m1, n_cores))
+t0 = Sys.time()
+
+cl = makeCluster(n_cores)
+clusterExport(cl, c("panel_repo", "proj_rows_m1", "projects_m1", "n_projects_m1",
+                     "lang_levels_m1", "FP", "FN", "extractLangCoefs",
+                     "B_m1", "LOG_FILE"))
+clusterEvalQ(cl, { library(MASS) })
+clusterSetRNGStream(cl, iseed = 42)
+
+boot_results_m1 = parLapply(cl, 1:B_m1, function(b) {
+    if (b %% 1000 == 0) {
+        cat(sprintf("%s [INFO] [M1] %d / %d (%.0f%%)\n",
+                    format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+                    b, B_m1, b / B_m1 * 100),
+            file = LOG_FILE, append = TRUE)
+    }
+    sampled = sample(projects_m1, n_projects_m1, replace = TRUE)
+    idx = unlist(proj_rows_m1[as.character(sampled)])
+    boot_data = panel_repo[idx, ]
+
+    boot_data$bcommits = rbinom(nrow(boot_data), boot_data$bcommits, 1 - FP) +
+                         rbinom(nrow(boot_data), boot_data$commits - boot_data$bcommits, FN)
+
+    fit = tryCatch(
+        glm.nb(bcommits ~ lmax_commit_age + ltins + ldevs + lcommits + language,
+               contrasts = list(language = contr.sum),
+               data = boot_data),
+        error = function(e) NULL, warning = function(w) suppressWarnings(
+            glm.nb(bcommits ~ lmax_commit_age + ltins + ldevs + lcommits + language,
+                   contrasts = list(language = contr.sum),
+                   data = boot_data)
+        )
+    )
+    if (!is.null(fit)) {
+        tryCatch(extractLangCoefs(fit, lang_levels_m1),
+                 error = function(e) rep(NA, length(lang_levels_m1)))
+    } else {
+        rep(NA, length(lang_levels_m1))
+    }
+})
+
+stopCluster(cl)
+
+boot_coefs_m1 = do.call(rbind, boot_results_m1)
+colnames(boot_coefs_m1) = lang_levels_m1
+
+elapsed_m1 = difftime(Sys.time(), t0, units = "mins")
+n_success_m1 = sum(complete.cases(boot_coefs_m1))
+log_msg(sprintf("M1 done in %.1f minutes. %d/%d iterations converged.",
+    elapsed_m1, n_success_m1, B_m1))
+```
+
+## M4 Bootstrap (Two-Way FE Poisson)
+
+```{r, bootstrap_m4, warning=FALSE}
+lang_levels_m4 = levels(panel_dev_repo$language)
+projects_m4 = unique(panel_dev_repo$project)
+n_projects_m4 = length(projects_m4)
+
+# Pre-split data by project for fast resampling
+proj_rows_m4 = split(seq_len(nrow(panel_dev_repo)), panel_dev_repo$project)
+
+log_msg(sprintf("Running M4 bootstrap (%d iterations across %d cores)...", B_m4, n_cores))
+t0 = Sys.time()
+
+cl = makeCluster(n_cores)
+clusterExport(cl, c("panel_dev_repo", "proj_rows_m4", "projects_m4", "n_projects_m4",
+                     "lang_levels_m4", "FP", "FN", "extractLangCoefs",
+                     "B_m4", "LOG_FILE"))
+clusterEvalQ(cl, { library(fixest) })
+clusterSetRNGStream(cl, iseed = 123)
+
+boot_results_m4 = parLapply(cl, 1:B_m4, function(b) {
+    if (b %% 100 == 0) {
+        cat(sprintf("%s [INFO] [M4] %d / %d (%.0f%%)\n",
+                    format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+                    b, B_m4, b / B_m4 * 100),
+            file = LOG_FILE, append = TRUE)
+    }
+    sampled = sample(projects_m4, n_projects_m4, replace = TRUE)
+    idx = unlist(proj_rows_m4[as.character(sampled)])
+    boot_data = panel_dev_repo[idx, ]
+
+    boot_data$bcommits = rbinom(nrow(boot_data), boot_data$bcommits, 1 - FP) +
+                         rbinom(nrow(boot_data), boot_data$commits - boot_data$bcommits, FN)
+
+    boot_data$author = factor(boot_data$author)
+    boot_data$project = factor(boot_data$project)
+    boot_data$language = factor(boot_data$language)
+    contrasts(boot_data$language) = contr.sum(nlevels(boot_data$language))
+
+    fit = tryCatch(
+        fepois(bcommits ~ lmax_commit_age + ltins + lcommits + language | author + project,
+               data = boot_data, vcov = ~author + project),
+        error = function(e) NULL, warning = function(w) tryCatch(
+            suppressWarnings(
+                fepois(bcommits ~ lmax_commit_age + ltins + lcommits + language | author + project,
+                       data = boot_data, vcov = ~author + project)
+            ), error = function(e) NULL
+        )
+    )
+    if (!is.null(fit)) {
+        tryCatch(extractLangCoefs(fit, lang_levels_m4),
+                 error = function(e) rep(NA, length(lang_levels_m4)))
+    } else {
+        rep(NA, length(lang_levels_m4))
+    }
+})
+
+stopCluster(cl)
+
+boot_coefs_m4 = do.call(rbind, boot_results_m4)
+colnames(boot_coefs_m4) = lang_levels_m4
+
+elapsed_m4 = difftime(Sys.time(), t0, units = "mins")
+n_success_m4 = sum(complete.cases(boot_coefs_m4))
+log_msg(sprintf("M4 done in %.1f minutes. %d/%d iterations converged.",
+    elapsed_m4, n_success_m4, B_m4))
+```
+
+## Bootstrap Results
+
+```{r, bootstrap_results}
+# Summarize bootstrap: mean coef, SE (sd of bootstrap dist), Bonferroni significance
+summarizeBootstrap = function(boot_matrix, alpha = 0.01) {
+    n_langs = ncol(boot_matrix)
+    lang_names = colnames(boot_matrix)
+
+    mean_coef = colMeans(boot_matrix, na.rm = TRUE)
+    boot_se = apply(boot_matrix, 2, sd, na.rm = TRUE)
+
+    # Bonferroni-corrected quantile test (following Berger)
+    q_lo = apply(boot_matrix, 2, quantile, probs = alpha / (2 * n_langs), na.rm = TRUE)
+    q_hi = apply(boot_matrix, 2, quantile, probs = 1 - alpha / (2 * n_langs), na.rm = TRUE)
+    significant = !(q_lo <= 0 & q_hi >= 0)
+
+    data.frame(
+        Variable = lang_names,
+        coef = round(mean_coef, 3),
+        se = round(boot_se, 3),
+        q_lo = round(q_lo, 3),
+        q_hi = round(q_hi, 3),
+        sig_bonf = significant,
+        stringsAsFactors = FALSE,
+        row.names = NULL
+    )
+}
+
+boot_summary_m1 = summarizeBootstrap(boot_coefs_m1)
+boot_summary_m4 = summarizeBootstrap(boot_coefs_m4)
+
+cat("=== M1 Bootstrap (Pooled NBR + Labeling Noise) ===\n")
+cat(sprintf("Significant languages (Bonferroni): %s\n",
+    paste(boot_summary_m1$Variable[boot_summary_m1$sig_bonf], collapse = ", ")))
+cat(sprintf("Count: %d / %d\n\n", sum(boot_summary_m1$sig_bonf), nrow(boot_summary_m1)))
+
+cat("=== M4 Bootstrap (Two-Way FE Poisson + Labeling Noise) ===\n")
+cat(sprintf("Significant languages (Bonferroni): %s\n",
+    paste(boot_summary_m4$Variable[boot_summary_m4$sig_bonf], collapse = ", ")))
+cat(sprintf("Count: %d / %d\n\n", sum(boot_summary_m4$sig_bonf), nrow(boot_summary_m4)))
+
+# Display both tables
+kable(boot_summary_m1, format = "html", caption = "M1 Bootstrap: Mean Coefficients and Bonferroni CIs") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+kable(boot_summary_m4, format = "html", caption = "M4 Bootstrap: Mean Coefficients and Bonferroni CIs") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```
