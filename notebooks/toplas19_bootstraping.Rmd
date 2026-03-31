@@ -229,7 +229,7 @@ clusterEvalQ(cl, { library(fixest) })
 clusterSetRNGStream(cl, iseed = 123)
 
 boot_results_m4 = parLapply(cl, 1:B_m4, function(b) {
-    if (b %% 100 == 0) {
+    if (b %% 10 == 0) {
         cat(sprintf("%s [INFO] [M4] %d / %d (%.0f%%)\n",
                     format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
                     b, B_m4, b / B_m4 * 100),
@@ -279,26 +279,52 @@ log_msg(sprintf("M4 done in %.1f minutes. %d/%d iterations converged.",
 ## Bootstrap Results
 
 ```{r, bootstrap_results}
-# Summarize bootstrap: mean coef, SE (sd of bootstrap dist), Bonferroni significance
-summarizeBootstrap = function(boot_matrix, alpha = 0.01) {
+summarizeBootstrap = function(boot_matrix, alpha_bonf = 0.01, alpha_fdr = 0.05,
+                              alpha_unadj = 0.05) {
     n_langs = ncol(boot_matrix)
     lang_names = colnames(boot_matrix)
 
     mean_coef = colMeans(boot_matrix, na.rm = TRUE)
     boot_se = apply(boot_matrix, 2, sd, na.rm = TRUE)
 
-    # Bonferroni-corrected quantile test (following Berger)
-    q_lo = apply(boot_matrix, 2, quantile, probs = alpha / (2 * n_langs), na.rm = TRUE)
-    q_hi = apply(boot_matrix, 2, quantile, probs = 1 - alpha / (2 * n_langs), na.rm = TRUE)
-    significant = !(q_lo <= 0 & q_hi >= 0)
+    # --- Unadjusted percentile CIs ---
+    q_lo_unadj = apply(boot_matrix, 2, quantile,
+                       probs = alpha_unadj / 2, na.rm = TRUE)
+    q_hi_unadj = apply(boot_matrix, 2, quantile,
+                       probs = 1 - alpha_unadj / 2, na.rm = TRUE)
+    sig_unadj = !(q_lo_unadj <= 0 & q_hi_unadj >= 0)
+
+    # --- Bonferroni-corrected quantile CIs (Berger et al.) ---
+    q_lo_bonf = apply(boot_matrix, 2, quantile,
+                      probs = alpha_bonf / (2 * n_langs), na.rm = TRUE)
+    q_hi_bonf = apply(boot_matrix, 2, quantile,
+                      probs = 1 - alpha_bonf / (2 * n_langs), na.rm = TRUE)
+    sig_bonf = !(q_lo_bonf <= 0 & q_hi_bonf >= 0)
+
+    # --- Benjamini-Hochberg FDR on bootstrap p-values ---
+    # Two-sided bootstrap p-value: proportion of resamples on the opposite side
+    # of zero from the observed mean, times 2 (two-tailed).
+    n_boot = colSums(!is.na(boot_matrix))
+    p_boot = ifelse(
+        mean_coef > 0,
+        colSums(boot_matrix <= 0, na.rm = TRUE) / n_boot,
+        colSums(boot_matrix >= 0, na.rm = TRUE) / n_boot
+    )
+    p_boot = pmin(2 * p_boot, 1)  # two-sided
+    p_fdr = p.adjust(p_boot, method = "BH")
+    sig_fdr = p_fdr < alpha_fdr
 
     data.frame(
         Variable = lang_names,
         coef = round(mean_coef, 3),
         se = round(boot_se, 3),
-        q_lo = round(q_lo, 3),
-        q_hi = round(q_hi, 3),
-        sig_bonf = significant,
+        ci_lo = round(q_lo_unadj, 3),
+        ci_hi = round(q_hi_unadj, 3),
+        sig_unadj = sig_unadj,
+        sig_bonf = sig_bonf,
+        p_boot = signif(p_boot, 3),
+        p_fdr = signif(p_fdr, 3),
+        sig_fdr = sig_fdr,
         stringsAsFactors = FALSE,
         row.names = NULL
     )
@@ -307,20 +333,47 @@ summarizeBootstrap = function(boot_matrix, alpha = 0.01) {
 boot_summary_m1 = summarizeBootstrap(boot_coefs_m1)
 boot_summary_m4 = summarizeBootstrap(boot_coefs_m4)
 
-cat("=== M1 Bootstrap (Pooled NBR + Labeling Noise) ===\n")
-cat(sprintf("Significant languages (Bonferroni): %s\n",
-    paste(boot_summary_m1$Variable[boot_summary_m1$sig_bonf], collapse = ", ")))
-cat(sprintf("Count: %d / %d\n\n", sum(boot_summary_m1$sig_bonf), nrow(boot_summary_m1)))
+printSummary = function(summary_df, model_label) {
+    cat(sprintf("=== %s ===\n", model_label))
+    cat(sprintf("Significant (unadjusted 95%% CI): %s\n",
+        paste(summary_df$Variable[summary_df$sig_unadj], collapse = ", ")))
+    cat(sprintf("  Count: %d / %d\n",
+        sum(summary_df$sig_unadj), nrow(summary_df)))
+    cat(sprintf("Significant (BH FDR < 0.05):      %s\n",
+        paste(summary_df$Variable[summary_df$sig_fdr], collapse = ", ")))
+    cat(sprintf("  Count: %d / %d\n",
+        sum(summary_df$sig_fdr), nrow(summary_df)))
+    cat(sprintf("Significant (Bonferroni, α=0.01):  %s\n",
+        paste(summary_df$Variable[summary_df$sig_bonf], collapse = ", ")))
+    cat(sprintf("  Count: %d / %d\n\n",
+        sum(summary_df$sig_bonf), nrow(summary_df)))
+}
 
-cat("=== M4 Bootstrap (Two-Way FE Poisson + Labeling Noise) ===\n")
-cat(sprintf("Significant languages (Bonferroni): %s\n",
-    paste(boot_summary_m4$Variable[boot_summary_m4$sig_bonf], collapse = ", ")))
-cat(sprintf("Count: %d / %d\n\n", sum(boot_summary_m4$sig_bonf), nrow(boot_summary_m4)))
+printSummary(boot_summary_m1, "M1 Bootstrap (Pooled NBR + Labeling Noise)")
+printSummary(boot_summary_m4, "M4 Bootstrap (Two-Way FE Poisson + Labeling Noise)")
+```
 
-# Display both tables
-kable(boot_summary_m1, format = "html", caption = "M1 Bootstrap: Mean Coefficients and Bonferroni CIs") %>%
-    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```{r, bootstrap_tables}
+formatBootTable = function(summary_df, caption) {
+    display_df = summary_df
+    display_df$sig = paste0(
+        ifelse(display_df$sig_unadj, "*", ""),
+        ifelse(display_df$sig_fdr,   "†", ""),
+        ifelse(display_df$sig_bonf,  "‡", "")
+    )
+    display_df = display_df[, c("Variable", "coef", "se", "ci_lo", "ci_hi",
+                                "p_boot", "p_fdr", "sig")]
+    colnames(display_df) = c("Language", "Coef", "SE", "CI lo", "CI hi",
+                             "p (boot)", "p (BH)", "Sig")
+    kable(display_df, format = "html", caption = caption) %>%
+        kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                      full_width = FALSE) %>%
+        footnote(general = "* unadjusted 95% CI excludes 0; † BH FDR < 0.05; ‡ Bonferroni α=0.01",
+                 general_title = "")
+}
 
-kable(boot_summary_m4, format = "html", caption = "M4 Bootstrap: Mean Coefficients and Bonferroni CIs") %>%
-    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+formatBootTable(boot_summary_m1,
+    "M1 Bootstrap: Coefficients, 95% CIs, and Multiplicity Corrections")
+formatBootTable(boot_summary_m4,
+    "M4 Bootstrap: Coefficients, 95% CIs, and Multiplicity Corrections")
 ```
