@@ -1,11 +1,52 @@
 ---
-title: "Bootstrap for Outcome Mislabeling (Berger et al. 2019)"
+title: "Sensitivity Analysis for Outcome Mislabeling"
 output: html_document
 ---
 
-This notebook runs the Berger-style bootstrap that propagates outcome
-mislabeling noise through the panel models.
-It is kept separate from `toplas19_reanalysis.Rmd` because it is slow to run.
+This notebook assesses the sensitivity of the panel models to outcome
+mislabeling noise (false positive and false negative bug-fix labels).
+It applies two approaches:
+
+1. **Berger-style bootstrap** for M1 (pooled NBR), replicating their procedure.
+2. **Monte Carlo sensitivity analysis** for M4 (two-way FE), which is more
+   appropriate for models that already use cluster-robust standard errors.
+
+# Why MC Sensitivity Rather Than Bootstrap for Panel FE Models
+
+Berger et al. (2019, Section 4.2.4) use a bootstrap that simultaneously
+(1) resamples projects with replacement and (2) perturbs bug-fix counts via
+binomial draws reflecting labeling noise (FP = 36%, FN = 11%).
+This conflates two distinct sources of uncertainty:
+
+1. **Sampling/estimation uncertainty** — how much the coefficients would vary
+   across hypothetical repeated samples from the same population.
+2. **Measurement error uncertainty** — how much the coefficients shift when the
+   mislabeled outcome is corrected.
+
+For their pooled NBR (M1), which uses default MLE standard errors, the
+project-level resampling is defensible: it serves as a nonparametric substitute
+for cluster-robust inference. But for our panel FE models (M2–M4), which
+already use cluster-robust standard errors (clustered at the repository and/or
+developer level), the resampling component of the bootstrap re-estimates
+sampling variability that the sandwich estimator already accounts for. This
+double-counts estimation uncertainty and inflates the intervals, making
+significance harder to achieve for reasons unrelated to measurement error.
+
+Layering Bonferroni correction (α = 0.01 / 16 tests) on top of these
+already-widened intervals compounds the conservatism further. The effective
+per-language confidence level becomes 99.9375%, using the 0.03th and 99.97th
+percentiles of a distribution that is itself wider than it should be.
+
+For M4, we therefore use a **Monte Carlo sensitivity analysis** that isolates
+measurement error. For each of *B* iterations, we perturb the bug-fix labels
+on the *original* data (no resampling) and refit the model. Each refit
+produces coefficients and cluster-robust standard errors. We then report:
+
+- What **fraction of MC draws** produce a significant result for each language
+  (at the α = 0.05 level, using the model's own cluster-robust *z*-test).
+  A coefficient that is significant in ≥95% of draws is robust to label noise.
+- The **mean coefficient** and its **MC standard deviation** across draws,
+  which shows how much the point estimate moves under mislabeling.
 
 # Setup
 
@@ -27,8 +68,8 @@ if (!file.exists(file.path(WORKING_DIR, "commits.csv"))) {
 # Helper Functions
 
 ```{r, helper_functions}
-# Extract language coefficients as a named vector (zero-sum contrasts)
-extractLangCoefs = function(model, lang_levels) {
+# Extract language coefficients, SEs, and p-values (zero-sum contrasts)
+extractLangResults = function(model, lang_levels) {
     n_langs = length(lang_levels)
     if (inherits(model, "fixest")) {
         ct = as.data.frame(coeftable(model))
@@ -38,10 +79,18 @@ extractLangCoefs = function(model, lang_levels) {
     ct$name = rownames(ct)
     lang_rows = grep("^language", ct$name)
     lang_ct = ct[lang_rows, ]
+
     modeled = lang_levels[1:(n_langs - 1)]
     ref_coef = -sum(lang_ct[, 1])
+    ref_se = tryCatch(sqrt(sum(vcov(model)[lang_rows, lang_rows])),
+                      error = function(e) NA)
+    ref_pval = if (!is.na(ref_se)) 2 * pnorm(-abs(ref_coef / ref_se)) else NA
+
     coefs = setNames(c(lang_ct[, 1], ref_coef), c(modeled, lang_levels[n_langs]))
-    coefs
+    ses   = setNames(c(lang_ct[, 2], ref_se),   c(modeled, lang_levels[n_langs]))
+    pvals = setNames(c(lang_ct[, 4], ref_pval),  c(modeled, lang_levels[n_langs]))
+
+    list(coef = coefs, se = ses, pval = pvals)
 }
 ```
 
@@ -50,7 +99,8 @@ extractLangCoefs = function(model, lang_levels) {
 ```{r, load_data}
 data = read.csv(paste0(WORKING_DIR, "/commits.csv"))
 cat(sprintf("Loaded %d commits | %d languages | %d repositories | %d developers\n",
-    nrow(data), length(unique(data$language)), length(unique(data$project)), length(unique(data$author))))
+    nrow(data), length(unique(data$language)), length(unique(data$project)),
+    length(unique(data$author))))
 ```
 
 # Prepare Panel Data
@@ -80,7 +130,8 @@ panel_repo = data %>%
 contrasts(panel_repo$language) = contr.sum(nlevels(panel_repo$language))
 
 cat(sprintf("Repository-Language panel: %d observations | %d repositories | %d languages\n",
-    nrow(panel_repo), length(unique(panel_repo$project)), length(unique(panel_repo$language))))
+    nrow(panel_repo), length(unique(panel_repo$project)),
+    length(unique(panel_repo$language))))
 ```
 
 ## Panel 3: Developer-Repository-Language Level (for M4)
@@ -111,27 +162,22 @@ cat(sprintf("Developer-Repository-Language panel: %d observations | %d developer
     length(unique(panel_dev_repo$project)), length(unique(panel_dev_repo$language))))
 ```
 
-# Berger-Style Bootstrap for Outcome Mislabeling
+# Mislabeling Rates
 
 Berger et al. (2019, Section 4.2.4) found that the keyword heuristic for
 labeling bug-fix commits has a **36% false positive rate** and **11% false
-negative rate**. Their bootstrap propagates this outcome measurement error
-through the model by (1) resampling projects with replacement and (2)
-regenerating bug-fix counts using Binomial draws that reflect the labeling
-noise. We apply this procedure to M1 (pooled NBR, for direct comparison with
-Berger's Table 6e) and M4 (two-way FE, our strongest specification).
+negative rate**.
 
-```{r, bootstrap_setup}
+```{r, mc_setup}
 FP = 0.36  # false positive rate (Berger Section 4.1.4)
 FN = 0.11  # false negative rate
-B_m1 = 100000  # M1: replicate Berger et al.'s 100k iterations
-B_m4 = 1000    # M4: two-way FE is expensive, use fewer iterations
+B_m1 = 100000  # M1: Berger-style bootstrap (replicate their 100k)
+B_m4 = 1000    # M4: MC sensitivity (two-way FE is expensive)
 n_cores = detectCores()
 
-# Set up log file following project convention
 LOG_DIR = file.path(dirname(getwd()), "log")
 dir.create(LOG_DIR, showWarnings = FALSE)
-LOG_FILE = file.path(LOG_DIR, sprintf("bootstrap_%s.log",
+LOG_FILE = file.path(LOG_DIR, sprintf("mc_sensitivity_%s.log",
     format(Sys.time(), "%Y%m%d_%H%M%S")))
 
 log_msg = function(msg, level = "INFO") {
@@ -141,239 +187,240 @@ log_msg = function(msg, level = "INFO") {
 }
 
 log_msg(sprintf("Logging to %s", LOG_FILE))
-log_msg(sprintf("Bootstrap config: M1=%d / M4=%d iterations, %d CPU cores",
+log_msg(sprintf("Config: M1 bootstrap=%d / M4 MC=%d iterations, %d CPU cores",
     B_m1, B_m4, n_cores))
 ```
 
-## M1 Bootstrap (Pooled NBR)
+## M1: Berger-Style Bootstrap (Pooled NBR)
 
-```{r, bootstrap_m1, warning=FALSE}
+We replicate the Berger et al. bootstrap for M1: resample projects with
+replacement **and** perturb bug-fix labels. This is appropriate here because M1
+uses default MLE standard errors (no cluster-robust SEs), so the project-level
+resampling provides the nonparametric cluster-level inference that the model
+itself does not.
+
+```{r, mc_m1, warning=FALSE}
 lang_levels_m1 = levels(panel_repo$language)
+n_langs_m1 = length(lang_levels_m1)
 projects_m1 = unique(panel_repo$project)
 n_projects_m1 = length(projects_m1)
-
-# Pre-split data by project for fast resampling
 proj_rows_m1 = split(seq_len(nrow(panel_repo)), panel_repo$project)
 
-log_msg(sprintf("Running M1 bootstrap (%d iterations across %d cores)...", B_m1, n_cores))
+log_msg(sprintf("Running M1 bootstrap (%d iterations across %d cores)...",
+    B_m1, n_cores))
 t0 = Sys.time()
 
 cl = makeCluster(n_cores)
-clusterExport(cl, c("panel_repo", "proj_rows_m1", "projects_m1", "n_projects_m1",
-                     "lang_levels_m1", "FP", "FN", "extractLangCoefs",
-                     "B_m1", "LOG_FILE"))
+clusterExport(cl, c("panel_repo", "proj_rows_m1", "projects_m1",
+                     "n_projects_m1", "lang_levels_m1", "n_langs_m1",
+                     "FP", "FN", "extractLangResults", "B_m1", "LOG_FILE"))
 clusterEvalQ(cl, { library(MASS) })
 clusterSetRNGStream(cl, iseed = 42)
 
-boot_results_m1 = parLapply(cl, 1:B_m1, function(b) {
+mc_results_m1 = parLapply(cl, 1:B_m1, function(b) {
     if (b %% 1000 == 0) {
         cat(sprintf("%s [INFO] [M1] %d / %d (%.0f%%)\n",
                     format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
                     b, B_m1, b / B_m1 * 100),
             file = LOG_FILE, append = TRUE)
     }
+
+    # Resample projects (needed for M1 which lacks cluster-robust SEs)
     sampled = sample(projects_m1, n_projects_m1, replace = TRUE)
     idx = unlist(proj_rows_m1[as.character(sampled)])
-    boot_data = panel_repo[idx, ]
+    mc_data = panel_repo[idx, ]
 
-    boot_data$bcommits = rbinom(nrow(boot_data), boot_data$bcommits, 1 - FP) +
-                         rbinom(nrow(boot_data), boot_data$commits - boot_data$bcommits, FN)
+    # Perturb labels
+    mc_data$bcommits = rbinom(nrow(mc_data), mc_data$bcommits, 1 - FP) +
+                       rbinom(nrow(mc_data), mc_data$commits - mc_data$bcommits, FN)
 
     fit = tryCatch(
         glm.nb(bcommits ~ lmax_commit_age + ltins + ldevs + lcommits + language,
                contrasts = list(language = contr.sum),
-               data = boot_data),
-        error = function(e) NULL, warning = function(w) suppressWarnings(
+               data = mc_data),
+        error = function(e) NULL,
+        warning = function(w) suppressWarnings(
             glm.nb(bcommits ~ lmax_commit_age + ltins + ldevs + lcommits + language,
                    contrasts = list(language = contr.sum),
-                   data = boot_data)
+                   data = mc_data)
         )
     )
+
     if (!is.null(fit)) {
-        tryCatch(extractLangCoefs(fit, lang_levels_m1),
-                 error = function(e) rep(NA, length(lang_levels_m1)))
-    } else {
-        rep(NA, length(lang_levels_m1))
+        res = tryCatch(extractLangResults(fit, lang_levels_m1),
+                       error = function(e) NULL)
+        if (!is.null(res)) {
+            return(list(coef = res$coef, se = res$se, pval = res$pval))
+        }
     }
+    list(coef = rep(NA, n_langs_m1), se = rep(NA, n_langs_m1),
+         pval = rep(NA, n_langs_m1))
 })
 
 stopCluster(cl)
 
-boot_coefs_m1 = do.call(rbind, boot_results_m1)
-colnames(boot_coefs_m1) = lang_levels_m1
+mc_coefs_m1 = do.call(rbind, lapply(mc_results_m1, `[[`, "coef"))
+mc_ses_m1   = do.call(rbind, lapply(mc_results_m1, `[[`, "se"))
+mc_pvals_m1 = do.call(rbind, lapply(mc_results_m1, `[[`, "pval"))
+colnames(mc_coefs_m1) = colnames(mc_ses_m1) = colnames(mc_pvals_m1) = lang_levels_m1
 
 elapsed_m1 = difftime(Sys.time(), t0, units = "mins")
-n_success_m1 = sum(complete.cases(boot_coefs_m1))
+n_success_m1 = sum(complete.cases(mc_coefs_m1))
 log_msg(sprintf("M1 done in %.1f minutes. %d/%d iterations converged.",
     elapsed_m1, n_success_m1, B_m1))
 ```
 
-## M4 Bootstrap (Two-Way FE Poisson)
+## M4: Two-Way FE Poisson (MC Sensitivity Only — No Resampling)
 
-```{r, bootstrap_m4, warning=FALSE}
+For M4, cluster-robust SEs (two-way: author + project) already account for
+sampling uncertainty. The MC only perturbs labels on the original data.
+
+```{r, mc_m4, warning=FALSE}
 lang_levels_m4 = levels(panel_dev_repo$language)
-projects_m4 = unique(panel_dev_repo$project)
-n_projects_m4 = length(projects_m4)
+n_langs_m4 = length(lang_levels_m4)
 
-# Pre-split data by project for fast resampling
-proj_rows_m4 = split(seq_len(nrow(panel_dev_repo)), panel_dev_repo$project)
-
-log_msg(sprintf("Running M4 bootstrap (%d iterations across %d cores)...", B_m4, n_cores))
+log_msg(sprintf("Running M4 MC sensitivity (%d iterations across %d cores)...",
+    B_m4, n_cores))
 t0 = Sys.time()
 
 cl = makeCluster(n_cores)
-clusterExport(cl, c("panel_dev_repo", "proj_rows_m4", "projects_m4", "n_projects_m4",
-                     "lang_levels_m4", "FP", "FN", "extractLangCoefs",
-                     "B_m4", "LOG_FILE"))
+clusterExport(cl, c("panel_dev_repo", "lang_levels_m4", "n_langs_m4",
+                     "FP", "FN", "extractLangResults", "B_m4", "LOG_FILE"))
 clusterEvalQ(cl, { library(fixest) })
 clusterSetRNGStream(cl, iseed = 123)
 
-boot_results_m4 = parLapply(cl, 1:B_m4, function(b) {
+mc_results_m4 = parLapply(cl, 1:B_m4, function(b) {
     if (b %% 10 == 0) {
         cat(sprintf("%s [INFO] [M4] %d / %d (%.0f%%)\n",
                     format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
                     b, B_m4, b / B_m4 * 100),
             file = LOG_FILE, append = TRUE)
     }
-    sampled = sample(projects_m4, n_projects_m4, replace = TRUE)
-    idx = unlist(proj_rows_m4[as.character(sampled)])
-    boot_data = panel_dev_repo[idx, ]
 
-    boot_data$bcommits = rbinom(nrow(boot_data), boot_data$bcommits, 1 - FP) +
-                         rbinom(nrow(boot_data), boot_data$commits - boot_data$bcommits, FN)
+    # No resampling — perturb labels on original data
+    mc_data = panel_dev_repo
+    mc_data$bcommits = rbinom(nrow(mc_data), mc_data$bcommits, 1 - FP) +
+                       rbinom(nrow(mc_data), mc_data$commits - mc_data$bcommits, FN)
 
-    boot_data$author = factor(boot_data$author)
-    boot_data$project = factor(boot_data$project)
-    boot_data$language = factor(boot_data$language)
-    contrasts(boot_data$language) = contr.sum(nlevels(boot_data$language))
+    mc_data$author = factor(mc_data$author)
+    mc_data$project = factor(mc_data$project)
+    mc_data$language = factor(mc_data$language)
+    contrasts(mc_data$language) = contr.sum(nlevels(mc_data$language))
 
     fit = tryCatch(
         fepois(bcommits ~ lmax_commit_age + ltins + lcommits + language | author + project,
-               data = boot_data, vcov = ~author + project),
-        error = function(e) NULL, warning = function(w) tryCatch(
+               data = mc_data, vcov = ~author + project),
+        error = function(e) NULL,
+        warning = function(w) tryCatch(
             suppressWarnings(
                 fepois(bcommits ~ lmax_commit_age + ltins + lcommits + language | author + project,
-                       data = boot_data, vcov = ~author + project)
+                       data = mc_data, vcov = ~author + project)
             ), error = function(e) NULL
         )
     )
+
     if (!is.null(fit)) {
-        tryCatch(extractLangCoefs(fit, lang_levels_m4),
-                 error = function(e) rep(NA, length(lang_levels_m4)))
-    } else {
-        rep(NA, length(lang_levels_m4))
+        res = tryCatch(extractLangResults(fit, lang_levels_m4),
+                       error = function(e) NULL)
+        if (!is.null(res)) {
+            return(list(coef = res$coef, se = res$se, pval = res$pval))
+        }
     }
+    list(coef = rep(NA, n_langs_m4), se = rep(NA, n_langs_m4),
+         pval = rep(NA, n_langs_m4))
 })
 
 stopCluster(cl)
 
-boot_coefs_m4 = do.call(rbind, boot_results_m4)
-colnames(boot_coefs_m4) = lang_levels_m4
+mc_coefs_m4 = do.call(rbind, lapply(mc_results_m4, `[[`, "coef"))
+mc_ses_m4   = do.call(rbind, lapply(mc_results_m4, `[[`, "se"))
+mc_pvals_m4 = do.call(rbind, lapply(mc_results_m4, `[[`, "pval"))
+colnames(mc_coefs_m4) = colnames(mc_ses_m4) = colnames(mc_pvals_m4) = lang_levels_m4
 
 elapsed_m4 = difftime(Sys.time(), t0, units = "mins")
-n_success_m4 = sum(complete.cases(boot_coefs_m4))
+n_success_m4 = sum(complete.cases(mc_coefs_m4))
 log_msg(sprintf("M4 done in %.1f minutes. %d/%d iterations converged.",
     elapsed_m4, n_success_m4, B_m4))
 ```
 
-## Bootstrap Results
+# Results
 
-```{r, bootstrap_results}
-summarizeBootstrap = function(boot_matrix, alpha_bonf = 0.01, alpha_fdr = 0.05,
-                              alpha_unadj = 0.05) {
-    n_langs = ncol(boot_matrix)
-    lang_names = colnames(boot_matrix)
+```{r, mc_results}
+summarizeMC = function(mc_coefs, mc_pvals, alpha = 0.05) {
+    lang_names = colnames(mc_coefs)
+    n_valid = colSums(!is.na(mc_coefs))
 
-    mean_coef = colMeans(boot_matrix, na.rm = TRUE)
-    boot_se = apply(boot_matrix, 2, sd, na.rm = TRUE)
+    mean_coef = colMeans(mc_coefs, na.rm = TRUE)
+    mc_sd = apply(mc_coefs, 2, sd, na.rm = TRUE)
 
-    # --- Unadjusted percentile CIs ---
-    q_lo_unadj = apply(boot_matrix, 2, quantile,
-                       probs = alpha_unadj / 2, na.rm = TRUE)
-    q_hi_unadj = apply(boot_matrix, 2, quantile,
-                       probs = 1 - alpha_unadj / 2, na.rm = TRUE)
-    sig_unadj = !(q_lo_unadj <= 0 & q_hi_unadj >= 0)
+    # Fraction of MC draws where the coefficient is significant at alpha
+    frac_sig = colSums(mc_pvals < alpha, na.rm = TRUE) / n_valid
 
-    # --- Bonferroni-corrected quantile CIs (Berger et al.) ---
-    q_lo_bonf = apply(boot_matrix, 2, quantile,
-                      probs = alpha_bonf / (2 * n_langs), na.rm = TRUE)
-    q_hi_bonf = apply(boot_matrix, 2, quantile,
-                      probs = 1 - alpha_bonf / (2 * n_langs), na.rm = TRUE)
-    sig_bonf = !(q_lo_bonf <= 0 & q_hi_bonf >= 0)
+    # Unadjusted percentile CI from MC distribution
+    ci_lo = apply(mc_coefs, 2, quantile, probs = alpha / 2, na.rm = TRUE)
+    ci_hi = apply(mc_coefs, 2, quantile, probs = 1 - alpha / 2, na.rm = TRUE)
 
-    # --- Benjamini-Hochberg FDR on bootstrap p-values ---
-    # Two-sided bootstrap p-value: proportion of resamples on the opposite side
-    # of zero from the observed mean, times 2 (two-tailed).
-    n_boot = colSums(!is.na(boot_matrix))
-    p_boot = ifelse(
+    # Fraction of draws where sign matches the mean (sign stability)
+    sign_stable = ifelse(
         mean_coef > 0,
-        colSums(boot_matrix <= 0, na.rm = TRUE) / n_boot,
-        colSums(boot_matrix >= 0, na.rm = TRUE) / n_boot
+        colSums(mc_coefs > 0, na.rm = TRUE) / n_valid,
+        colSums(mc_coefs < 0, na.rm = TRUE) / n_valid
     )
-    p_boot = pmin(2 * p_boot, 1)  # two-sided
-    p_fdr = p.adjust(p_boot, method = "BH")
-    sig_fdr = p_fdr < alpha_fdr
 
     data.frame(
-        Variable = lang_names,
+        Language = lang_names,
         coef = round(mean_coef, 3),
-        se = round(boot_se, 3),
-        ci_lo = round(q_lo_unadj, 3),
-        ci_hi = round(q_hi_unadj, 3),
-        sig_unadj = sig_unadj,
-        sig_bonf = sig_bonf,
-        p_boot = signif(p_boot, 3),
-        p_fdr = signif(p_fdr, 3),
-        sig_fdr = sig_fdr,
+        mc_sd = round(mc_sd, 3),
+        ci_lo = round(ci_lo, 3),
+        ci_hi = round(ci_hi, 3),
+        frac_sig = round(frac_sig, 3),
+        sign_stable = round(sign_stable, 3),
         stringsAsFactors = FALSE,
         row.names = NULL
     )
 }
 
-boot_summary_m1 = summarizeBootstrap(boot_coefs_m1)
-boot_summary_m4 = summarizeBootstrap(boot_coefs_m4)
+mc_summary_m1 = summarizeMC(mc_coefs_m1, mc_pvals_m1)
+mc_summary_m4 = summarizeMC(mc_coefs_m4, mc_pvals_m4)
 
-printSummary = function(summary_df, model_label) {
+printMCSummary = function(summary_df, model_label) {
     cat(sprintf("=== %s ===\n", model_label))
-    cat(sprintf("Significant (unadjusted 95%% CI): %s\n",
-        paste(summary_df$Variable[summary_df$sig_unadj], collapse = ", ")))
-    cat(sprintf("  Count: %d / %d\n",
-        sum(summary_df$sig_unadj), nrow(summary_df)))
-    cat(sprintf("Significant (BH FDR < 0.05):      %s\n",
-        paste(summary_df$Variable[summary_df$sig_fdr], collapse = ", ")))
-    cat(sprintf("  Count: %d / %d\n",
-        sum(summary_df$sig_fdr), nrow(summary_df)))
-    cat(sprintf("Significant (Bonferroni, α=0.01):  %s\n",
-        paste(summary_df$Variable[summary_df$sig_bonf], collapse = ", ")))
-    cat(sprintf("  Count: %d / %d\n\n",
-        sum(summary_df$sig_bonf), nrow(summary_df)))
+    robust = summary_df$Language[summary_df$frac_sig >= 0.95]
+    fragile = summary_df$Language[summary_df$frac_sig > 0 & summary_df$frac_sig < 0.95]
+    never = summary_df$Language[summary_df$frac_sig == 0]
+    cat(sprintf("Robust (sig in ≥95%% of draws):  %s\n",
+        if (length(robust) > 0) paste(robust, collapse = ", ") else "none"))
+    cat(sprintf("Fragile (sig in <95%% of draws): %s\n",
+        if (length(fragile) > 0) paste(fragile, collapse = ", ") else "none"))
+    cat(sprintf("Never significant:               %s\n\n",
+        if (length(never) > 0) paste(never, collapse = ", ") else "none"))
 }
 
-printSummary(boot_summary_m1, "M1 Bootstrap (Pooled NBR + Labeling Noise)")
-printSummary(boot_summary_m4, "M4 Bootstrap (Two-Way FE Poisson + Labeling Noise)")
+printMCSummary(mc_summary_m1, "M1: Pooled NBR (Berger-style bootstrap)")
+printMCSummary(mc_summary_m4, "M4: Two-Way FE Poisson (MC sensitivity, no resampling)")
 ```
 
-```{r, bootstrap_tables}
-formatBootTable = function(summary_df, caption) {
+```{r, mc_tables}
+formatMCTable = function(summary_df, caption) {
     display_df = summary_df
-    display_df$sig = paste0(
-        ifelse(display_df$sig_unadj, "*", ""),
-        ifelse(display_df$sig_fdr,   "†", ""),
-        ifelse(display_df$sig_bonf,  "‡", "")
-    )
-    display_df = display_df[, c("Variable", "coef", "se", "ci_lo", "ci_hi",
-                                "p_boot", "p_fdr", "sig")]
-    colnames(display_df) = c("Language", "Coef", "SE", "CI lo", "CI hi",
-                             "p (boot)", "p (BH)", "Sig")
-    kable(display_df, format = "html", caption = caption) %>%
+    display_df$frac_sig = sprintf("%.1f%%", display_df$frac_sig * 100)
+    display_df$sign_stable = sprintf("%.1f%%", display_df$sign_stable * 100)
+    colnames(display_df) = c("Language", "Mean Coef", "MC SD", "CI lo", "CI hi",
+                              "% Sig", "% Sign Stable")
+    kable(display_df, format = "html", caption = caption, align = c("l", rep("r", 6))) %>%
         kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
                       full_width = FALSE) %>%
-        footnote(general = "* unadjusted 95% CI excludes 0; † BH FDR < 0.05; ‡ Bonferroni α=0.01",
-                 general_title = "")
+        footnote(general = paste(
+            "Mean Coef: average across MC draws.",
+            "MC SD: standard deviation of coefficient across draws.",
+            "CI: 95% percentile interval of MC distribution.",
+            "% Sig: fraction of draws where the coefficient's cluster-robust p < 0.05.",
+            "% Sign Stable: fraction of draws where the coefficient has the same sign as the mean."
+        ))
 }
 
-formatBootTable(boot_summary_m1,
-    "M1 Bootstrap: Coefficients, 95% CIs, and Multiplicity Corrections")
-formatBootTable(boot_summary_m4,
-    "M4 Bootstrap: Coefficients, 95% CIs, and Multiplicity Corrections")
+formatMCTable(mc_summary_m1,
+    "M1 (Pooled NBR): Berger-Style Bootstrap for Outcome Mislabeling")
+formatMCTable(mc_summary_m4,
+    "M4 (Two-Way FE Poisson): MC Sensitivity to Outcome Mislabeling")
 ```
