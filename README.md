@@ -99,6 +99,76 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 
 6. **Conclusion** (Section 6) --- *TODO.*
 
+## Current Empirical Results from Notebooks
+
+This section summarizes the key results from the analysis notebooks, assesses their compellingness, and discusses whether both worked examples should be retained.
+
+### Example A: Panel Fixed Effects on Ray et al.'s Data
+
+**Notebooks:** `notebooks/toplas19_reanalysis.Rmd` (main panel FE analysis) and `notebooks/toplas19_bootstraping.Rmd` (measurement error sensitivity analysis).
+
+**Story.** The notebook takes the same commit-level dataset from Ray et al. (2014) / Berger et al. (2019) and progressively adds fixed effects to absorb confounders that the original cross-sectional regression cannot account for:
+
+| Model | Unit of analysis | Fixed effects | N obs | Key result |
+|-------|-----------------|---------------|-------|------------|
+| M1 (Ray 2014) | Repository | None | 728 | 11 significant language coefficients |
+| M2 (Berger 2019) | Repo-Language | None | 1,039 | Broadly similar; replication at repo-language level |
+| M3 | Repo-Language | Repository | 552 | Most effects attenuate; only C++ remains significant (but halved) |
+| M4 | Developer-Language | Developer | 13,370 | Further attenuation; C++ drops from 0.23 to 0.065 |
+| M5 | Dev-Repo-Language | Developer + Repository (two-way) | 21,185 | **Most effects vanish**; only C and Haskell survive |
+
+**Key coefficient trajectories** (zero-sum contrasts, FDR-adjusted significance):
+
+- **C++**: 0.23\*\*\* (M1) → 0.256\*\*\* (M2) → 0.128\*\*\* (M3, repo FE) → 0.065\*\* (M4, dev FE) → **0.035 n.s.** (M5, two-way FE). The strongest "more defect-prone" language in the original study becomes insignificant once developer and repository confounders are absorbed.
+- **Clojure**: −0.29\*\*\* (M1) → −0.277\*\*\* (M2) → −0.026 n.s. (M3) → −0.041 n.s. (M4) → **−0.002 n.s.** (M5). Completely vanishes.
+- **Scala**: −0.28\*\*\* (M1) → −0.217\*\*\* (M2) → −0.004 n.s. (M3) → −0.016 n.s. (M4) → **0.025 n.s.** (M5). Completely vanishes.
+- **Python**: 0.10\*\* (M1) → 0.104\* (M2) → −0.019 n.s. (M3) → 0.014 n.s. (M4) → **−0.031 n.s.** (M5). Vanishes.
+- **Haskell**: −0.23\*\*\* (M1) → −0.203\*\*\* (M2) → −0.113 n.s. (M3) → −0.152\*\* (M4) → **−0.183\*\*\*** (M5). The *only* language whose effect *survives and strengthens* under two-way FE. This is interpretable: Haskell's pure functional paradigm with strong static typing may genuinely reduce certain classes of defects, and the FE identification provides stronger evidence than the cross-sectional analysis ever could.
+- **C**: 0.15\*\*\* (M1) → 0.139\*\* (M2) → 0.070 n.s. (M3) → 0.116\*\*\* (M4) → **0.110\*** (M5). Survives, consistent with C's well-documented memory-safety vulnerabilities being a genuine language property rather than a developer or project artifact.
+
+**Measurement error sensitivity** (bootstrapping notebook): Berger et al. (2019) documented a 36% false positive and 11% false negative rate in the keyword-based bug-fix labeling heuristic. The bootstrapping notebook perturbs labels accordingly:
+- M1 (Berger-style bootstrap, 100K draws): Only C++, Clojure, Haskell remain robust (significant in ≥95% of draws).
+- M5 (MC sensitivity, 1K draws, no resampling): Only **C and Haskell** remain robust. C++ drops to 19.4%, Clojure to 1.2%, Scala to ~0%. This confirms the two-way FE finding: measurement noise interacts with the already-attenuated coefficients to eliminate nearly all effects.
+
+**Assessment: Highly compelling.** This example delivers exactly what the paper promises — the same data, a stronger design, dramatically different conclusions. The progressive attenuation from M1 to M5 is a textbook illustration of confounding bias, and the fact that two languages (Haskell, C) survive with interpretable coefficients makes the result more nuanced than a simple "everything vanishes." The measurement error analysis adds a second dimension of robustness. This example is ready for the paper once the narrative write-up is done.
+
+### Example B: Diagnostic Assessment of Bogner & Merkel's JS vs. TS Comparison
+
+**Notebook:** `notebooks/msr22_reanalysis.Rmd` (diagnostic stages only; DiD not yet implemented).
+
+**Story.** The notebook implements a four-stage progressive diagnostic of Bogner & Merkel (MSR 2022), showing *why* their cross-sectional JS vs. TS comparison cannot support causal conclusions — and pointing toward the design improvements needed:
+
+**Stage 1 — Replication and covariate balance.** Replicates the original descriptive finding (TS has fewer code smells and lower cognitive complexity but 60% higher bug-fix ratio). Documents severe covariate imbalance between JS and TS repos (standardized mean differences > 0.1 on nLOC, commits, stars, creation year) — the two groups are not comparable on basic observables, let alone unobservables like team quality.
+
+**Stage 2 — Cross-sectional OLS and OVB assessment.** Fits unadjusted (M0) and fully adjusted (M5) OLS models. The TypeScript coefficient attenuates when controls are added, and three independent omitted variable bias diagnostics converge:
+- *Coefficient instability*: The coefficient moves substantially across control sets, and R² remains far from 1, leaving wide scope for unobserved confounders to shift it further.
+- *Cinelli & Hazlett robustness values*: Small RV values — a confounder as strong as project size could plausibly explain away the remaining effect.
+- *Oster proportional selection bounds*: δ\* values indicate fragility — unobservables need only be a fraction as important as observables to drive the coefficient to zero.
+- Direction of bias from the DAG: Team capability and organizational maturity are positively correlated with both (a) adopting TypeScript and (b) having lower code smells, meaning OVB pushes the coefficient in the "TS looks better" direction — exactly what the original study reports.
+
+**Stage 3 — Treatment decomposition.** Reframes the treatment from "JS vs. TS" (which confounds type system, ecosystem, community, and team selection) to `any`-type density within TypeScript repos. This narrows the comparison to within-ecosystem variation and improves covariate balance. However, the cross-sectional limitation remains: repos that use strict typing may simply be better-staffed and more disciplined.
+
+**Stage 4 — The ceiling of cross-sectional data.** Argues that no amount of cross-sectional controls can separate "strict typing improves quality" from "high-quality teams write strict TypeScript." Within-project temporal variation (DiD on migration events) is needed. This motivates the planned but unimplemented next step.
+
+**Assessment: Pedagogically valuable but incomplete.** The diagnostic progression is a clean application of the pragmatic stance — each stage demonstrates a specific tool (covariate balance, OVB diagnostics, treatment decomposition) and shows why it is insufficient on its own. The OVB analysis (three converging methods all indicating fragility) is a textbook demonstration that will teach readers how to evaluate cross-sectional claims. However, **the constructive counterpart (the TypeScript migration DiD) has not been implemented**, so Example B currently only shows what is *wrong* with existing designs without demonstrating what a *better* design produces. This makes it significantly less compelling than Example A, which delivers the full diagnostic-then-constructive arc on the same data.
+
+### Should We Remove One Example?
+
+**Recommendation: Keep both, but recognize they are at different stages of maturity.**
+
+**Arguments for keeping both:**
+- They demonstrate complementary identification strategies from the causal toolkit (panel FE vs. DiD), showing that the pragmatic stance generates *different* improved designs depending on the data structure and question — a core claim of the paper.
+- Example A addresses a multi-language comparison on the same dataset (within-developer and within-repo variation), while Example B addresses a two-language comparison with a sharper treatment definition (type system adoption as an intervention). These are genuinely different types of causal questions.
+- Example B's OVB diagnostic progression (coefficient instability → Cinelli & Hazlett → Oster) is a contribution in its own right as a teaching tool for the SE community.
+- The treatment decomposition from "language" to "type system adoption" is a pedagogically important point about treatment definition that Example A does not illustrate.
+
+**Arguments for removing Example B:**
+- Without the DiD implementation, Example B breaks the promised "diagnostic-then-constructive" symmetry. It diagnoses but does not deliver the improved design.
+- The paper is already ambitious (primer + pragmatic stance + literature synthesis + misinterpretation analysis + two examples). Dropping to one complete example would allow deeper treatment of the remaining sections.
+- If the TypeScript migration DiD turns out to be empirically infeasible (not enough clean migration events, parallel trends violations), the example may not deliver a satisfying conclusion.
+
+**Bottom line:** Example A is strong and ready. Example B's diagnostic analysis is strong, but its value to the paper depends critically on whether the TypeScript DiD can be implemented and produces interpretable results. The priority should be completing the DiD analysis for Example B — if it works, the two-example structure is substantially more compelling than either alone; if it fails, the paper can fall back to a single worked example with a brief discussion of how the pragmatic stance *would* approach the TypeScript question.
+
 **Appendices:**
 - Historical development of causal inference and parallels with psychology/epidemiology --- *Drafted.*
 - Frequently Asked Questions (27 Q&A pairs across 5 categories) --- *Drafted.*
