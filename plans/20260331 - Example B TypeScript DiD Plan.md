@@ -1,4 +1,4 @@
-# Example B: Bogner & Merkel — Diagnostic Assessment and TypeScript DiD Plan
+# Example B: Bogner & Merkel — Diagnostic Assessment, OVB Analysis, and Design Thinking
 
 ## Original Study Summary
 
@@ -93,230 +93,114 @@ separate (a) from (b) and (c).
 the original conclusions.
 
 **Tasks:**
-- [ ] 1a. Extract creation date and stars from `JavaScriptRepos.txt` and
+- [x] 1a. Extract creation date and stars from `JavaScriptRepos.txt` and
   `TypeScriptRepos.txt`; merge with the characteristics CSVs to build a
   unified analysis frame with columns: `lang`, `ncloc`, `commits_count`,
   `stars`, `creation_year`, `framework`, plus the four quality metrics.
-- [ ] 1b. Produce a **covariate balance table** (Table 1 analog) comparing JS
-  vs. TS on: ncloc, commits_count, stars, creation_year, framework
-  distribution. Use standardized mean differences (SMD) as the primary
-  imbalance statistic.
-- [ ] 1c. Produce distribution plots (box plots or violin plots) for ncloc,
-  commits_count, and stars by language, using the paper's Linux Libertine
-  theme and width = 8, height = 3.
-- [ ] 1d. Fit OLS regressions predicting each of the four metrics from
-  `lang` alone (Bogner replication) and from `lang + ncloc + commits_count +
-  creation_year + stars` (adjusted). Report coefficients and 95% CIs.
-  Show whether controlling for observables attenuates the gap.
-- [ ] 1e. Write the diagnostic narrative for Section 4.4:
+- [x] 1b. Produce a **covariate balance table** comparing JS vs. TS on:
+  ncloc, commits_count, stars, creation_year, framework distribution. Use
+  standardized mean differences (SMD) as the primary imbalance statistic.
+- [x] 1c. Produce distribution plots (violin plots) for ncloc, commits_count,
+  and stars by language, plus a creation-year bar chart, using the paper's
+  Linux Libertine theme and width = 8, height = 3.
+- [ ] 1d. Write the diagnostic narrative for Section 4.4:
   target trial, DAG with confounders, estimand decomposition.
 
 **Expected finding**: Large SMDs on project size (ncloc, commits) and age will
-illustrate that JS and TS repos are not comparable on observables,
-motivating propensity score matching.
+illustrate that JS and TS repos are not comparable on observables, motivating
+the OVB analysis in Stage 2.
 
 ---
 
-### Stage 2 — Propensity Score Matching (NO new data needed)
+### Stage 2 — Cross-Sectional OLS and the OVB Problem (NO new data needed)
 
-**Goal**: Reconstruct a more balanced comparison by matching JS and TS repos
-on observed covariates; show how the original gap shrinks.
+**Goal**: Show that OLS with observable controls attenuates the raw gap but
+cannot resolve the bias; quantify how strong unobserved confounding would need
+to be to explain the remaining effect using three complementary OVB methods.
+
+**Key pedagogical point**: Propensity score matching shares the same
+conditional ignorability assumption as OLS — both adjust only for observables.
+Teaching both in a tutorial would be redundant and might give the false
+impression that matching solves a problem OLS does not. OLS is simpler to
+present and easier to extend with sensitivity analyses, so we use OLS as the
+sole cross-sectional estimator and focus pedagogical effort on diagnosing
+the limits of that approach.
 
 **Tasks:**
-- [ ] 2a. Estimate a logistic regression for `P(TS | covariates)` where
-  covariates are: log(ncloc), log(commits_count), log(stars), creation_year,
-  framework dummies. Assess model fit (C-statistic, calibration plot).
-- [ ] 2b. Apply 1:1 nearest-neighbor matching without replacement, caliper
-  0.2 SD of the log-odds. Report match quality: SMDs pre- and post-match,
-  number of matched pairs.
-- [ ] 2c. Estimate the ATT (average treatment effect on the treated) on the
-  four quality metrics using the matched sample. Compare with unmatched
-  estimates from Stage 1.
-- [ ] 2d. Sensitivity analysis: vary caliper (0.1 SD, 0.3 SD) and matching
-  ratio (1:2); report robustness of coefficient signs and magnitudes.
-- [ ] 2e. Write the matching narrative for Section 4.4, framing it as a
-  first correction that reduces but cannot eliminate bias (because it only
-  controls for observables and does not handle selection on unobservables
-  such as team engineering culture and management quality).
+- [x] 2a. Fit OLS regressions for each outcome: M0 (unadjusted) and M5
+  (fully adjusted with log(ncloc), log(commits), log(stars), creation_year,
+  framework). Report coefficient attenuation and HC3 robust SEs.
+- [x] 2b. **Coefficient instability**: Fit a sequence of models adding
+  controls one at a time (none → +log(nLOC) → +log(commits) → +log(stars) →
+  +creation_year → +framework). Produce a coefficient trajectory plot showing
+  how the TS coefficient changes at each step. If the coefficient is still
+  moving when the last observable is added, the reader should worry about
+  what happens with the unobserved ones.
+- [x] 2c. **Cinelli & Hazlett (2020) sensitivity analysis**: Apply `sensemakr`
+  to produce robustness values (the minimum partial R² that confounders would
+  need with both treatment and outcome to explain away the effect) and
+  benchmark them against observed covariates. Produce contour plots for the
+  lead outcome.
+- [x] 2d. **Oster (2019) proportional selection bounds**: Compute δ* (the
+  ratio of selection on unobservables to selection on observables needed to
+  drive the coefficient to zero) under R²_max = min(1, 1.3 × R²_long).
+  Report for all four outcomes.
+- [ ] 2e. Write the OVB narrative for Section 4.4, explaining that the three
+  methods converge on the same conclusion: the remaining TS effect is fragile
+  and plausibly explained by unobserved confounding.
 
-**Expected finding**: The code quality and understandability gaps shrink after
-matching; the bug-fix ratio and resolution-time results may flip or become
-non-significant, illustrating outcome sensitivity to confounder control.
+**Expected finding**: The coefficient shrinks substantially with controls,
+robustness values from sensemakr are low relative to observed covariate
+benchmarks, and Oster δ* values are below or near 1, all indicating that
+the causal claim is not robust to plausible omitted variable bias.
 
 ---
 
-### Stage 3 — Treatment Decomposition via `any` Type at Repo Level (NO new data needed)
+### Stage 3 — A Cleverer Design: Type System Adoption Intensity (NO new data needed)
 
-**Goal**: Sharpen the treatment from "TypeScript vs. JavaScript" to "type
-system adoption intensity" using the repo-level `any` density already in the
-data; motivate the file-level analysis in Stage 4.
+**Goal**: Show that reframing the treatment — from "JS vs. TS" to "how
+strictly the type system is used" measured by `any`-type density within TS
+repos — improves the design on both the treatment definition and covariate
+balance, but still cannot resolve all threats.
 
 **Tasks:**
-- [ ] 3a. Within the 305 TS repos, regress each quality metric on
-  `any_type_count_ncloc` controlling for log(ncloc), log(commits_count),
-  creation_year. Report coefficients and scatter plots with a lowess smoother.
-- [ ] 3b. Split TS repos into low/medium/high `any` usage tertiles; compare
-  their quality metrics to each other and to matched JS repos from Stage 2.
-  This creates a three-level quasi-treatment gradient:
-  JS (no type checking) → TS-high-any (nominal typing) → TS-low-any (strict
-  typing). Show that the gap is concentrated at the strict-typing end.
-- [ ] 3c. Write the treatment decomposition narrative: the key RQ should be
-  "What is the effect of adopting strict static typing?" rather than "Does
-  using TypeScript improve quality?" Explain why the repo-level `any` analysis
-  is still susceptible to inter-repo selection (strict-typing repos may be
-  better-staffed), and frame Stage 4 as the design that controls for this.
+- [x] 3a. **Covariate balance within TS**: Split TS repos at the median of
+  `any` density into "strict" (low any) and "lenient" (high any). Compute
+  SMDs on ncloc, commits, stars, creation_year between the two groups.
+  Compare with JS-vs-TS SMDs from Stage 1 to show the within-TS comparison
+  is more balanced on observables.
+- [x] 3b. **Dose-response OLS**: Within the 305 TS repos, regress each
+  quality metric on `any_density` controlling for log(ncloc), log(commits),
+  and creation_year. Report coefficients and scatter plots with linear fit.
+- [ ] 3c. Write the design-thinking narrative: the `any` density design is a
+  genuine improvement (sharper treatment, narrower comparison group, better
+  observable balance) but remains cross-sectional and susceptible to
+  repo-level selection on unobservables (rushed or legacy projects use more
+  `any`). Motivate the need for longitudinal data.
+
+**Expected finding**: SMDs within TS are smaller than across JS/TS. The
+dose-response shows an association between `any` density and quality, but
+the cross-sectional design cannot rule out reverse causality or confounding
+by unobserved project characteristics.
 
 ---
 
-### Stage 4 — Within-Repo File-Level Fixed Effects (NEEDS NEW DATA)
+### Stage 4 — Bridge to Longitudinal Panel Data (narrative only)
 
-**Goal**: Test the dose-response hypothesis ("the more strictly a codebase
-uses the type system, the fewer bugs it accumulates") using within-repo
-variation across files, thereby controlling for all repo-level confounders.
+**Goal**: Articulate why cross-sectional data hits a ceiling and motivate
+the next notebook.
 
-**Identification logic**: This is the same FE logic as Example A (Section 4.3),
-applied one level down. Many repos contain both `.js` and `.ts` files
-simultaneously, or contain `.ts` files with heterogeneous `any` density.
-Within the same repo, team quality, testing culture, organizational maturity,
-and management practices are held constant. Comparing typed vs. untyped files
-(or high-`any` vs. low-`any` files) within the same repo isolates the effect
-of type annotation depth from repo-level selection bias.
-
-**Why this is stronger than the DiD/migration approach**:
-TypeScript adoption is gradual and messy — many repos remain hybrid for years,
-and "migration date" is inherently fuzzy. A file-level analysis avoids the
-need to define a clean treatment date, requires no parallel trends assumption,
-and is feasible with the existing 305 TS repos plus the multi-lingual repos
-already in the JS sample.
-
-#### 4a. Scope and Sampling
-
-Two complementary subsamples:
-
-**Subsample A — Multi-lingual repos (both .js and .ts files)**:
-- From the existing 604 repos, identify those with non-trivial shares of both
-  `.js` and `.ts` files (e.g., TypeScript fraction between 10% and 90% of
-  source files). These repos have within-repo JS vs. TS variation.
-- Expand by searching GitHub for repos with ≥100 stars where GitHub's
-  detected languages include both JavaScript and TypeScript with ≥ 20% share
-  each. Target 100–150 such repos.
-
-**Subsample B — Pure TS repos (dose-response via `any`)**:
-- Use the existing 305 TS repos. Within each repo, `.ts` files vary in `any`
-  density, providing a continuous dose of type strictness.
-- No additional repo-level data collection needed; only file-level parsing.
-
-#### 4b. File-Level Data Extraction (NEEDS NEW DATA)
-
-**New data needed**: For each file in each sampled repo, collect:
-
-| Variable | How to collect | Effort |
-|---|---|---|
-| File language | file extension (`.js` / `.ts`) | Trivial (ls + extension) |
-| Bug-fix commit rate | `git log --follow -- <file>` + keyword heuristic | Medium (git scripting) |
-| File LOC | `wc -l` or `cloc` at HEAD | Low |
-| File age (days) | date of first commit touching the file | Medium (git log parsing) |
-| Number of contributors | count unique author emails per file | Medium (git log parsing) |
-| `any` density per file | regex count of `: any`, `as any`, `<any>` in `.ts` files | Low |
-
-**Bug-fix commit rate definition**: For each file, count the number of
-bug-fix commits (commits whose message matches the Berger keyword heuristic)
-that touch this file, divided by the total number of commits touching this
-file. This is the file-level analog of the repo-level bug-fix commit ratio
-already in the Bogner & Merkel data.
-
-**Tasks:**
-- [ ] 4b-1. For each sampled repo, run:
-  ```
-  git log --name-only --format="%H %s %ad" --date=short
-  ```
-  to get the full commit-file history. Apply keyword heuristic to flag
-  bug-fix commits. Aggregate to file level: total commits, bug-fix commits,
-  first commit date, unique author count.
-- [ ] 4b-2. Record file language from extension. For `.ts` files, run a
-  regex pass (`grep -cE ': any\b|as any\b|<any>'`) to count `any` usages;
-  divide by file LOC to get `any` density.
-- [ ] 4b-3. Filter out: auto-generated files (e.g., `*.d.ts`, files in
-  `node_modules/`, `dist/`, `build/`), test files (files in `test/`,
-  `spec/`, `__tests__/`), and files with fewer than 10 total commits
-  (insufficient signal).
-- [ ] 4b-4. Merge file-level data with repo-level characteristics from the
-  existing CSVs to enable repo FE and repo-level controls.
-
-#### 4c. Estimation Models
-
-**Model 1 — JS vs. TS within multi-lingual repos** (Subsample A):
-
-```
-bug_rate_f = α_repo(f) + β · is_ts_f
-           + γ₁ · log(LOC_f) + γ₂ · file_age_f + γ₃ · n_contrib_f + ε_f
-```
-
-`β` is the within-repo bug-fix rate difference between `.ts` and `.js` files,
-controlling for file size, age, and number of contributors. Standard errors
-clustered at the repo level.
-
-**Model 2 — `any` dose-response within TS repos** (Subsample B):
-
-```
-bug_rate_f = α_repo(f) + β · any_density_f
-           + γ₁ · log(LOC_f) + γ₂ · file_age_f + γ₃ · n_contrib_f + ε_f
-```
-
-`β` is the slope of the dose-response: within the same repo, how much does
-a one-unit increase in `any` density change the bug-fix rate?
-
-**Model 3 — Combined model** (pooling both subsamples):
-
-Interact `is_ts` with `any_density` to test whether the JS vs. TS gap closes
-as TS repos adopt more `any` (i.e., does TS with high `any` look like JS?).
-
-**Tasks:**
-- [ ] 4c-1. Implement Models 1–3 in R using `fixest::feols()` with
-  `cluster = ~repo_name`. Report coefficients, 95% CIs, and within-R².
-- [ ] 4c-2. Produce a binned scatter plot (binscatter) for Model 2:
-  `any` density on x-axis, residualized bug-fix rate (after removing repo FE)
-  on y-axis, with a linear fit and 95% CI band.
-- [ ] 4c-3. Robustness checks:
-  - Exclude the newest 20% of files in each repo (recently added files
-    have fewer commits and noisier bug-fix rates).
-  - Restrict to files with ≥ 20 total commits (high-signal files only).
-  - Replace the continuous `any` density with a binary indicator
-    (`any_free`: zero `any` usages vs. at least one).
-  - Add framework × creation_year interaction dummies to control for
-    time-varying community norms within frameworks.
-
-#### 4d. Honest Engagement with Remaining Threats
-
-Three threats require explicit discussion in Section 4.4:
-
-1. **File-level selection**: developers may assign stable, well-understood
-   modules to JS (or to strict TS) and experimental, complex features to TS
-   (or to lenient TS with heavy `any`). Mitigations: (a) control for file age
-   and LOC as proxies for complexity; (b) restrict to files added after the
-   repo first introduced TypeScript (so the developer made an active choice,
-   not a legacy default); (c) compare results with and without the age/LOC
-   controls to assess sensitivity.
-
-2. **Reverse causality**: developers may add strict typing to the most
-   buggy modules first (to refactor and stabilize them), creating a spurious
-   positive correlation between type strictness and prior bugs. Mitigation:
-   focus on files typed from their first commit (not converted later).
-   Flag this threat in the paper and discuss it as a direction for future
-   causal designs.
-
-3. **Spillovers (SUTVA)**: well-typed modules export typed interfaces that
-   reduce errors in adjacent `.js` or lenient-`.ts` files. This understates
-   the treatment effect on typed files and violates SUTVA. Mention as a
-   limitation; note that it would bias `β` toward zero, so a positive finding
-   is conservative.
-
-**Tasks:**
-- [ ] 4d-1. Sensitivity analysis for file-level selection: re-run Models 1–2
-  restricting to files whose first commit postdates the repo's first `.ts`
-  file (i.e., files that were typed from inception).
-- [ ] 4d-2. Write up the limitations discussion for Section 4.4, covering
-  all three threats and their mitigations.
+This stage produces no new analysis. It is a concluding paragraph that:
+1. Restates the fundamental reflection problem: cross-sectional data cannot
+   distinguish "strict typing → quality" from "high-quality teams → strict
+   typing."
+2. Notes that even the cleverer `any` density design is susceptible to
+   repo-level selection on unobservables.
+3. Explains that what is needed is within-project temporal variation: observe
+   the same project before and after it tightens its type discipline, or
+   compare typed vs. untyped files within the same repo.
+4. Points to the next notebook, which collects new longitudinal data and
+   applies file-level fixed effects and/or difference-in-differences.
 
 ---
 
@@ -325,18 +209,9 @@ Three threats require explicit discussion in Section 4.4:
 | What | Data needed | Already collected? | Effort |
 |---|---|---|---|
 | Covariate imbalance (Stage 1) | repo creation date, stars, framework | Yes (TXT/CSV files) | Low |
-| Propensity matching (Stage 2) | same as above | Yes | Low |
-| `any` dose-response at repo level (Stage 3) | any-type_count_ncloc | Yes (TS repos) | Low |
-| File-level language & LOC (Stage 4b) | file extensions, `wc -l` | No — clone repos | Low |
-| File-level bug-fix rate (Stage 4b) | `git log --follow` per file | No — git scripting | Medium |
-| File-level `any` density (Stage 4b) | regex on `.ts` files | No — text parsing | Low |
-| Expanded multi-lingual repos (Stage 4a) | GitHub API search | No — API query | Medium |
-
-**Not needed** (compared to the original DiD plan):
-- Historical SonarQube runs at checkpoints (Very high effort — dropped)
-- Time-series panel construction across 3–7 years per repo (High — dropped)
-- Clean migration date identification (Medium — dropped)
-- Parallel trends validation (Medium — dropped)
+| OVB assessment (Stage 2) | same covariates as Stage 1 | Yes | Low |
+| `any` dose-response within TS (Stage 3) | any-type_count_ncloc | Yes (TS repos) | Low |
+| Longitudinal panel data (next notebook) | file-level commit histories | No — git scripting | Medium-High |
 
 ---
 
@@ -349,51 +224,40 @@ Section 4.3 (Example A):
    - Covariate balance table showing JS vs. TS repos are not comparable on
      observables (size, age, stars).
    - DAG: organizational maturity → language choice AND quality practices.
-   - Treatment decomposition: "TypeScript" is not one thing; `any` density
-     shows within-TS heterogeneity. The relevant treatment is "type system
-     adoption intensity," not "TS vs. JS."
-   - Target trial framing: ideal experiment randomizes type system adoption
-     across otherwise identical files within the same project.
+   - Cross-sectional OLS with controls: coefficient attenuation shows
+     observables explain part of the gap, but OVB assessment (coefficient
+     instability, sensemakr, Oster bounds) shows the remaining effect is
+     fragile.
 
-2. **Matching correction (~0.5 pages)**: First step, controls observables only.
-   - Show how matching on repo observables attenuates the raw gap.
-   - Explain why matching alone is insufficient (selection on unobservables
-     such as team engineering culture remains).
+2. **Design improvement (~1 page)**: Reframing the treatment.
+   - Treatment decomposition: "TypeScript" bundles multiple interventions;
+     `any` density isolates type system adoption intensity.
+   - Within-TS dose-response: improved observable balance, suggestive
+     association, but still cross-sectional.
+   - Target trial framing: ideal experiment randomizes type strictness
+     within the same project over time.
 
-3. **Within-repo file-level FE redesign (~1.5 pages)**:
-   - Explain the identification logic: the repo FE absorbs all repo-level
-     confounders; only within-repo file-to-file variation identifies `β`.
-     Analogy with Example A's developer and repo FEs.
-   - Model 1 results (JS vs. TS within multi-lingual repos): coefficient plot.
-   - Model 2 results (`any` dose-response within TS repos): binscatter figure.
-   - Robustness checks summary.
-   - Honest limitations: file-level selection, reverse causality, spillovers.
-
-4. **Segue to Section 4.5**: How Example B differs from Example A — both use
-   within-unit FE, but the unit shifts from developer/repo (Example A) to
-   file within repo (Example B); the treatment shifts from "language of the
-   commit" to "type annotation depth of the file."
+3. **Bridge to longitudinal design (~0.5 pages)**:
+   - Articulate why cross-sectional data is inherently limited for this
+     question: cannot separate treatment effect from selection.
+   - Motivate file-level FE / DiD as designs that exploit within-project
+     variation and control for time-invariant repo-level confounders.
+   - Segue to the next section / notebook where new data is collected.
 
 ---
 
 ## Open Questions
 
-1. **Sample size**: A single large multi-lingual repo can contribute thousands
-   of files. With 100–150 repos from Subsample A and 305 repos from
-   Subsample B, the file-level sample could easily reach 50,000–500,000
-   observations. Check that within-repo variation is sufficient (i.e., enough
-   repos have both typed and untyped files, or wide `any` density variation).
+1. **Which outcome to feature in the paper?** Code smells / nLOC and
+   cognitive complexity / nLOC show the clearest TS-is-better pattern.
+   Bug-fix ratio is the most counterintuitive (TS appears worse). The paper
+   could lead with bug-fix ratio because the "surprising" finding is the
+   best hook, then show how OVB assessment explains it.
 
-2. **Vue repos**: `VueRepos.txt` contains 15,870 Vue repositories (JS-based).
-   Vue single-file components mix `.vue`, `.js`, and potentially `.ts`.
-   Could expand Subsample A's control pool but requires careful handling of
-   `.vue` file format.
+2. **sensemakr contour plot**: Should the paper include the contour plot
+   or just report robustness values in a table? The contour plot is visually
+   compelling but may be unfamiliar to the SE audience.
 
-3. **Migration DiD as future extension**: The original DiD plan (JS→TS
-   migration events, panel construction, staggered adoption estimator) remains
-   a valid design. It answers a different — and arguably sharper — causal
-   question: "What happens to a specific project's quality *over time* after
-   it adopts TypeScript?" The file-level FE answers "within a project at a
-   given time, do more-typed files have lower bug rates?" Both questions are
-   legitimate; the file-level approach is more feasible for this paper.
-   Flag the DiD as a natural next step in the Discussion section.
+3. **Scope of the longitudinal notebook**: File-level FE within the
+   existing 604 repos, or expand to new repos with migration events?
+   Need to decide scope for the paper.
