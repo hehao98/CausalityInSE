@@ -152,81 +152,64 @@ This section summarizes the key results from the analysis notebooks, assesses th
 
 **Assessment: Pedagogically valuable but incomplete.** The diagnostic progression is a clean application of the pragmatic stance — each stage demonstrates a specific tool (covariate balance, OVB diagnostics, treatment decomposition) and shows why it is insufficient on its own. The OVB analysis (three converging methods all indicating fragility) is a textbook demonstration that will teach readers how to evaluate cross-sectional claims. However, **the constructive counterpart (the TypeScript migration DiD) has not been implemented**, so Example B currently only shows what is *wrong* with existing designs without demonstrating what a *better* design produces. This makes it significantly less compelling than Example A, which delivers the full diagnostic-then-constructive arc on the same data.
 
-### Should We Remove One Example?
+### Which Two Examples Should the Paper Use?
 
-**Recommendation: Keep both, but recognize they are at different stages of maturity.**
+Three candidate examples exist. The choice depends on how the paper frames its two worked examples.
 
-**Arguments for keeping both:**
-- They demonstrate complementary identification strategies from the causal toolkit (panel FE vs. DiD), showing that the pragmatic stance generates *different* improved designs depending on the data structure and question — a core claim of the paper.
-- Example A addresses a multi-language comparison on the same dataset (within-developer and within-repo variation), while Example B addresses a two-language comparison with a sharper treatment definition (type system adoption as an intervention). These are genuinely different types of causal questions.
-- Example B's OVB diagnostic progression (coefficient instability → Cinelli & Hazlett → Oster) is a contribution in its own right as a teaching tool for the SE community.
-- The treatment decomposition from "language" to "type system adoption" is a pedagogically important point about treatment definition that Example A does not illustrate.
+#### Candidate Summaries
 
-**Arguments for removing Example B:**
-- Without the DiD implementation, Example B breaks the promised "diagnostic-then-constructive" symmetry. It diagnoses but does not deliver the improved design.
-- The paper is already ambitious (primer + pragmatic stance + literature synthesis + misinterpretation analysis + two examples). Dropping to one complete example would allow deeper treatment of the remaining sections.
-- If the TypeScript migration DiD turns out to be empirically infeasible (not enough clean migration events, parallel trends violations), the example may not deliver a satisfying conclusion.
-
-**Bottom line:** Example A is strong and ready. Example B's diagnostic analysis is strong, but its value to the paper depends critically on whether the TypeScript DiD can be implemented and produces interpretable results. The priority should be completing the DiD analysis for Example B — if it works, the two-example structure is substantially more compelling than either alone; if it fails, the paper can fall back to a single worked example with a brief discussion of how the pragmatic stance *would* approach the TypeScript question.
-
-### Alternative Example: Revisiting the Cursor AI Adoption Study (He et al., MSR 2026)
-
-**Notebook:** `notebooks/msr26_reanalysis.Rmd` (descriptive pre-post and interrupted time series analysis).
-
-**Context.** He et al. (MSR 2026) studied the causal impact of Cursor AI adoption on development velocity and code quality using a staggered DiD design with matched controls. This reanalysis notebook strips away the DiD methodology and asks: What would you conclude from progressively weaker designs applied to the treated-repos-only panel data?
-
-**Story.** The notebook uses monthly panel data (4,563 repo-months, ±6 months around Cursor adoption) for repos that adopted Cursor, examining five outcomes: commits, lines added, quality warnings, duplicated lines density, and cognitive complexity.
-
-**Raw pre-post comparison** (N=1,265 pre, 3,298 post observations):
-- Commits: +8.1% (p=0.002), Lines Added: +14.4% (p<0.001) — velocity increases.
-- Quality Warnings: +2.0% (p=0.39 n.s.), Duplicated Lines: +2.0% (p=0.38 n.s.) — no significant quality change in raw means.
-- Cognitive Complexity: +5.7% (p<0.001) — complexity increases.
-
-**Interrupted Time Series (ITS) across four specifications** (No Covariates → With Covariates → Repo FE → Repo FE + Covariates). The ITS decomposes the treatment effect into a level shift (immediate) and a slope change (trend after adoption):
-
-| Outcome | Level (no FE) | Level (Repo FE+Cov) | Post slope (no FE) | Post slope (Repo FE+Cov) |
-|---------|---------------|----------------------|---------------------|--------------------------|
-| Commits | +0.49\*\*\* | +0.38\*\*\* | −0.17\*\*\* | −0.14\*\*\* |
-| Lines Added | +1.39\*\*\* | +0.92\*\*\* | −0.42\*\*\* | −0.31\*\*\* |
-| Quality Warnings | −0.54\*\*\* | +0.065\* | +0.27\*\*\* | +0.05\*\*\* |
-| Duplicated Lines | −0.13\* | +0.017 n.s. | +0.046\* | −0.014 n.s. |
-| Cognitive Complexity | −0.33\*\* | +0.103\*\*\* | +0.17\*\*\* | +0.045\*\*\* |
-
-**Key patterns:**
-- *Velocity outcomes (commits, lines added)*: Large positive level shift at adoption (repos start producing more code immediately), followed by a negative slope (the boost fades over subsequent months). Robust across all specifications.
-- *Quality outcomes — the sign flips under FE*: In naive models (no FE), quality warnings and complexity show *negative* level shifts (adoption appears to *improve* quality). But with Repo FE, the sign *reverses*: quality warnings and cognitive complexity both show *positive* level shifts and positive post-slopes. The naive models confound the treatment effect with cross-sectional differences between repos (higher-quality repos adopt earlier); Repo FE absorbs these stable differences, revealing that quality worsens within-repo after adoption.
-- *The sign-flip is the pedagogical gem*: It concretely demonstrates how cross-sectional confounding can reverse the apparent direction of an effect — a vivid illustration of Simpson's paradox / ecological fallacy that readers will remember.
-
-**Assessment: Pedagogically powerful but thematically off-track.**
-
-**Strengths as a worked example:**
-- The sign-flip on quality warnings (negative without FE, positive with FE) is a dramatic, memorable illustration of confounding. It would be one of the strongest single demonstrations in the paper.
-- It showcases a different method from the toolkit — interrupted time series (ITS), a pre-post within-unit design — that complements panel FE (Example A) and DiD (Example B).
-- The topic is highly topical (LLM coding agents) and will engage readers more than the PL-quality debate alone.
-- The notebook is concise and the results are clean — less additional work needed than Example B's DiD.
-- The original MSR 2026 paper already exists as the "constructive" counterpart — the tutorial could diagnose what ITS misses (no control group → cannot distinguish treatment from secular trends) and point to the published DiD as the improved design.
-
-**Weaknesses as a worked example:**
-- **Breaks thematic unity.** The paper is framed around the PL-quality debate as a single unifying case study. Adding a Cursor AI example introduces a second domain, diluting the narrative thread. The paper currently promises: "We demonstrate the primer's diagnostic and constructive power *through the programming language and code quality debate*."
-- **Self-citation concern.** Using the author's own MSR 2026 paper as a worked example could appear self-promotional, especially in a tutorial paper that is supposed to serve the broader community.
-- **ITS without a control group is a weaker design.** The ITS in this notebook only examines treated repos — it cannot distinguish the Cursor effect from general time trends (e.g., repos growing naturally, seasonal patterns). The original paper addresses this with a matched control group and full DiD. A tutorial that diagnoses the ITS as weak and points to "our own published paper" as the fix is awkward rhetorically.
-- **No constructive counterpart in the notebook.** Like Example B, this notebook only contains the diagnostic/weaker analysis. The constructive part (the full DiD) lives in the published paper, not in the tutorial's own analysis.
-
-### Comparative Assessment of the Three Candidate Examples
-
-| Dimension | Example A (Ray et al. Panel FE) | Example B (Bogner & Merkel TS DiD) | Alternative (Cursor ITS) |
+| Dimension | Example A (Ray et al. Panel FE) | Example B (Bogner & Merkel TS DiD) | Example C (Cursor AI ITS → DiD) |
 |-----------|---|----|---|
+| Data structure | Cross-sectional (repos × languages) | Cross-sectional (JS vs. TS repos) | Longitudinal (repo-months around adoption) |
 | Diagnostic story | Strong: progressive attenuation across 5 models | Strong: 3 converging OVB methods | Strong: sign-flip under FE |
-| Constructive counterpart | **Complete**: panel FE implemented | **Incomplete**: DiD not implemented | **External**: lives in published paper |
-| Thematic fit | PL-quality debate (core thread) | PL-quality debate (core thread) | LLM agents (off-thread) |
-| Pedagogical novelty | Shows coefficient attenuation | Shows OVB diagnostics + treatment decomposition | Shows sign-flip (Simpson's paradox) |
-| Method demonstrated | Panel FE | DiD (planned) | ITS → DiD (external) |
-| Implementation status | Ready | Diagnostic only | Diagnostic only |
+| Constructive counterpart | **Complete**: panel FE implemented | **Incomplete**: DiD not yet implemented | **External**: full DiD lives in published MSR 2026 paper |
+| Pedagogical novelty | Shows coefficient attenuation (most effects vanish) | Shows OVB diagnostics + treatment decomposition | Shows sign-flip (Simpson's paradox: quality appears to *improve* without FE, *worsens* with FE) |
+| Method demonstrated | Panel FE | DiD (planned) + OVB sensitivity analysis | ITS → DiD |
+| Implementation status | Ready | Diagnostic only; DiD empirically risky | Diagnostic ready; constructive available from published paper |
 | Self-citation risk | No (third-party study) | No (third-party study) | Yes (author's own paper) |
 
-**Recommendation:** The Cursor example should **not replace** either PL-quality example in the main worked examples, because it breaks the paper's thematic unity. However, it could serve as a valuable **supplementary illustration** in Section 3.3 (Design-Based Identification) or Section 3.4 (Pragmatic Stance) — a brief sidebar showing how the sign-flip demonstrates confounding in a contemporary SE context, without requiring a full worked example. Alternatively, it could be mentioned as an exemplar in the Appendix (Empirical Standard for Causal Inquiry) alongside Cheng et al. (Google), Fang et al., and Chen et al.
+#### Option 1: Two PL-Quality Examples (Current Plan: A + B)
 
-The priority remains: complete Example B's TypeScript migration DiD. If that proves infeasible, the next-best fallback is a single worked example (Example A) with the Cursor sign-flip as a motivating vignette elsewhere in the paper, rather than elevating it to a full worked example.
+**Framing:** The PL-quality debate as a single unifying case study; two examples demonstrate that the pragmatic stance generates different improved designs from the same debate depending on the data structure (multi-language panel → FE; two-language comparison → DiD).
+
+**Pros:** Thematic unity; deep engagement with one literature; no self-citation. **Cons:** Example B's DiD is unimplemented and empirically risky; if it fails, the symmetry breaks; both examples are cross-sectional-to-panel upgrades within the same narrow domain.
+
+#### Option 2: Cross-Sectional vs. Longitudinal (Proposed Reframing: A + C)
+
+**Framing:** The two examples illustrate *structurally different* data settings that SE researchers commonly encounter — a cross-sectional observational study and a longitudinal pre-post study — and show that both lead to qualitatively wrong conclusions when analyzed naively:
+
+- **Example A (cross-sectional):** Ray et al.'s cross-sectional regression reports 11 significant language-defect associations. Panel FE on the same data absorbs developer and project confounders; most effects attenuate to non-significance. What looked like "language effects" were confounding from unobserved developer skill and project characteristics.
+- **Example C (longitudinal):** Naive ITS on Cursor-adopting repos suggests adoption *improves* code quality (negative level shift on quality warnings and complexity). Repo FE *flips the sign*: quality actually *worsens* within-repo after adoption. The naive model confounded the treatment effect with selection (higher-quality repos adopted earlier). The published DiD with matched controls confirms the FE direction.
+
+**The shared punchline** — both examples produce at least one sign-flip or collapse to non-significance when confounders are properly absorbed — is more powerful than any single example because it shows the pattern is *general*, not specific to one domain. Readers learn to distrust naive estimates regardless of whether their data is cross-sectional or longitudinal.
+
+**Pros:**
+- Demonstrates two fundamentally different data structures (cross-sectional vs. longitudinal) and identification strategies (panel FE vs. ITS/DiD) — a stronger illustration of the pragmatic stance's generality.
+- Both examples deliver the same dramatic lesson (naive analysis gets the answer qualitatively wrong) through different mechanisms (attenuation vs. sign-flip), making the lesson more memorable and harder to dismiss as domain-specific.
+- Both diagnostic analyses are already implemented and produce compelling results. Example C's constructive counterpart (the full DiD) exists in the published paper and can be briefly summarized without reimplementation.
+- Eliminates the empirical risk of the TypeScript DiD, which may not produce clean results.
+- The Cursor example is highly topical (LLM coding agents) and will engage a broader readership than the PL debate alone.
+- Broadens the paper's demonstrated scope: the toolkit works across SE domains, not just the PL niche.
+
+**Cons:**
+- Breaks the "single unifying case study" framing. Section 4 would need restructuring — the PL debate remains the primary case study (Sections 4.1–4.3 covering literature synthesis, misinterpretation, and Example A), while Example C would need a new subsection introducing the Cursor context. This is manageable but requires rewriting the introduction's framing.
+- Self-citation: using the author's own MSR 2026 paper. This can be mitigated by framing it transparently ("we retrospectively apply the pragmatic stance to our own prior work, demonstrating that even studies employing DiD benefit from the diagnostic discipline"). Many tutorial papers use the authors' own work as examples — it demonstrates practice-what-you-preach credibility. The Cursor paper is already cited in Section 3.3 as an exemplar of DiD in SE.
+- The Cursor ITS analysis currently examines only treated repos (no control group). This is actually a *feature* pedagogically — it shows exactly what goes wrong when you lack a control group — but the constructive step (adding controls via DiD) would need to reference the published paper rather than reimplement it in the tutorial's own analysis.
+
+#### Option 3: All Three as Briefer Illustrations (A + B-diagnostic-only + C)
+
+**Framing:** Example A is the deep worked example (full diagnostic-then-constructive arc). Examples B and C are briefer illustrations — B shows OVB diagnostics on cross-sectional data, C shows the sign-flip — without requiring full constructive counterparts. This maximizes pedagogical coverage but may feel scattered.
+
+#### Recommendation
+
+**Option 2 (A + C) is the strongest choice**, contingent on being comfortable with the self-citation and the structural reframing. The reasons:
+
+1. **Both examples are empirically complete.** Example A's panel FE is implemented; Example C's diagnostic ITS is implemented and the constructive DiD exists in the published paper. Neither depends on unfinished or risky empirical work.
+2. **The cross-sectional vs. longitudinal pairing is pedagogically optimal.** It directly maps to the two settings SE researchers most commonly encounter: "I have a dataset of projects measured at one point in time" vs. "I have a panel tracking projects over time." Each setting has its own dominant naive approach (cross-sectional regression vs. pre-post comparison) and its own toolkit response (panel FE vs. DiD).
+3. **The shared "sign-flip / collapse" punchline** is the most compelling possible demonstration of why causal methods matter. If both a cross-sectional PL study and a longitudinal tool-adoption study produce qualitatively wrong conclusions when analyzed naively, readers will generalize: *this problem likely affects my own work too*.
+4. **Example B's OVB material is not lost.** The Bogner & Merkel OVB diagnostics (coefficient instability, Cinelli & Hazlett, Oster) can be folded into the primer (Section 3.2 or 3.4) as a worked illustration of sensitivity analysis, rather than requiring a full Section 4.4 example. The treatment decomposition point ("language" → "type system adoption") can be discussed briefly in the pragmatic stance section.
+
+**If self-citation is a dealbreaker**, then Option 1 (A + B) remains viable, but completing the TypeScript DiD becomes the critical-path task with significant empirical risk.
 
 **Appendices:**
 - Historical development of causal inference and parallels with psychology/epidemiology --- *Drafted.*
