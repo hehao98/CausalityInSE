@@ -3,13 +3,27 @@ title: "Revisiting Bogner & Merkel (MSR 2022): Selection Bias, OVB Analysis, and
 output: html_document
 ---
 
-This notebook implements a progressive reanalysis of Bogner & Merkel (MSR 2022):
-Stage 1 diagnoses selection bias in the original cross-sectional design,
-Stage 2 demonstrates cross-sectional OLS and formally assesses omitted variable
-bias using three complementary methods (coefficient instability, Cinelli &
-Hazlett sensitivity analysis, and Oster proportional selection bounds),
-and Stage 3 shows how reframing the treatment as type system adoption intensity
-improves the design while remaining fundamentally limited by cross-sectional data.
+This notebook implements a progressive reanalysis of Bogner & Merkel (MSR 2022),
+who compared 299 JavaScript and 305 TypeScript GitHub repositories on four code
+quality metrics and reported that TypeScript repos exhibit fewer code smells and
+lower cognitive complexity but a higher bug-fix commit ratio.
+
+Stage 1 diagnoses selection bias in the original cross-sectional design:
+TS repos are systematically newer (creation year SMD = 0.75), more popular
+(stars SMD = 0.40), and more active (commits SMD = 0.17) than their JS
+counterparts.
+Stage 2 demonstrates cross-sectional OLS with controls and formally assesses
+omitted variable bias using three complementary methods (coefficient instability,
+Cinelli & Hazlett sensitivity analysis, and Oster proportional selection bounds).
+Adding observable controls attenuates the TS coefficient for code smells by 64%
+(from −0.012 to −0.004), but the remaining estimate is fragile: the Cinelli &
+Hazlett robustness value is only 8.9%, meaning a confounder explaining less than
+9% of the residual variance in both treatment and outcome would suffice to
+explain the entire effect.
+Stage 3 shows how reframing the treatment as type system adoption intensity
+(measured by `any`-type density within TypeScript repos) improves the design
+by reducing covariate imbalance and sharpening the treatment definition, while
+remaining fundamentally limited by the cross-sectional data structure.
 
 # Setup
 
@@ -443,11 +457,14 @@ kable(stability_results %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
 ```
 
-**Interpretation**: If the coefficient changes substantially from M0 to M5,
-the observed controls are "doing work."
-But R² remains far below 1 for all outcomes, meaning most outcome variance is
-unexplained — there is plenty of room for unobserved confounders to shift the
-coefficient further.
+**Interpretation**: The coefficient trajectories show the observed controls
+are "doing work": for code smells / nLOC, the TypeScript coefficient drops
+from −0.0122 (M0) to −0.0044 (M5), a 64% attenuation.
+For cognitive complexity, attenuation is 44% (−0.232 to −0.130); for
+bug-fix ratio, 24% (0.080 to 0.061).
+But R² remains far below 1 for all outcomes (at most 0.33 for cognitive
+complexity), meaning most outcome variance is unexplained — there is
+plenty of room for unobserved confounders to shift the coefficient further.
 The question is: how strong would those unobserved confounders need to be?
 
 ## 2.3 Sensitivity Analysis: Cinelli & Hazlett (2020)
@@ -512,12 +529,19 @@ plot(sens_list[["code_smells_ncloc"]],
 ```
 
 **Interpretation**: The contour plot shows how the estimated TypeScript
-coefficient changes for different levels of confounding (x-axis: partial R²
-with treatment; y-axis: partial R² with outcome).
+coefficient for code smells / nLOC changes for different levels of confounding
+(x-axis: partial R² with treatment; y-axis: partial R² with outcome).
 The red region is where the estimate crosses zero.
 Diamond markers show where observed covariates fall.
-If any single benchmark covariate is near the red region, a confounder of
-comparable strength would suffice to invalidate the finding.
+The benchmark bounds are revealing: a confounder 1× as strong as
+log(stars) — our strongest predictor of treatment assignment (partial R²
+= 0.25 with treatment) — would reduce the estimate from −0.0044 to
+−0.0010.
+A confounder 2× as strong would flip the sign to +0.0047, meaning
+TypeScript would appear *worse* on code smells.
+Given that unobserved confounders like team capability and engineering
+culture are plausibly as strong as or stronger than GitHub stars, the
+finding is fragile.
 
 ```{r sensemakr_contour_tstat, fig.width=8, fig.height=5}
 plot(sens_list[["code_smells_ncloc"]],
@@ -619,21 +643,33 @@ kable(oster_sens %>% select(outcome, r2_max_rule, r2_max, delta),
 
 ## 2.5 The OVB Verdict
 
-Three independent diagnostic methods converge:
+Three independent diagnostic methods converge on the same conclusion:
 
-1. **Coefficient instability** (Section 2.2): The TypeScript coefficient
-   changes substantially as controls are added, and R² remains far from 1,
-   leaving wide scope for further movement with unobserved confounders.
+1. **Coefficient instability** (Section 2.2): The TypeScript coefficient for
+   code smells drops from −0.0122 (unadjusted) to −0.0044 (fully adjusted) —
+   a 64% attenuation — and is still drifting when the last observable control
+   is added. Meanwhile, R² rises only from 0.087 to 0.221, meaning nearly 80%
+   of outcome variance remains unexplained. There is ample room for unobserved
+   confounders to shift the coefficient further.
 
-2. **Cinelli & Hazlett robustness values** (Section 2.3): The robustness
-   values can be benchmarked against observed covariates — a confounder of
-   comparable strength to project size or commit activity could plausibly
-   explain away the remaining effect.
+2. **Cinelli & Hazlett robustness values** (Section 2.3): For code smells /
+   nLOC, the robustness value is 8.9% (point estimate) and just 1.2% (for the
+   95% CI to include zero). A confounder with 1× the explanatory power of
+   log(stars) — which has partial R² of 0.25 with treatment — would reduce
+   the estimate from −0.0044 to −0.0010; a confounder 2× as strong would flip
+   the sign entirely. The cognitive complexity outcome is somewhat more robust
+   (RV = 16.1%), while the bug resolution time estimate is already non-significant
+   after adjustment (RV = 8.3%, CI already includes zero).
 
 3. **Oster bounds** (Section 2.4): The δ* values quantify the proportional
-   selection needed. If δ* is below or near 1, the result is fragile:
-   unobserved confounders need not be much stronger than the observed ones
-   to explain the entire effect.
+   selection needed. For code smells, δ* = 1.15, meaning unobservables
+   only slightly stronger than the full set of observables would drive the
+   coefficient to zero. Cognitive complexity (δ* = 2.79) and bug-fix ratio
+   (δ* = 3.56) appear more robust, but this partly reflects how little the
+   coefficient moved with controls — when the short regression already explains
+   little variance (R² < 0.15), even δ* > 1 does not provide strong reassurance.
+   Bug resolution time has a negative δ* (−4.10), indicating the coefficient
+   *increased* after adding controls — suggesting positive confounding bias.
 
 **Direction of bias from the DAG**: Team capability and organizational
 maturity are positively correlated with both (a) adopting TypeScript and
@@ -760,11 +796,20 @@ ggplot(ts_long, aes(x = any_density, y = value)) +
 ## 3.4 Remaining Threats
 
 The within-TS dose-response is a genuine design improvement over the raw
-JS-vs-TS comparison: the treatment is sharper, the comparison group is narrower,
-and observable balance is better.
+JS-vs-TS comparison: the treatment is sharper (type strictness vs. "language"),
+the comparison group is narrower (305 TS repos vs. 604 mixed), and observable
+balance improves substantially (creation year SMD drops from 0.75 to −0.26,
+stars from 0.40 to 0.16).
+The dose-response results show a significant positive association between
+`any` density and code smells (β = 0.20, p < 0.001): repos that use the type
+system less strictly have more code smells per line.
+Cognitive complexity trends in the same direction (β = 0.69, p = 0.055) but
+falls short of significance.
+Bug-fix ratio and bug resolution time show no significant association with
+type strictness (p > 0.2).
+
 But the fundamental problem remains: **this is still a cross-sectional
 comparison across different repositories**.
-
 Repos that use `any` heavily may be rushed or legacy projects with weaker
 engineering practices; repos that adopt strict typing may be better-staffed
 and more disciplined.
@@ -781,13 +826,17 @@ What is needed is a design that exploits **within-project** variation.
 
 The three stages above establish a clear progression:
 
-1. The raw JS-vs-TS comparison is severely confounded by selection bias.
-2. OLS with observable controls attenuates the gap, but three independent OVB
-   diagnostics show the remaining estimate is fragile — a confounder of
-   plausible strength could explain it away entirely.
-3. Reframing the treatment as `any`-type density within TypeScript improves the
-   design (sharper treatment, better balance), but remains fundamentally limited
-   by the cross-sectional data structure.
+1. The raw JS-vs-TS comparison is severely confounded by selection bias:
+   TS repos are 3 years younger (median 2018 vs. 2015, SMD = 0.75), nearly
+   9× more popular (738 vs. 84 median stars, SMD = 0.40), and more active.
+2. OLS with observable controls attenuates the TS coefficient for code smells
+   by 64%, but all three OVB diagnostics agree the remaining estimate is
+   fragile: the robustness value is 8.9%, Oster δ* = 1.15, and the
+   coefficient was still drifting when the last observable control was added.
+3. Reframing the treatment as `any`-type density within TypeScript improves
+   observable balance (creation year SMD drops from 0.75 to −0.26) and finds
+   a significant dose-response for code smells (β = 0.20, p < 0.001), but
+   remains fundamentally limited by the cross-sectional data structure.
 
 **The core limitation** is that cross-sectional data cannot distinguish
 "strict typing improves quality" from "high-quality teams write strict TypeScript."
