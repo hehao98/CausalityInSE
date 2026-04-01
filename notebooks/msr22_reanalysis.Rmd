@@ -12,14 +12,18 @@ Stage 1 diagnoses selection bias in the original cross-sectional design:
 TS repos are systematically newer (creation year SMD = 0.75), more popular
 (stars SMD = 0.40), and more active (commits SMD = 0.17) than their JS
 counterparts.
-Stage 2 demonstrates cross-sectional OLS with controls and formally assesses
-omitted variable bias using three complementary methods (coefficient instability,
-Cinelli & Hazlett sensitivity analysis, and Oster proportional selection bounds).
-Adding observable controls attenuates the TS coefficient for code smells by 64%
-(from −0.012 to −0.004), but the remaining estimate is fragile: the Cinelli &
-Hazlett robustness value is only 8.9%, meaning a confounder explaining less than
-9% of the residual variance in both treatment and outcome would suffice to
-explain the entire effect.
+A DAG-guided covariate selection exercise then reveals that GitHub stars —
+the most "obvious" control variable — has both confounder and collider
+components, and that conditioning on it risks introducing Berkson's paradox.
+Stage 2 demonstrates cross-sectional OLS under two covariate specifications
+(DAG-justified confounders only vs. kitchen-sink including ambiguous
+variables) and formally assesses omitted variable bias using three
+complementary methods (coefficient instability, Cinelli & Hazlett sensitivity
+analysis, and Oster proportional selection bounds).
+The DAG-justified and kitchen-sink specifications yield different estimates
+(−0.0065 vs. −0.0044 for code smells) and different OVB conclusions
+(robustness value 14.1% vs. 8.9%), demonstrating that covariate selection
+is not a formality.
 Stage 3 shows how reframing the treatment as type system adoption intensity
 (measured by `any`-type density within TypeScript repos) improves the design
 by reducing covariate imbalance and sharpening the treatment definition, while
@@ -298,6 +302,86 @@ ggplot(df, aes(x = creation_year, fill = lang)) +
   )
 ```
 
+## 1.3 DAG-Guided Covariate Selection
+
+Before fitting regressions, we need to decide *which* covariates to include.
+A common default is to control for "everything available," but DAG reasoning
+shows this can do more harm than good: conditioning on a collider *opens*
+a spurious path, and conditioning on a post-treatment variable can introduce
+bias even when the variable looks like a confounder.
+
+The paper's Figure 1 presents a DAG for the *language → defect proneness*
+question (the Ray et al. setting). The Bogner & Merkel study asks a related
+but distinct question: does choosing TypeScript (vs. JavaScript) improve
+**code quality** as measured by static analysis metrics (code smells,
+cognitive complexity) and process metrics (bug-fix ratio, bug resolution
+time)? The causal mechanisms differ, so the DAG needs to be tailored.
+
+**Plausible causal structure for Language → Code Quality:**
+
+- **Confounders** (affect both language choice and code quality; must
+  condition on):
+  - *Team discipline / engineering culture*: Disciplined teams are more
+    likely to adopt TypeScript *and* to enforce coding standards, conduct
+    code reviews, and maintain lower code smell density. **Unobserved.**
+  - *Project age* (`creation_year`): Newer projects are more likely to
+    choose TypeScript (TS popularity grew from ~2017) and carry less
+    accumulated technical debt. **Observed.**
+  - *Project domain* (`framework`): Different domains have different
+    complexity profiles and different language preferences. Angular was
+    built for TypeScript and enforces strict architectural patterns,
+    directly affecting code structure metrics. **Observed, but partially
+    co-determined with treatment** (choosing TS may steer projects toward
+    Angular, and choosing Angular may steer projects toward TS).
+- **Mediators** (on the causal path; must *not* condition on):
+  - *Type system enforcement*: TypeScript's compiler catches certain
+    patterns that SonarQube would flag as code smells in JavaScript.
+    This is the very mechanism we want to estimate.
+  - *Tooling and linter configuration*: TypeScript projects may use
+    stricter linting defaults. Conditioning on this would block part of
+    the genuine effect.
+- **Ambiguous variables** (could be confounders, could be post-treatment;
+  conditioning is risky):
+  - *Project size* (`log_ncloc`): Larger projects are more likely to
+    adopt TypeScript (type safety pays off at scale) *and* have different
+    code quality profiles. This is a plausible confounder. But language
+    choice could also affect how large a project grows (e.g., TS's
+    refactoring support enables more code), introducing a post-treatment
+    component. On balance, size is more likely pre-determined than caused
+    by language choice, so we include it in the DAG-justified set — but
+    note the ambiguity.
+  - *Commit activity* (`log_commits`): Total lifetime commits is
+    measured at the snapshot and partly reflects post-treatment
+    development activity. If TypeScript enables faster development
+    (or attracts more active contributors), conditioning on commits
+    could absorb part of the treatment effect.
+  - *GitHub stars* (`log_stars`): Stars is the most problematic variable.
+    It has *both* a confounder and a collider component:
+    (a) *Confounder*: Well-resourced organisations (Microsoft, Google,
+    Vercel) have high-visibility projects that are more likely to adopt
+    TypeScript *and* to invest in code quality.
+    (b) *Collider*: Good code quality in a popular language attracts
+    stars; conditioning on a common effect of treatment and outcome opens
+    a spurious path (Berkson's paradox).
+    Since we cannot separate these two components from cross-sectional
+    data, and the collider risk is concrete, we exclude stars from the
+    DAG-justified specification.
+
+This reasoning yields two covariate sets:
+
+- **DAG-justified** (`M_dag`): `log_ncloc + creation_year + framework`.
+  These are the observable variables most defensible as confounders, with
+  the caveat that framework is partially co-determined with treatment and
+  ncloc has a minor post-treatment component.
+- **Kitchen-sink** (`M_all`): `log_ncloc + log_commits + log_stars +
+  creation_year + framework`. This is the "control for everything available"
+  specification. If the two specifications agree, covariate selection does
+  not matter much; if they disagree, the DAG exercise has identified a
+  real problem.
+
+We fit both specifications below and compare them to show that covariate
+selection is not a mere formality.
+
 
 # Stage 2: Cross-Sectional OLS and the Omitted Variable Bias Problem
 
@@ -310,22 +394,38 @@ We use OLS as the sole cross-sectional estimator and devote our effort to
 formally diagnosing the limits of that approach via three complementary OVB
 assessment methods.
 
-## 2.1 Unadjusted and Adjusted OLS
+## 2.1 Unadjusted, DAG-Justified, and Kitchen-Sink OLS
 
-We fit two OLS models for each outcome: (M0) language indicator only,
-replicating the original unadjusted comparison; (M5) language indicator plus
-all observable confounders.
-Shrinkage of the language coefficient from M0 to M5 measures how much of the
-raw gap is explained by observable differences between JS and TS repositories.
+We fit three OLS models for each outcome, following the DAG reasoning in
+Section 1.3:
+
+- **M0** (unadjusted): Language indicator only, replicating the original
+  comparison.
+- **M_dag** (DAG-justified): Language indicator plus the covariates
+  defensible as confounders — `log_ncloc`, `creation_year`, and
+  `framework`. Excludes `log_stars` (ambiguous: collider + confounder)
+  and `log_commits` (post-treatment concern).
+- **M_all** (kitchen-sink): All available covariates including `log_stars`
+  and `log_commits`.
+
+Comparing M_dag and M_all reveals whether the ambiguous variables matter.
+If stars acts partly as a collider, conditioning on it can shift the
+coefficient in a predictable direction: among equally popular repos,
+a TypeScript project's quality advantage is "explained away" by the
+spurious path that the collider opens, attenuating the coefficient
+toward zero (or even flipping its sign).
 
 ```{r adjusted_regressions, message=FALSE, warning=FALSE}
 fit_models <- function(outcome) {
-  f0 <- as.formula(paste(outcome, "~ is_ts"))
-  f1 <- as.formula(paste(outcome,
+  f0   <- as.formula(paste(outcome, "~ is_ts"))
+  fdag <- as.formula(paste(outcome,
+    "~ is_ts + log_ncloc + creation_year + framework"))
+  fall <- as.formula(paste(outcome,
     "~ is_ts + log_ncloc + log_commits + log_stars + creation_year + framework"))
 
-  m0 <- lm(f0, data = df)
-  m1 <- lm(f1, data = df)
+  m0   <- lm(f0, data = df)
+  mdag <- lm(fdag, data = df)
+  mall <- lm(fall, data = df)
 
   extract_ts_coef <- function(m) {
     ct <- coeftest(m, vcov = vcovHC(m, type = "HC1"))
@@ -339,17 +439,19 @@ fit_models <- function(outcome) {
   }
 
   bind_rows(
-    extract_ts_coef(m0) %>% mutate(model = "M0: Unadjusted"),
-    extract_ts_coef(m1) %>% mutate(model = "M5: Fully adjusted")
+    extract_ts_coef(m0)   %>% mutate(model = "M0: Unadjusted"),
+    extract_ts_coef(mdag) %>% mutate(model = "M_dag: DAG-justified"),
+    extract_ts_coef(mall) %>% mutate(model = "M_all: Kitchen-sink")
   ) %>% mutate(outcome = OUTCOMES[outcome])
 }
 
 reg_results <- lapply(outcomes_vec, fit_models) %>% bind_rows()
 
 kable(reg_results %>% select(outcome, model, coef, se, pval, n, r2),
-      caption = paste0("Table 5. OLS regression: effect of TypeScript (is_ts) on each outcome.",
-                       " Coef. = β for is_ts; HC1 robust SEs.",
-                       " *** p<0.001, ** p<0.01, * p<0.05.")) %>%
+      caption = paste0("Table 5. OLS regression: effect of TypeScript (is_ts) on each outcome. ",
+                       "M_dag controls for log(nLOC), creation year, and framework (DAG-justified confounders). ",
+                       "M_all adds log(commits) and log(stars) (ambiguous post-treatment / collider variables). ",
+                       "HC1 robust SEs.")) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
 ```
 
@@ -358,17 +460,20 @@ reg_results <- reg_results %>%
   mutate(
     ci_lo = coef - 1.96 * se,
     ci_hi = coef + 1.96 * se,
-    model = factor(model, levels = c("M0: Unadjusted", "M5: Fully adjusted"))
+    model = factor(model, levels = c("M0: Unadjusted",
+                                      "M_dag: DAG-justified",
+                                      "M_all: Kitchen-sink"))
   )
 
 ggplot(reg_results, aes(x = coef, xmin = ci_lo, xmax = ci_hi,
                          y = outcome, colour = model, shape = model)) +
   geom_vline(xintercept = 0, linetype = "dashed", colour = "grey60") +
   geom_errorbarh(aes(xmin = ci_lo, xmax = ci_hi),
-                 height = 0.2, position = position_dodge(width = 0.5)) +
-  geom_point(size = 2.5, position = position_dodge(width = 0.5)) +
-  scale_colour_manual(values = c("M0: Unadjusted" = "#4E79A7",
-                                  "M5: Fully adjusted" = "#F28E2B")) +
+                 height = 0.25, position = position_dodge(width = 0.6)) +
+  geom_point(size = 2.5, position = position_dodge(width = 0.6)) +
+  scale_colour_manual(values = c("M0: Unadjusted"       = "#4E79A7",
+                                  "M_dag: DAG-justified" = "#59A14F",
+                                  "M_all: Kitchen-sink"  = "#F28E2B")) +
   labs(x = "Coefficient for TypeScript (vs. JavaScript)",
        y = NULL, colour = "Model", shape = "Model") +
   theme_minimal(base_size = 13, base_family = "Linux Libertine") +
@@ -381,6 +486,25 @@ ggplot(reg_results, aes(x = coef, xmin = ci_lo, xmax = ci_hi,
   )
 ```
 
+**Interpretation — covariate selection matters.**
+For code smells / nLOC, the DAG-justified model (M_dag) estimates a
+coefficient of −0.0065 (p < 0.001), while the kitchen-sink model (M_all)
+gives −0.0044 (p = 0.004) — a further 32% attenuation from adding
+commits and stars.
+This additional shrinkage is ambiguous: it could reflect (a) legitimate
+confounding that the DAG conservatively excluded, or (b) collider/post-treatment
+bias from conditioning on stars and commits.
+The direction is consistent with collider bias: among repos with equally
+many stars, TS's quality advantage is partly "explained away" by the
+spurious association that the opened collider path creates.
+The sensitivity analysis in Section 2.3 will show that this 32% difference
+has dramatic consequences for the OVB diagnosis: the robustness value for
+code smells drops from 14.1% (M_dag) to 8.9% (M_all), and the threshold
+for the 95% CI to include zero drops from 6.9% to just 1.2%.
+The core lesson is that covariate selection is not a formality — a single
+variable (stars) changes both the estimate and the conclusion about its
+robustness.
+
 ## 2.2 Coefficient Instability
 
 If the coefficient is still drifting when we add the last observed control,
@@ -390,15 +514,26 @@ This is the intuition behind Altonji, Elder & Taber (2005): the trajectory
 of the coefficient across control sets signals how sensitive it is to
 omitted variables.
 
-```{r coef_instability, fig.width=8, fig.height=3, message=FALSE, warning=FALSE}
+We show two trajectories: the **DAG-justified path** adds only confounders
+(nLOC → creation year → framework), and the **kitchen-sink path** continues
+by adding the ambiguous variables (+ commits → + stars).
+If the coefficient jumps when stars or commits enter, those variables are
+"doing work" — but the DAG tells us that work may reflect collider bias or
+post-treatment conditioning rather than genuine confounding control.
+
+```{r coef_instability, fig.width=8, fig.height=4, message=FALSE, warning=FALSE}
 control_steps <- list(
   "M0: None"             = "is_ts",
   "M1: + log(nLOC)"      = "is_ts + log_ncloc",
-  "M2: + log(Commits)"   = "is_ts + log_ncloc + log_commits",
-  "M3: + log(Stars)"     = "is_ts + log_ncloc + log_commits + log_stars",
-  "M4: + Creation year"  = "is_ts + log_ncloc + log_commits + log_stars + creation_year",
-  "M5: + Framework"      = "is_ts + log_ncloc + log_commits + log_stars + creation_year + framework"
+  "M2: + Creation year"  = "is_ts + log_ncloc + creation_year",
+  "M3: + Framework"      = "is_ts + log_ncloc + creation_year + framework",
+  "M4: + log(Commits)"   = "is_ts + log_ncloc + creation_year + framework + log_commits",
+  "M5: + log(Stars)"     = "is_ts + log_ncloc + creation_year + framework + log_commits + log_stars"
 )
+
+# Mark which steps are DAG-justified vs. kitchen-sink extensions
+step_zone <- c("DAG-justified", "DAG-justified", "DAG-justified",
+               "DAG-justified", "Kitchen-sink", "Kitchen-sink")
 
 stability_results <- lapply(outcomes_vec, function(v) {
   lapply(seq_along(control_steps), function(i) {
@@ -409,6 +544,7 @@ stability_results <- lapply(outcomes_vec, function(v) {
       outcome  = OUTCOMES[v],
       step     = names(control_steps)[i],
       step_num = i,
+      zone     = step_zone[i],
       coef     = ct["is_ts", "Estimate"],
       se       = ct["is_ts", "Std. Error"],
       r2       = summary(m)$r.squared
@@ -420,52 +556,62 @@ stability_results <- stability_results %>%
   mutate(
     ci_lo = coef - 1.96 * se,
     ci_hi = coef + 1.96 * se,
-    step  = factor(step, levels = names(control_steps))
+    step  = factor(step, levels = names(control_steps)),
+    zone  = factor(zone, levels = c("DAG-justified", "Kitchen-sink"))
   )
 
 ggplot(stability_results, aes(x = step_num, y = coef)) +
+  # Shade the kitchen-sink zone
+  annotate("rect", xmin = 3.5, xmax = 6.5,
+           ymin = -Inf, ymax = Inf,
+           fill = "#E15759", alpha = 0.07) +
   geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), alpha = 0.15, fill = "#4E79A7") +
   geom_line(colour = "#4E79A7") +
-  geom_point(size = 2, colour = "#4E79A7") +
+  geom_point(aes(shape = zone), size = 2, colour = "#4E79A7") +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey60") +
+  # Vertical line separating DAG-justified from kitchen-sink
+  geom_vline(xintercept = 3.5, linetype = "dotted", colour = "#E15759", linewidth = 0.5) +
   facet_wrap(~outcome, scales = "free_y", nrow = 1) +
   scale_x_continuous(breaks = 1:6, labels = paste0("M", 0:5)) +
+  scale_shape_manual(values = c("DAG-justified" = 16, "Kitchen-sink" = 17)) +
   labs(x = "Model (controls added sequentially)",
-       y = "Coefficient for TypeScript") +
+       y = "Coefficient for TypeScript",
+       shape = "Covariate zone") +
   theme_minimal(base_size = 13, base_family = "Linux Libertine") +
   theme(
-    axis.title.y       = element_text(size = rel(0.8)),
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank()
+    legend.position      = "bottom",
+    legend.margin        = margin(t = -5, r = 0, b = -3, l = 0),
+    legend.box.margin    = margin(t = -5, r = 0, b = -3, l = 0),
+    axis.title.y         = element_text(size = rel(0.8)),
+    panel.grid.major.x   = element_blank(),
+    panel.grid.minor.x   = element_blank()
   )
 ```
 
 ```{r instability_table}
-# Show R² progression alongside the coefficient
-stab_wide <- stability_results %>%
-  mutate(label = sprintf("%.4f (%.4f)", coef, se)) %>%
-  select(outcome, step, label, r2) %>%
-  mutate(r2 = round(r2, 3))
-
 kable(stability_results %>%
-        select(outcome, step, coef, se, r2) %>%
+        select(outcome, step, zone, coef, se, r2) %>%
         mutate(coef = round(coef, 4), se = round(se, 4), r2 = round(r2, 3)),
       caption = paste0("Table 6. Coefficient instability: TypeScript coefficient as controls are ",
-                       "added sequentially. HC1 robust SEs. R² shows how much outcome variance ",
-                       "the observed controls explain — the gap between R² and 1 represents the ",
-                       "scope for unobserved confounders.")) %>%
+                       "added sequentially. M0–M3 are DAG-justified confounders; M4–M5 add ",
+                       "ambiguous post-treatment / collider variables (shaded region in the plot). ",
+                       "HC1 robust SEs.")) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
 ```
 
-**Interpretation**: The coefficient trajectories show the observed controls
-are "doing work": for code smells / nLOC, the TypeScript coefficient drops
-from −0.0122 (M0) to −0.0044 (M5), a 64% attenuation.
-For cognitive complexity, attenuation is 44% (−0.232 to −0.130); for
-bug-fix ratio, 24% (0.080 to 0.061).
-But R² remains far below 1 for all outcomes (at most 0.33 for cognitive
-complexity), meaning most outcome variance is unexplained — there is
-plenty of room for unobserved confounders to shift the coefficient further.
-The question is: how strong would those unobserved confounders need to be?
+**Interpretation**: The plot separates the DAG-justified confounders
+(M0–M3, left of the dotted line) from the ambiguous variables (M4–M5,
+shaded region).
+The coefficient attenuates as DAG-justified confounders are added,
+reflecting genuine selection bias being absorbed.
+The key question is what happens at M4 and M5: if adding commits and
+stars produces a *further* large drop, this additional attenuation is
+ambiguous — it could reflect (a) legitimate confounding that the DAG
+missed, (b) collider bias from conditioning on stars, or (c) post-treatment
+bias from conditioning on commits.
+In all cases, R² remains far below 1, meaning most outcome variance is
+unexplained — there is plenty of room for *unobserved* confounders
+(team discipline, engineering culture) to shift the coefficient further.
 
 ## 2.3 Sensitivity Analysis: Cinelli & Hazlett (2020)
 
@@ -480,9 +626,25 @@ We benchmark the RV against the partial R² of observed covariates:
 if an unobserved confounder only as strong as, say, project size could explain
 away the effect, the finding is fragile.
 
+We run `sensemakr` on **both** the DAG-justified model (M_dag) and the
+kitchen-sink model (M_all) to show how covariate selection affects the
+sensitivity analysis.
+
 ```{r sensemakr_analysis, message=FALSE, warning=FALSE}
-# Run sensemakr for each outcome
-sens_list <- lapply(outcomes_vec, function(v) {
+# Run sensemakr on the DAG-justified model
+sens_dag <- lapply(outcomes_vec, function(v) {
+  sub <- df %>% filter(is.finite(.data[[v]]))
+  f <- as.formula(paste(v,
+    "~ is_ts + log_ncloc + creation_year + framework"))
+  m <- lm(f, data = sub)
+  sensemakr(model = m, treatment = "is_ts",
+            benchmark_covariates = c("log_ncloc", "creation_year"),
+            kd = 1:3, q = 1, alpha = 0.05)
+})
+names(sens_dag) <- outcomes_vec
+
+# Run sensemakr on the kitchen-sink model
+sens_all <- lapply(outcomes_vec, function(v) {
   sub <- df %>% filter(is.finite(.data[[v]]))
   f <- as.formula(paste(v,
     "~ is_ts + log_ncloc + log_commits + log_stars + creation_year + framework"))
@@ -492,24 +654,33 @@ sens_list <- lapply(outcomes_vec, function(v) {
                                      "log_stars", "creation_year"),
             kd = 1:3, q = 1, alpha = 0.05)
 })
-names(sens_list) <- outcomes_vec
+names(sens_all) <- outcomes_vec
 
-# Extract robustness values
-sens_summary <- lapply(outcomes_vec, function(v) {
-  s <- sens_list[[v]]$sensitivity_stats
-  data.frame(
-    outcome   = OUTCOMES[v],
-    estimate  = round(s$estimate, 4),
-    se        = round(s$se, 4),
-    rv_q      = paste0(round(100 * s$rv_q, 1), "%"),
-    rv_qa     = paste0(round(100 * s$rv_qa, 1), "%")
-  )
-}) %>% bind_rows()
+# Extract robustness values from both
+extract_rv <- function(sens_list, label) {
+  lapply(outcomes_vec, function(v) {
+    s <- sens_list[[v]]$sensitivity_stats
+    data.frame(
+      outcome   = OUTCOMES[v],
+      model     = label,
+      estimate  = round(s$estimate, 4),
+      se        = round(s$se, 4),
+      rv_q      = paste0(round(100 * s$rv_q, 1), "%"),
+      rv_qa     = paste0(round(100 * s$rv_qa, 1), "%")
+    )
+  }) %>% bind_rows()
+}
+
+sens_summary <- bind_rows(
+  extract_rv(sens_dag, "M_dag"),
+  extract_rv(sens_all, "M_all")
+)
 
 kable(sens_summary,
-      col.names = c("Outcome", "Estimate", "SE",
+      col.names = c("Outcome", "Model", "Estimate", "SE",
                      "RV (point est. = 0)", "RV (CI includes 0)"),
-      caption = paste0("Table 7. Robustness values from Cinelli & Hazlett (2020). ",
+      caption = paste0("Table 7. Robustness values from Cinelli & Hazlett (2020), ",
+                       "comparing the DAG-justified (M_dag) and kitchen-sink (M_all) models. ",
                        "RV (point est. = 0): the minimum partial R² an omitted confounder ",
                        "would need with both treatment and outcome to reduce the estimate to zero. ",
                        "RV (CI includes 0): the minimum to make the 95% CI include zero.")) %>%
@@ -517,35 +688,46 @@ kable(sens_summary,
 ```
 
 ```{r sensemakr_benchmarks}
-# Show benchmark bounds for the lead outcome (code_smells_ncloc)
-cat("=== Benchmark bounds for Code smells / nLOC ===\n\n")
-summary(sens_list[["code_smells_ncloc"]])
+# Show benchmark bounds for the DAG-justified model (lead outcome)
+cat("=== Benchmark bounds for Code smells / nLOC (M_dag) ===\n\n")
+summary(sens_dag[["code_smells_ncloc"]])
 ```
 
-```{r sensemakr_contour, fig.width=8, fig.height=5}
-# Contour plot for the lead outcome
-plot(sens_list[["code_smells_ncloc"]],
+```{r sensemakr_contour_dag, fig.width=8, fig.height=5}
+# Contour plot for DAG-justified model
+plot(sens_dag[["code_smells_ncloc"]],
      sensitivity.of = "estimate")
+title(sub = "DAG-justified model (M_dag): confounders only")
 ```
 
-**Interpretation**: The contour plot shows how the estimated TypeScript
-coefficient for code smells / nLOC changes for different levels of confounding
-(x-axis: partial R² with treatment; y-axis: partial R² with outcome).
-The red region is where the estimate crosses zero.
-Diamond markers show where observed covariates fall.
-The benchmark bounds are revealing: a confounder 1× as strong as
-log(stars) — our strongest predictor of treatment assignment (partial R²
-= 0.25 with treatment) — would reduce the estimate from −0.0044 to
-−0.0010.
-A confounder 2× as strong would flip the sign to +0.0047, meaning
-TypeScript would appear *worse* on code smells.
-Given that unobserved confounders like team capability and engineering
-culture are plausibly as strong as or stronger than GitHub stars, the
-finding is fragile.
+```{r sensemakr_contour_all, fig.width=8, fig.height=5}
+# Contour plot for kitchen-sink model
+plot(sens_all[["code_smells_ncloc"]],
+     sensitivity.of = "estimate")
+title(sub = "Kitchen-sink model (M_all): including stars and commits")
+```
+
+**Interpretation**: The comparison between the two contour plots reveals
+how covariate selection affects the sensitivity analysis.
+For code smells / nLOC, the DAG-justified model gives RV = 14.1% (point
+estimate) and 6.9% (CI), while the kitchen-sink model gives RV = 8.9%
+and 1.2%.
+Conditioning on stars and commits has made the estimate *less* robust —
+the RV for the CI to include zero dropped from 6.9% to just 1.2%.
+This is consistent with collider bias: the additional variables
+attenuated the coefficient (−0.0065 → −0.0044) without genuinely
+removing confounding, so the smaller estimate is now even easier for
+an unobserved confounder to explain away.
+The pattern is similar for cognitive complexity (RV drops from 19.4% to
+16.1%) and bug resolution time (RV drops from 11.1% to 8.3%).
+The "same" sensitivity analysis applied to differently specified models
+yields materially different conclusions about robustness — a vivid
+demonstration that the DAG exercise is not a formality.
 
 ```{r sensemakr_contour_tstat, fig.width=8, fig.height=5}
-plot(sens_list[["code_smells_ncloc"]],
+plot(sens_dag[["code_smells_ncloc"]],
      sensitivity.of = "t-value")
+title(sub = "DAG-justified model (M_dag)")
 ```
 
 ## 2.4 Oster (2019) Proportional Selection Bounds
@@ -571,12 +753,16 @@ and $R^2_{\max}$ is the hypothetical R² with all confounders controlled.
 
 Following Oster (2019), we set $R^2_{\max} = \min(1,\; 1.3 \times \hat{R}^2)$.
 
+We compute Oster bounds for both the DAG-justified and kitchen-sink
+specifications. The δ* values may differ because the two models
+explain different amounts of variance (different R²), and because
+the coefficient attenuation from M0 to M_dag differs from M0 to M_all.
+
 ```{r oster_bounds}
-oster_delta <- function(outcome, data, r2_max_mult = 1.3) {
+oster_delta <- function(outcome, data, long_formula, r2_max_mult = 1.3) {
   sub <- data %>% filter(is.finite(.data[[outcome]]))
   f_short <- as.formula(paste(outcome, "~ is_ts"))
-  f_long  <- as.formula(paste(outcome,
-    "~ is_ts + log_ncloc + log_commits + log_stars + creation_year + framework"))
+  f_long  <- as.formula(paste(outcome, "~", long_formula))
 
   m_short <- lm(f_short, data = sub)
   m_long  <- lm(f_long, data = sub)
@@ -607,12 +793,23 @@ oster_delta <- function(outcome, data, r2_max_mult = 1.3) {
   )
 }
 
-oster_results <- lapply(outcomes_vec, oster_delta, data = df) %>% bind_rows()
+f_dag <- "is_ts + log_ncloc + creation_year + framework"
+f_all <- "is_ts + log_ncloc + log_commits + log_stars + creation_year + framework"
 
-kable(oster_results,
-      col.names = c("Outcome", "β (short)", "β (long)",
+oster_dag <- lapply(outcomes_vec, oster_delta, data = df,
+                    long_formula = f_dag) %>% bind_rows() %>%
+  mutate(model = "M_dag")
+oster_all <- lapply(outcomes_vec, oster_delta, data = df,
+                    long_formula = f_all) %>% bind_rows() %>%
+  mutate(model = "M_all")
+
+oster_both <- bind_rows(oster_dag, oster_all)
+
+kable(oster_both %>% select(outcome, model, beta_short, beta_long, r2_short, r2_long, r2_max, delta),
+      col.names = c("Outcome", "Model", "β (short)", "β (long)",
                      "R² (short)", "R² (long)", "R²_max", "δ*"),
-      caption = paste0("Table 8. Oster (2019) proportional selection bounds. ",
+      caption = paste0("Table 8. Oster (2019) proportional selection bounds, ",
+                       "comparing DAG-justified (M_dag) and kitchen-sink (M_all). ",
                        "δ* is the ratio of selection on unobservables to selection on ",
                        "observables needed to drive the coefficient to zero. ",
                        "δ* < 1 indicates fragility; δ* > 1 indicates robustness. ",
@@ -621,13 +818,13 @@ kable(oster_results,
 ```
 
 ```{r oster_sensitivity}
-# Sensitivity to R²_max choice
+# Sensitivity to R²_max choice (using DAG-justified model as primary)
 r2_mults <- c(1.3, 2.0, Inf)
 r2_labels <- c("1.3 × R²", "2.0 × R²", "R²_max = 1")
 
 oster_sens <- lapply(seq_along(r2_mults), function(j) {
   lapply(outcomes_vec, function(v) {
-    r <- oster_delta(v, df, r2_max_mult = r2_mults[j])
+    r <- oster_delta(v, df, long_formula = f_dag, r2_max_mult = r2_mults[j])
     r$r2_max_rule <- r2_labels[j]
     r
   }) %>% bind_rows()
@@ -635,7 +832,8 @@ oster_sens <- lapply(seq_along(r2_mults), function(j) {
 
 kable(oster_sens %>% select(outcome, r2_max_rule, r2_max, delta),
       col.names = c("Outcome", "R²_max rule", "R²_max", "δ*"),
-      caption = paste0("Table 9. Sensitivity of Oster δ* to the choice of R²_max. ",
+      caption = paste0("Table 9. Sensitivity of Oster δ* to the choice of R²_max ",
+                       "(DAG-justified model). ",
                        "The tighter the R²_max bound, the more room there is for ",
                        "unobservables, and the smaller δ* becomes.")) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
@@ -643,33 +841,39 @@ kable(oster_sens %>% select(outcome, r2_max_rule, r2_max, delta),
 
 ## 2.5 The OVB Verdict
 
-Three independent diagnostic methods converge on the same conclusion:
+Three independent diagnostic methods converge on the same conclusion,
+and the DAG-guided covariate comparison (M_dag vs. M_all) adds a
+fourth lesson about the process of causal reasoning itself:
 
-1. **Coefficient instability** (Section 2.2): The TypeScript coefficient for
-   code smells drops from −0.0122 (unadjusted) to −0.0044 (fully adjusted) —
-   a 64% attenuation — and is still drifting when the last observable control
-   is added. Meanwhile, R² rises only from 0.087 to 0.221, meaning nearly 80%
-   of outcome variance remains unexplained. There is ample room for unobserved
-   confounders to shift the coefficient further.
+1. **Coefficient instability** (Section 2.2): The TypeScript coefficient
+   for code smells attenuates from −0.0122 (M0) to −0.0065 (M3, end of
+   DAG-justified zone) — a 47% reduction. The transition into the
+   kitchen-sink zone (M4–M5) produces a further 32% attenuation (to
+   −0.0044), but this additional shrinkage is ambiguous: it may reflect
+   genuine confounding or collider/post-treatment bias from conditioning
+   on stars and commits.
 
-2. **Cinelli & Hazlett robustness values** (Section 2.3): For code smells /
-   nLOC, the robustness value is 8.9% (point estimate) and just 1.2% (for the
-   95% CI to include zero). A confounder with 1× the explanatory power of
-   log(stars) — which has partial R² of 0.25 with treatment — would reduce
-   the estimate from −0.0044 to −0.0010; a confounder 2× as strong would flip
-   the sign entirely. The cognitive complexity outcome is somewhat more robust
-   (RV = 16.1%), while the bug resolution time estimate is already non-significant
-   after adjustment (RV = 8.3%, CI already includes zero).
+2. **Cinelli & Hazlett robustness values** (Section 2.3): The DAG-justified
+   model gives RV = 14.1% for code smells, while the kitchen-sink model
+   gives RV = 8.9%. For the 95% CI, the drop is even more dramatic:
+   6.9% → 1.2%. Conditioning on the ambiguous variables has made the
+   estimate *less* robust, consistent with the variables attenuating the
+   coefficient through collider bias rather than genuine confounding
+   control.
 
-3. **Oster bounds** (Section 2.4): The δ* values quantify the proportional
-   selection needed. For code smells, δ* = 1.15, meaning unobservables
-   only slightly stronger than the full set of observables would drive the
-   coefficient to zero. Cognitive complexity (δ* = 2.79) and bug-fix ratio
-   (δ* = 3.56) appear more robust, but this partly reflects how little the
-   coefficient moved with controls — when the short regression already explains
-   little variance (R² < 0.15), even δ* > 1 does not provide strong reassurance.
-   Bug resolution time has a negative δ* (−4.10), indicating the coefficient
-   *increased* after adding controls — suggesting positive confounding bias.
+3. **Oster bounds** (Section 2.4): The δ* values for the DAG-justified
+   model differ from the kitchen-sink model because the two explain
+   different amounts of variance. The kitchen-sink model's larger R²
+   (from conditioning on stars) can give the misleading impression that
+   less room remains for unobservables — but part of that R² may come
+   from the collider mechanism, not from genuine confounding reduction.
+
+4. **The DAG exercise itself**: Regardless of which specification is
+   "right," the comparison shows that covariate selection is not
+   a mere formality. Different choices yield different estimates and
+   different OVB conclusions. The DAG forces the researcher to justify
+   each variable's inclusion — and to discover that stars, the most
+   "obvious" control, is also the most problematic.
 
 **Direction of bias from the DAG**: Team capability and organizational
 maturity are positively correlated with both (a) adopting TypeScript and
@@ -677,15 +881,16 @@ maturity are positively correlated with both (a) adopting TypeScript and
 This means omitted variable bias pushes the TypeScript coefficient in the
 direction of "TS looks better" — which is exactly what the original study
 reports.
-The three OVB diagnostics confirm that this direction of bias is plausible
+The OVB diagnostics confirm that this direction of bias is plausible
 in magnitude, not just in sign.
 
-**Bottom line**: The cross-sectional OLS estimate — no matter how many
-observable controls we add — cannot credibly identify a causal effect of
-TypeScript on code quality.
-We need either a stronger design or a fundamentally different source of
-variation.
-Stage 3 explores the former; Stage 4 motivates the latter.
+**Bottom line**: The cross-sectional OLS estimate — regardless of
+covariate set — cannot credibly identify a causal effect of TypeScript
+on code quality. The DAG exercise does not solve this problem, but it
+makes the *reasoning* transparent: we know *what* we are assuming and
+*where* the assumptions are weakest.
+Stage 3 explores a sharper treatment definition; Stage 4 motivates the
+need for longitudinal data.
 
 
 # Stage 3: A Cleverer Design — Type System Adoption Intensity
@@ -824,15 +1029,18 @@ What is needed is a design that exploits **within-project** variation.
 
 # Stage 4: Why Cross-Sectional Data Hits a Ceiling
 
-The three stages above establish a clear progression:
+The stages above establish a clear progression:
 
 1. The raw JS-vs-TS comparison is severely confounded by selection bias:
    TS repos are 3 years younger (median 2018 vs. 2015, SMD = 0.75), nearly
    9× more popular (738 vs. 84 median stars, SMD = 0.40), and more active.
-2. OLS with observable controls attenuates the TS coefficient for code smells
-   by 64%, but all three OVB diagnostics agree the remaining estimate is
-   fragile: the robustness value is 8.9%, Oster δ* = 1.15, and the
-   coefficient was still drifting when the last observable control was added.
+2. DAG-guided covariate selection reveals that the "obvious" choice of
+   controlling for all available variables is not innocuous: GitHub stars
+   has both confounder and collider components, and conditioning on it
+   risks introducing Berkson's paradox. Comparing DAG-justified and
+   kitchen-sink specifications shows that covariate selection materially
+   affects the estimated coefficient and the conclusions of all three OVB
+   diagnostics.
 3. Reframing the treatment as `any`-type density within TypeScript improves
    observable balance (creation year SMD drops from 0.75 to −0.26) and finds
    a significant dose-response for code smells (β = 0.20, p < 0.001), but
@@ -859,21 +1067,24 @@ closer to a credible causal estimate.
 ```{r summary_table}
 summary_df <- data.frame(
   Stage = c(
-    "Stage 1: Raw comparison (M0)",
-    "Stage 2: Adjusted OLS (M5)",
+    "Stage 1: Raw comparison + covariate balance",
+    "Stage 1: DAG-guided covariate selection",
+    "Stage 2: DAG-justified vs. kitchen-sink OLS",
     "Stage 2: OVB assessment",
     "Stage 3: any dose-response (within TS)"
   ),
   Finding = c(
-    "TS appears better on code smells and complexity; worse on bug-fix ratio",
-    "Coefficients attenuate with controls, but some remain significant",
-    "All three OVB methods indicate fragility — plausible confounders could explain the remaining effect",
+    "TS appears better on code smells and complexity; worse on bug-fix ratio. Large SMDs on stars (0.40) and creation year (0.75)",
+    "Stars has both confounder and collider components; commits is post-treatment. Only creation_year, log_ncloc, and framework are defensible confounders",
+    "DAG-justified and kitchen-sink models yield different coefficients; covariate selection is not innocuous",
+    "All three OVB methods indicate fragility under both specifications — plausible unobserved confounders could explain the remaining effect",
     "Higher any density associated with worse quality within TS, but cross-sectional design cannot rule out selection"
   ),
   Implication = c(
     "Confounded: JS and TS repos differ systematically on observables",
-    "Observables explain part of the gap, but R² far from 1 leaves room for unobservables",
-    "Cannot credibly claim a causal effect from cross-sectional OLS alone",
+    "DAG reasoning prevents mindless 'control for everything' — forces justification of each variable",
+    "Conditioning on a collider (stars) or post-treatment variable (commits) can change conclusions",
+    "Cannot credibly claim a causal effect from cross-sectional OLS regardless of covariate set",
     "Design improvement, but within-project longitudinal variation needed for causal identification"
   ),
   check.names = FALSE
