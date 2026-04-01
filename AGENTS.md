@@ -247,6 +247,18 @@ When discussing, diagnosing, or reanalyzing prior studies — both in paper text
 - **Use constructive language.** Prefer "the cross-sectional design limits causal interpretation" over "the study fails to establish causation." Prefer "the toolkit suggests a stronger identification strategy" over "the authors should have used X." Prefer "the design can be improved by" over "the design is inadequate because."
 - **Acknowledge contributions before discussing limitations.** Every study we reanalyze made a substantive contribution — Ray et al. produced a landmark large-scale empirical analysis; Bogner & Merkel provided a useful comparison of JS and TS ecosystems. Lead with what the study accomplished before discussing how the causal toolkit offers a different lens.
 
+### Measurement and Identification Are Orthogonal Challenges
+
+The paper addresses **identification** — the conditions under which observational data can bear a causal interpretation. It does **not** claim to resolve the equally important challenge of **measurement** — whether the outcomes and treatments being measured are valid proxies for the constructs of interest (e.g., whether bug-fix commits reliably proxy for defect proneness, or whether "language" is a well-defined treatment). These are orthogonal problems:
+
+- **Identification** asks: Given that we are measuring the right things, can our research design distinguish a causal effect from confounding? This is what the causal inference toolkit addresses.
+- **Measurement** asks: Are we measuring the right things in the first place? Noisy proxies, construct validity issues, and ambiguous treatment definitions can undermine even a perfectly identified study.
+
+Persistent empirical controversies in SE — such as the PL vs. code quality debate — remain unresolved partly because of identification failures (which this paper addresses) and partly because of measurement challenges (which this paper acknowledges but does not solve). When writing about the paper's contributions:
+- **Never frame causal identification as a complete solution** to empirical controversies. It addresses one necessary dimension, not all of them.
+- **Acknowledge measurement limitations explicitly** when discussing worked examples (e.g., the bug-fix labeling heuristic in Ray et al., the bug-fix commit ratio in Bogner & Merkel).
+- **Do not imply that applying causal methods would have "resolved" a debate.** The correct framing is that causal methods would have *clarified the identification dimension* of the debate, while measurement challenges would remain.
+
 ### Ray et al. (2014/2017) Specifically
 
 Ray et al.'s study is a central case study in this paper. The authors carefully framed their findings as associational ("a modest but significant relationship") and did not claim to establish a causal effect of programming languages on defect proneness. The misinterpretation problem documented in Section 4.2 is a *downstream* phenomenon — it reflects the field's lack of causal inference infrastructure, not any error by the original authors. When discussing this study:

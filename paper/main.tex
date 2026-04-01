@@ -81,7 +81,9 @@ We demonstrate the primer's diagnostic and constructive power through the progra
 In the first example, we retrospectively apply the toolkit to \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, strengthen identification by absorbing common unobserved confounders in the SE context.
 In the second example, we apply the toolkit to Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
 Both examples illustrate how the primer's pragmatic stance systematically improves prior research designs.
-As a result, we hope this paper will provide a methodological blueprint for future empirical SE research, illustrating how to balance rigor with practicality to generate actionable, trustworthy evidence for important empirical SE questions.
+Persistent empirical controversies in SE reflect two orthogonal challenges: identification (can the design support a causal claim?) and measurement (are the proxies valid for the constructs of interest?).
+This tutorial addresses the identification dimension; measurement validity is an equally important concern that the causal toolkit surfaces but does not itself solve.
+We hope this paper will provide a methodological blueprint for future empirical SE research, illustrating how to balance rigor with practicality to generate actionable, trustworthy evidence for important empirical SE questions.
 \end{abstract}
 
 \begin{CCSXML}
@@ -125,8 +127,10 @@ The methodological reformers in these fields responded by shifting from associat
 The programming language and code quality debate illustrates this challenge in SE\@.
 \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} analyzed millions of commits across thousands of GitHub projects, reporting a modest but significant association between language design and defect proneness; although the authors framed their findings as correlational, many downstream works cited the study as evidence that certain languages \emph{cause} fewer bugs~\cite{DBLP:journals/corr/abs-1911-11894}.
 A subsequent reproduction~\cite{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, prompting the observation that \emph{``an analysis of GitHub is necessarily measuring correlation and not establishing causation, as it does not constitute an experiment''}~\cite{DBLP:journals/corr/abs-1911-11894}---though the two groups continue to disagree on specific measurement choices.
-This exchange exposes a deeper methodological impasse: For intervention-outcome questions, contested findings cannot be resolved by collecting more data or running more regressions, because the disagreement is fundamentally about \emph{identification}---the conditions under which the observational data can bear a causal interpretation.
-The issue is not that correlational evidence is inherently flawed, but that for this class of questions it is insufficient for the conclusions that stakeholders actually draw from it.
+This exchange exposes two orthogonal methodological challenges.
+The first is \emph{measurement}: Whether the outcomes being measured---bug-fix commits, code smells, defect counts---are valid proxies for the constructs of interest, and whether ``programming language'' is a well-defined treatment.
+The second is \emph{identification}: Whether the research design can distinguish a genuine causal effect from confounding, even assuming the measurements are valid.
+Both challenges must be addressed for empirical controversies to be resolved; this tutorial focuses on identification---the conditions under which observational data can bear a causal interpretation---while acknowledging that measurement validity is an equally important concern that the causal toolkit does not itself solve.
 
 Modern causal inference methods, developed primarily in econometrics and epidemiology over the past several decades, offer a principled path forward for exactly this class of problems~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}.
 The value of these methods lies not in any claim to methodological perfection but in their insistence on \emph{transparency}: Every causal design rests on assumptions that must be explicitly stated, examined, and debated.
@@ -686,14 +690,18 @@ Third, interconnected software ecosystems create \emph{SUTVA violations}: Shared
 Careful unit definition and robustness checks can bound this threat, and recent advances in causal inference under network interference provide promising tools~\cite{savje2021average, forastiere2021identification}, but adapting these methods to SE's sociotechnical structures---where spillover propagates simultaneously through dependency graphs, developer networks, and ecosystem coupling---remains an open frontier.
 Finally, SE outcomes are typically \emph{noisy proxies} for the constructs of interest: Bug-fix commits proxy for defect proneness, lines of code proxy for complexity, and star counts proxy for popularity---each introducing measurement error that may attenuate effect estimates and complicate interpretation.
 One can strengthen the evidentiary basis by triangulating across multiple outcome measures that capture different facets of the same construct~\cite{lawlor2016triangulation} and conducting measurement error analysis to bound attenuation bias~\cite{hausman2001mismeasured}.
-Importantly, each peril has a principled response within the toolkit so that SE researchers can engage with the specific threats in their settings.
+More broadly, \emph{measurement} and \emph{identification} are orthogonal challenges: A perfectly identified design still produces misleading conclusions if the outcome proxy is invalid, and a perfectly measured outcome still conflates causal effects with confounding if the design lacks identification.
+The causal inference toolkit addresses identification; measurement validity requires its own careful attention---including construct definition, proxy validation, and sensitivity to measurement error---that this tutorial acknowledges but does not attempt to resolve.
+Importantly, each peril on the identification side has a principled response within the toolkit so that SE researchers can engage with the specific threats in their settings.
 To faciliate constructive evaluation of SE studies with causal claims, we provide an empirical standard for causal inquiries following the format of the ACM SIGSOFT Empirical Standards (Appendix~\ref{sec:appendix-standard}).
 
 \section{The Programming Language and Code Quality Debate}
 \label{sec:pl-debate}
 
-We choose the programming language and code quality debate as this tutorial's unifying case study because it illustrates, within a single research thread, the full arc of methodological challenges that causal inference addresses: contested observational findings, widespread downstream misinterpretation, and an impasse that better statistics alone cannot resolve.
-We do not aim to provide the ultimate empirical evidence to resolve this debate (which would be far beyond the scope of this tutorial), but to retrospectively illustrate how the causal inference toolkit can strengthen prior study designs.
+We choose the programming language and code quality debate as this tutorial's unifying case study because it illustrates, within a single research thread, the full arc of methodological challenges that causal inference addresses: contested observational findings, widespread downstream misinterpretation, and a persistent impasse.
+The debate's persistence reflects two orthogonal challenges: \emph{measurement} (whether bug-fix heuristics, code smells, or defect counts validly capture ``code quality,'' and whether ``programming language'' is a coherent treatment) and \emph{identification} (whether the research design can distinguish causal effects from confounding).
+We do not aim to resolve this debate---doing so would require progress on both fronts, which is far beyond the scope of this tutorial.
+Instead, we focus on the identification dimension, retrospectively illustrating how the causal inference toolkit can strengthen prior study designs while being transparent that measurement challenges remain.
 This section first synthesizes the debate's three-decade trajectory (Section~\ref{sec:pl-lit-synthesis}), then documents how correlational findings are systematically reinterpreted as causal claims (Section~\ref{sec:pl-misinterpretation}), and finally applies the pragmatic stance to two studies from this debate---retrospectively showing how the toolkit can strengthen their designs (Sections~\ref{sec:example-a}--\ref{sec:example-b}).
 
 \subsection{Does Language Choice Affect Code Quality? A Literature Synthesis}
@@ -727,7 +735,8 @@ The third phase shifted attention from ``what are the correlations?'' to ``can a
 This result is a smoking gun for the identification problem: On the same data, the same researchers obtained substantively different conclusions depending on whether they estimated an association or identified a causal effect---precisely the divergence that causal inference theory predicts when confounding is present.
 Their study represents the first formal causal identification in the PL--effects literature, though the use of competition rather than real-world project data limits its external validity.
 \citet{DBLP:conf/msr/BognerM22} compared JavaScript with TypeScript GitHub projects, finding better code quality but a 60\% higher bug-fix ratio for TypeScript---a result consistent with selection bias, as TypeScript-adopting teams likely differ systematically in code review culture, bug-tracking discipline, and project complexity.
-No existing study of real-world PL effects exploits within-repository panel variation or design-based identification from natural experiments such as TypeScript migrations; our worked examples address this gap.
+No existing study of real-world PL effects exploits within-repository panel variation or design-based identification from natural experiments such as TypeScript migrations.
+Our worked examples address this identification gap, while recognizing that measurement challenges---noisy bug-fix heuristics, ambiguous treatment definitions, construct validity concerns---persist as an orthogonal dimension that stronger identification alone cannot resolve.
 
 \subsection{The Misinterpretation Problem: When Correlations Become Causal Claims}
 \label{sec:pl-misinterpretation}
@@ -755,10 +764,12 @@ I don't call a 36\% drop in bugs `small'\,''}---treating the coefficient as if s
 This pattern---hedged correlational findings, causal downstream interpretation---is precisely the \emph{causal language problem} that \citet{hernan2018cword} diagnosed in epidemiology and \citet{grosz2020taboo} documented in psychology.
 The conventional response is to hedge more carefully: Replace ``effect'' with ``association,'' add caveats, and hope that readers respect the distinction.
 But our citation analysis demonstrates that this defense fails on its own terms---24\% of citing papers use causal framing despite the authors' explicit hedging, confirming \citeauthor{haber2022causal}'s~\cite{haber2022causal} large-scale finding that associational euphemisms do not prevent causal interpretation.
-The problem is not imprecise language but \emph{absent identification}.
+The problem is not imprecise language alone but the absence of both a clear \emph{identification} strategy and an explicit discussion of \emph{measurement} validity.
 When a study reports that \emph{``language class has a modest but significant effect on defect proneness''} without specifying the causal estimand, the confounding structure, or the identification strategy, it provides no framework within which readers can evaluate \emph{whether} a causal interpretation is warranted.
 Readers fill the gap with their priors, and the result is the 2:1 causal-to-hedged ratio we observe.
-The pragmatic stance we advocate (Section~\ref{sec:primer-stance}) addresses this at the source: By requiring researchers to state their causal question, draw their DAG, and argue for identification, it replaces the ``correlation vs.\ causation'' impasse with a transparent discussion of assumptions that readers can evaluate.
+Resolving this pattern requires progress on two orthogonal fronts: identification (can the design support a causal claim?) and measurement (are the proxies valid for the constructs of interest?).
+The pragmatic stance we advocate (Section~\ref{sec:primer-stance}) addresses the identification dimension: By requiring researchers to state their causal question, draw their DAG, and argue for identification, it replaces the ``correlation vs.\ causation'' impasse with a transparent discussion of assumptions that readers can evaluate.
+The measurement dimension---whether bug-fix commits reliably proxy for defects, whether ``language'' is a well-defined treatment---is an equally important challenge that the causal toolkit does not itself solve but that the pragmatic stance surfaces by requiring researchers to specify their treatment and outcome precisely.
 The worked examples that follow demonstrate how this works in practice.
 
 \subsection{Example A: Applying the Toolkit to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s GitHub Study}
