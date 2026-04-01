@@ -169,6 +169,65 @@ This section summarizes the key results from the analysis notebooks, assesses th
 
 **Bottom line:** Example A is strong and ready. Example B's diagnostic analysis is strong, but its value to the paper depends critically on whether the TypeScript DiD can be implemented and produces interpretable results. The priority should be completing the DiD analysis for Example B — if it works, the two-example structure is substantially more compelling than either alone; if it fails, the paper can fall back to a single worked example with a brief discussion of how the pragmatic stance *would* approach the TypeScript question.
 
+### Alternative Example: Revisiting the Cursor AI Adoption Study (He et al., MSR 2026)
+
+**Notebook:** `notebooks/msr26_reanalysis.Rmd` (descriptive pre-post and interrupted time series analysis).
+
+**Context.** He et al. (MSR 2026) studied the causal impact of Cursor AI adoption on development velocity and code quality using a staggered DiD design with matched controls. This reanalysis notebook strips away the DiD methodology and asks: What would you conclude from progressively weaker designs applied to the treated-repos-only panel data?
+
+**Story.** The notebook uses monthly panel data (4,563 repo-months, ±6 months around Cursor adoption) for repos that adopted Cursor, examining five outcomes: commits, lines added, quality warnings, duplicated lines density, and cognitive complexity.
+
+**Raw pre-post comparison** (N=1,265 pre, 3,298 post observations):
+- Commits: +8.1% (p=0.002), Lines Added: +14.4% (p<0.001) — velocity increases.
+- Quality Warnings: +2.0% (p=0.39 n.s.), Duplicated Lines: +2.0% (p=0.38 n.s.) — no significant quality change in raw means.
+- Cognitive Complexity: +5.7% (p<0.001) — complexity increases.
+
+**Interrupted Time Series (ITS) across four specifications** (No Covariates → With Covariates → Repo FE → Repo FE + Covariates). The ITS decomposes the treatment effect into a level shift (immediate) and a slope change (trend after adoption):
+
+| Outcome | Level (no FE) | Level (Repo FE+Cov) | Post slope (no FE) | Post slope (Repo FE+Cov) |
+|---------|---------------|----------------------|---------------------|--------------------------|
+| Commits | +0.49\*\*\* | +0.38\*\*\* | −0.17\*\*\* | −0.14\*\*\* |
+| Lines Added | +1.39\*\*\* | +0.92\*\*\* | −0.42\*\*\* | −0.31\*\*\* |
+| Quality Warnings | −0.54\*\*\* | +0.065\* | +0.27\*\*\* | +0.05\*\*\* |
+| Duplicated Lines | −0.13\* | +0.017 n.s. | +0.046\* | −0.014 n.s. |
+| Cognitive Complexity | −0.33\*\* | +0.103\*\*\* | +0.17\*\*\* | +0.045\*\*\* |
+
+**Key patterns:**
+- *Velocity outcomes (commits, lines added)*: Large positive level shift at adoption (repos start producing more code immediately), followed by a negative slope (the boost fades over subsequent months). Robust across all specifications.
+- *Quality outcomes — the sign flips under FE*: In naive models (no FE), quality warnings and complexity show *negative* level shifts (adoption appears to *improve* quality). But with Repo FE, the sign *reverses*: quality warnings and cognitive complexity both show *positive* level shifts and positive post-slopes. The naive models confound the treatment effect with cross-sectional differences between repos (higher-quality repos adopt earlier); Repo FE absorbs these stable differences, revealing that quality worsens within-repo after adoption.
+- *The sign-flip is the pedagogical gem*: It concretely demonstrates how cross-sectional confounding can reverse the apparent direction of an effect — a vivid illustration of Simpson's paradox / ecological fallacy that readers will remember.
+
+**Assessment: Pedagogically powerful but thematically off-track.**
+
+**Strengths as a worked example:**
+- The sign-flip on quality warnings (negative without FE, positive with FE) is a dramatic, memorable illustration of confounding. It would be one of the strongest single demonstrations in the paper.
+- It showcases a different method from the toolkit — interrupted time series (ITS), a pre-post within-unit design — that complements panel FE (Example A) and DiD (Example B).
+- The topic is highly topical (LLM coding agents) and will engage readers more than the PL-quality debate alone.
+- The notebook is concise and the results are clean — less additional work needed than Example B's DiD.
+- The original MSR 2026 paper already exists as the "constructive" counterpart — the tutorial could diagnose what ITS misses (no control group → cannot distinguish treatment from secular trends) and point to the published DiD as the improved design.
+
+**Weaknesses as a worked example:**
+- **Breaks thematic unity.** The paper is framed around the PL-quality debate as a single unifying case study. Adding a Cursor AI example introduces a second domain, diluting the narrative thread. The paper currently promises: "We demonstrate the primer's diagnostic and constructive power *through the programming language and code quality debate*."
+- **Self-citation concern.** Using the author's own MSR 2026 paper as a worked example could appear self-promotional, especially in a tutorial paper that is supposed to serve the broader community.
+- **ITS without a control group is a weaker design.** The ITS in this notebook only examines treated repos — it cannot distinguish the Cursor effect from general time trends (e.g., repos growing naturally, seasonal patterns). The original paper addresses this with a matched control group and full DiD. A tutorial that diagnoses the ITS as weak and points to "our own published paper" as the fix is awkward rhetorically.
+- **No constructive counterpart in the notebook.** Like Example B, this notebook only contains the diagnostic/weaker analysis. The constructive part (the full DiD) lives in the published paper, not in the tutorial's own analysis.
+
+### Comparative Assessment of the Three Candidate Examples
+
+| Dimension | Example A (Ray et al. Panel FE) | Example B (Bogner & Merkel TS DiD) | Alternative (Cursor ITS) |
+|-----------|---|----|---|
+| Diagnostic story | Strong: progressive attenuation across 5 models | Strong: 3 converging OVB methods | Strong: sign-flip under FE |
+| Constructive counterpart | **Complete**: panel FE implemented | **Incomplete**: DiD not implemented | **External**: lives in published paper |
+| Thematic fit | PL-quality debate (core thread) | PL-quality debate (core thread) | LLM agents (off-thread) |
+| Pedagogical novelty | Shows coefficient attenuation | Shows OVB diagnostics + treatment decomposition | Shows sign-flip (Simpson's paradox) |
+| Method demonstrated | Panel FE | DiD (planned) | ITS → DiD (external) |
+| Implementation status | Ready | Diagnostic only | Diagnostic only |
+| Self-citation risk | No (third-party study) | No (third-party study) | Yes (author's own paper) |
+
+**Recommendation:** The Cursor example should **not replace** either PL-quality example in the main worked examples, because it breaks the paper's thematic unity. However, it could serve as a valuable **supplementary illustration** in Section 3.3 (Design-Based Identification) or Section 3.4 (Pragmatic Stance) — a brief sidebar showing how the sign-flip demonstrates confounding in a contemporary SE context, without requiring a full worked example. Alternatively, it could be mentioned as an exemplar in the Appendix (Empirical Standard for Causal Inquiry) alongside Cheng et al. (Google), Fang et al., and Chen et al.
+
+The priority remains: complete Example B's TypeScript migration DiD. If that proves infeasible, the next-best fallback is a single worked example (Example A) with the Cursor sign-flip as a motivating vignette elsewhere in the paper, rather than elevating it to a full worked example.
+
 **Appendices:**
 - Historical development of causal inference and parallels with psychology/epidemiology --- *Drafted.*
 - Frequently Asked Questions (27 Q&A pairs across 5 categories) --- *Drafted.*
