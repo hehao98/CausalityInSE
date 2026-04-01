@@ -78,8 +78,8 @@ and concludes with a pragmatic stance for SE research that synthesizes these too
 We demonstrate the primer's diagnostic and constructive power through the programming-language and code-quality debate.
 %A citation analysis of 451 papers citing the landmark study by \citet{DBLP:conf/sigsoft/RayPFD14} reveals that causal interpretations outnumber hedged ones 2:1 among papers that engage with their findings.
 %We then apply the pragmatic stance to two worked examples from this debate.
-In the first example, we diagnose the identification controversy in \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, yield identification more robust to common unobserved confounders in the SE context.
-In the second example, we diagnose the selection bias in Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
+In the first example, we retrospectively apply the toolkit to \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, strengthen identification by absorbing common unobserved confounders in the SE context.
+In the second example, we apply the toolkit to Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
 Both examples illustrate how the primer's pragmatic stance systematically improves prior research designs.
 As a result, we hope this paper will provide a methodological blueprint for future empirical SE research, illustrating how to balance rigor with practicality to generate actionable, trustworthy evidence for important empirical SE questions.
 \end{abstract}
@@ -144,9 +144,9 @@ First, we provide a self-contained primer on causal inference for SE researchers
 Second, the primer concludes with a pragmatic stance for conducting credible causal inquiry in SE (Section~\ref{sec:guide}), which synthesizes the toolkit into actionable guidance: building on prior SE research and practitioner knowledge to propose causal theories, framing research designs as target trials, using DAGs to make assumptions explicit, exploiting quasi-experimental variation for identification, and honestly engaging with alternative explanations.
 Third, we demonstrate the primer's diagnostic and constructive power through the programming language and code quality debate (Section~\ref{sec:pl-debate}): A literature synthesis traces the debate's three-decade trajectory (Section~\ref{sec:pl-lit-synthesis}), and a citation analysis of 451 papers citing \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s study quantifies how correlational findings are systematically reinterpreted as causal claims downstream (Section~\ref{sec:pl-misinterpretation}).
 We then apply the pragmatic stance to two worked examples.
-In Example~A (Section~\ref{sec:example-a}), we diagnose the identification limitations of \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s study, showing how the cross-sectional design limits causal interpretation and how panel fixed effects on the same data strengthen identification by absorbing time-invariant confounders.
+In Example~A (Section~\ref{sec:example-a}), we retrospectively apply the toolkit to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s study, showing how the cross-sectional design can be strengthened and how panel fixed effects on the same data yield more robust identification by absorbing time-invariant confounders.
 \TODO{Report the empirical results of the panel FE demonstration.}
-In Example~B (Section~\ref{sec:example-b}), we diagnose the selection bias in \citeauthor{DBLP:conf/msr/BognerM22}'s~\cite{DBLP:conf/msr/BognerM22} cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the specific ``type system adoption'' intervention, and redesign the study as a difference-in-differences analysis of TypeScript migration events.
+In Example~B (Section~\ref{sec:example-b}), we apply the toolkit to \citeauthor{DBLP:conf/msr/BognerM22}'s~\cite{DBLP:conf/msr/BognerM22} cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the specific ``type system adoption'' intervention, and redesign the study as a difference-in-differences analysis of TypeScript migration events.
 \TODO{Report the empirical results of the TypeScript DiD demonstration.}
 
 The remainder of this paper is organized as follows.
@@ -693,8 +693,8 @@ To faciliate constructive evaluation of SE studies with causal claims, we provid
 \label{sec:pl-debate}
 
 We choose the programming language and code quality debate as this tutorial's unifying case study because it illustrates, within a single research thread, the full arc of methodological challenges that causal inference addresses: contested observational findings, widespread downstream misinterpretation, and an impasse that better statistics alone cannot resolve.
-We do not aim to provide the ultimate empirical evidence to resolve this debate (which would be far beyond the scope of this tutorial), but to retrospectively illustrate how the causal inference toolkit can be used to diagnose and improve prior study designs.
-This section first synthesizes the debate's three-decade trajectory (Section~\ref{sec:pl-lit-synthesis}), then documents how correlational findings are systematically reinterpreted as causal claims (Section~\ref{sec:pl-misinterpretation}), and finally applies the pragmatic stance to two studies from this debate---diagnosing their identification limitations and showing how the toolkit generates improved designs (Sections~\ref{sec:example-a}--\ref{sec:example-b}).
+We do not aim to provide the ultimate empirical evidence to resolve this debate (which would be far beyond the scope of this tutorial), but to retrospectively illustrate how the causal inference toolkit can strengthen prior study designs.
+This section first synthesizes the debate's three-decade trajectory (Section~\ref{sec:pl-lit-synthesis}), then documents how correlational findings are systematically reinterpreted as causal claims (Section~\ref{sec:pl-misinterpretation}), and finally applies the pragmatic stance to two studies from this debate---retrospectively showing how the toolkit can strengthen their designs (Sections~\ref{sec:example-a}--\ref{sec:example-b}).
 
 \subsection{Does Language Choice Affect Code Quality? A Literature Synthesis}
 \label{sec:pl-lit-synthesis}
@@ -738,7 +738,7 @@ We provide two streams of evidence, a quantitative citation analysis and a few e
 
 \paragraph{Citation Analysis.}
 We retrieved all 451 papers citing \citet{DBLP:conf/sigsoft/RayPFD14} or \citet{DBLP:journals/cacm/RayPDF17} from the Semantic Scholar API and use Claude Opus 4.6 to classify the citation context of each paper with available full-text snippets ($n = 339$) into four categories: \emph{causal} (the citing paper treats or implies the finding as causal), \emph{hedged} (accurately describes the finding as an association or correlation), \emph{neutral} (cites for context, dataset, or methodology without interpreting the PL--quality finding), and \emph{critical} (questions the methodology or findings).
-Among the 339 papers with citation contexts, 24\% use causal framing---language such as \emph{``the effect of programming languages on software quality,''} \emph{``statically-typed languages are less error-prone,''} or \emph{``the choice of programming language can significantly impact software quality''}---while only 12\% use appropriately hedged language and 2\% engage critically with the study's identification limitations.
+Among the 339 papers with citation contexts, 24\% use causal framing---language such as \emph{``the effect of programming languages on software quality,''} \emph{``statically-typed languages are less error-prone,''} or \emph{``the choice of programming language can significantly impact software quality''}---while only 12\% use appropriately hedged language and 2\% engage critically with the study's identification strategy.
 The remaining 62\% cite Ray et~al.\ for tangential reasons (dataset, methodology, or GitHub mining context) without interpreting the PL--quality finding.
 In other words, among papers that actually engage with the PL--quality finding, causal interpretations outnumber hedged ones by roughly 2:1.
 This ratio is striking given that neither the original study~\cite{DBLP:conf/sigsoft/RayPFD14} nor the CACM version~\cite{DBLP:journals/cacm/RayPDF17} claims to establish a causal relationship.
@@ -761,10 +761,10 @@ Readers fill the gap with their priors, and the result is the 2:1 causal-to-hedg
 The pragmatic stance we advocate (Section~\ref{sec:primer-stance}) addresses this at the source: By requiring researchers to state their causal question, draw their DAG, and argue for identification, it replaces the ``correlation vs.\ causation'' impasse with a transparent discussion of assumptions that readers can evaluate.
 The worked examples that follow demonstrate how this works in practice.
 
-\subsection{Example A: Diagnosing and Improving \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s GitHub Study}
+\subsection{Example A: Applying the Toolkit to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s GitHub Study}
 \label{sec:example-a}
 
-% TODO: Walk through the pragmatic stance (Section~\ref{sec:primer-stance}) showing identification limitations.
+% TODO: Walk through the pragmatic stance (Section~\ref{sec:primer-stance}) showing how the toolkit strengthens identification.
 % Target trial & DAG (Section~\ref{sec:guide-question}): Unmeasured confounders (developer skill, org culture);
 %         ill-defined estimand --- ``effect of language'' conflates
 %         type system, ecosystem, paradigm, community.

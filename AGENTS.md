@@ -235,3 +235,21 @@ Do **not** capitalize after a colon when it introduces a list, fragment, or math
 
 - **`\TODO{...}`**: Use this command for marking parts of the text that should be completed, expanded, or reviewed later. It renders the text in bold red to make it easily identifiable.
 - **`\Code{...}`**: Use this command (with an uppercase C) when formatting inline code within the main text, instead of raw `\texttt{...}` or `\verb`. It ensures that the code font size looks similar to the main text font and scales properly, especially in ACM or IEEE formats.
+
+## Evaluating Prior Work
+
+When discussing, diagnosing, or reanalyzing prior studies — both in paper text (`.tex`) and in documentation (`README.md`, plans, notebooks) — follow these principles:
+
+### Respectful Framing of Existing Studies
+
+- **Never frame prior work as "wrong," "flawed," or "failing."** Prior studies made reasonable methodological choices given the conventions and tools available at the time. The purpose of this tutorial is to show how the causal inference toolkit can *improve upon* existing designs, not to criticize them.
+- **Distinguish between what a study claims and how it is interpreted downstream.** Many studies (including Ray et al. 2014/2017) carefully present associational findings without claiming causation. The identification gap is a *structural feature* of the field's dominant methods, not a fault of individual researchers. When downstream papers or practitioners misinterpret associational findings as causal, the problem lies in the absence of identification infrastructure in the field, not in the original study.
+- **Use constructive language.** Prefer "the cross-sectional design limits causal interpretation" over "the study fails to establish causation." Prefer "the toolkit suggests a stronger identification strategy" over "the authors should have used X." Prefer "the design can be improved by" over "the design is inadequate because."
+- **Acknowledge contributions before discussing limitations.** Every study we reanalyze made a substantive contribution — Ray et al. produced a landmark large-scale empirical analysis; Bogner & Merkel provided a useful comparison of JS and TS ecosystems. Lead with what the study accomplished before discussing how the causal toolkit offers a different lens.
+
+### Ray et al. (2014/2017) Specifically
+
+Ray et al.'s study is a central case study in this paper. The authors carefully framed their findings as associational ("a modest but significant relationship") and did not claim to establish a causal effect of programming languages on defect proneness. The misinterpretation problem documented in Section 4.2 is a *downstream* phenomenon — it reflects the field's lack of causal inference infrastructure, not any error by the original authors. When discussing this study:
+- Always acknowledge that the authors used appropriately hedged language.
+- Frame the reanalysis as "applying new tools to an existing dataset to demonstrate the toolkit" rather than "correcting errors in the original study."
+- The lesson is about what the *field* can learn from applying causal methods, not about what the *authors* did wrong (they did nothing wrong — they presented associational findings as associational findings).
