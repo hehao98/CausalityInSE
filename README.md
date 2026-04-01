@@ -28,19 +28,19 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 
 ### Open Decision: Which Worked Examples?
 
-Three candidate examples exist, each empirically analyzed in notebooks. The central tension is between **thematic unity** (keeping everything within the PL debate) vs. **pedagogical breadth** (showing the toolkit works across different data structures and domains). A secondary tension is between **completeness** (both diagnostic and constructive arcs implemented) vs. **empirical risk** (the TypeScript DiD may not produce clean results). See the detailed comparative assessment in "Which Two Examples Should the Paper Use?" below.
+Three candidate examples exist, each empirically analyzed in notebooks. The central tension is between **thematic unity** (keeping everything within the PL debate) vs. **pedagogical breadth** (showing the toolkit works across different data structures and domains). A secondary tension is how to frame the diagnostic vs. constructive arcs across two examples. See the detailed comparative assessment in "Which Examples Should the Paper Use?" below.
 
 **The three candidates:**
 
 - **Example A (Ray et al. panel FE):** Retrospectively applies panel FE to the landmark PL-defect study on the *same GitHub data*. Cross-sectional → panel upgrade. Most language-defect associations attenuate to non-significance under two-way FE; only C and Haskell survive. *Fully implemented, empirically compelling, no self-citation.*
-- **Example B (Bogner & Merkel OVB + TS DiD):** Applies OVB diagnostics to a cross-sectional JS vs. TS comparison, decomposes the compound "language" treatment into "type system adoption," and plans a TypeScript migration DiD. *Diagnostic implemented; constructive DiD not yet implemented and empirically risky; bug-fix commit ratio metric is itself problematic.*
+- **Example B (Bogner & Merkel OVB + PSM/IPW):** Applies DAG-guided covariate selection, OVB diagnostics, PSM, and IPW to a cross-sectional JS vs. TS comparison. Shows that three estimators (OLS, PSM, IPW) converge on the same fragile estimate (−0.0065, −0.0060, −0.0065 for code smells), proving the estimator is not the bottleneck. *Fully implemented as a diagnostic example; no constructive counterpart needed (the lesson is precisely that cross-sectional methods hit a ceiling). No self-citation.*
 - **Example C (Cursor AI ITS → DiD):** Strips the published DiD methodology from He et al. (MSR 2026) and shows what progressively weaker designs conclude. Naive ITS suggests Cursor *improves* code quality; repo FE *flips the sign* (quality worsens). *Diagnostic implemented, constructive exists in published paper; self-citation; different domain (AI coding tools).*
 
 **The leading options (in order of preference):**
 
-1. **A + C (cross-sectional vs. longitudinal):** The two examples illustrate structurally different data settings --- a cross-sectional observational study and a longitudinal pre-post study --- and show that *both* lead to qualitatively wrong conclusions when analyzed naively. The shared "sign-flip / collapse to non-significance" punchline is the most powerful possible demonstration: if naive analysis gets the direction wrong in both settings, readers generalize to their own work. Requires restructuring Section 4 (PL debate remains primary case study for Sections 4.1--4.3; Cursor becomes Section 4.4). Self-citation is manageable (framed as "applying the pragmatic stance to our own prior work").
-2. **A only (single deep example):** Concentrates the entire worked example on one deeply developed demonstration. Safest choice; avoids measurement impasse with Bogner & Merkel and self-citation with Cursor; frees space for a richer primer and discussion. The paper's contribution stands on the toolkit, not the number of examples. Risk: reviewers may ask "does this generalize beyond one study?"
-3. **A + B (original plan, PL-debate-only):** Thematic unity within the PL debate; no self-citation. But Example B's TypeScript DiD is unimplemented and empirically risky, and the bug-fix ratio metric invites a measurement validity debate that distracts from the identification lesson.
+1. **B + C (diagnostic → constructive arc):** Example B systematically diagnoses why cross-sectional methods fail (DAG, OVB, PSM/IPW convergence → ceiling); Example C shows what works when longitudinal data is available (ITS → FE → sign-flip → DiD). Natural pedagogical arc: "this cannot work" → "here is what does." Demonstrates the widest range of methods. Self-citation with C is mitigated by B being the primary (third-party) example.
+2. **A + C (cross-sectional vs. longitudinal):** The two examples illustrate structurally different data settings and both produce sign-flips/collapse under FE. The shared punchline is powerful. Requires restructuring Section 4.
+3. **A + B (PL-debate-only):** Thematic unity within the PL debate; no self-citation. Example B now stands on its own as the diagnostic half (no risky DiD needed); Example A provides the constructive half.
 
 ## Paper Structure
 
@@ -104,7 +104,7 @@ Three candidate examples exist, each empirically analyzed in notebooks. The cent
      - **Practitioner discourse**: Berger et al. noted people "misinterpreted [findings] as a causal relationship"; even the article reporting the debunking uses causal language in its headline. Blog posts rank languages by "bug-proneness" using causal verbs ("produce," "eliminate"). Hacker News commenters treat regression coefficients as switchable causal effects ("A Haskell project can expect to see 63% of the bug fixes that a C++ project would see").
      - **Implications**: Pattern matches Hernán's (2018) causal language problem and Grosz et al.'s (2020) documentation in psychology. Conventional defense (hedge more carefully) fails---24% causal framing despite Ray et al.'s explicit and appropriate hedging, confirming Haber et al.'s finding that associational euphemisms do not prevent causal interpretation. The problem is not that any individual study uses imprecise language (Ray et al.'s language is careful), but that the field lacks the identification infrastructure to guide readers on *whether* a causal interpretation is warranted. The pragmatic stance addresses this structural gap by requiring researchers to state their causal question, draw their DAG, and argue for identification.
    - 4.3 Example A --- Applying the pragmatic stance to Ray et al. (retrospective application of the toolkit to show how panel FE on the same data strengthens identification; brief empirical demonstration) --- *TODO.*
-   - 4.4 Example B --- Diagnosing and improving Bogner & Merkel (diagnostic assessment; treatment decomposition from "language" to "type system adoption"; constructive improvement via TypeScript DiD; brief empirical demonstration) --- *TODO.*
+   - 4.4 Example B --- Diagnosing Bogner & Merkel (DAG-guided covariate selection, OVB assessment under two specifications, PSM/IPW convergence demonstrating that the estimator is not the bottleneck; cross-sectional ceiling argument) --- *TODO (notebook analysis complete; narrative write-up needed).*
    - 4.5 Synthesis: how the pragmatic stance upgrades research designs (connects both examples; shows different data structures → different improved designs) --- *TODO.*
 
 5. **Discussion** (Section 5) --- *TODO.*
@@ -146,23 +146,36 @@ This section summarizes the key results from the analysis notebooks, assesses th
 
 ### Example B: Diagnostic Assessment of Bogner & Merkel's JS vs. TS Comparison
 
-**Notebook:** `notebooks/msr22_reanalysis.Rmd` (diagnostic stages only; DiD not yet implemented).
+**Notebook:** `notebooks/msr22_reanalysis.Rmd` (four-stage diagnostic with PSM/IPW; DiD not yet implemented).
 
-**Story.** The notebook implements a four-stage progressive diagnostic of Bogner & Merkel (MSR 2022), showing *why* their cross-sectional JS vs. TS comparison cannot support causal conclusions — and pointing toward the design improvements needed:
+**Story.** The notebook implements a four-stage progressive diagnostic of Bogner & Merkel (MSR 2022), showing *why* their cross-sectional JS vs. TS comparison cannot support causal conclusions — and demonstrating that switching to more sophisticated estimators does not solve the problem:
 
-**Stage 1 — Replication and covariate balance.** Replicates the original descriptive finding (TS has fewer code smells and lower cognitive complexity but 60% higher bug-fix ratio). Documents severe covariate imbalance between JS and TS repos (standardized mean differences > 0.1 on nLOC, commits, stars, creation year) — the two groups are not comparable on basic observables, let alone unobservables like team quality.
+**Stage 1 — Replication, covariate balance, and DAG-guided covariate selection.** Replicates the original descriptive finding (TS has fewer code smells and lower cognitive complexity but 60% higher bug-fix ratio). Documents severe covariate imbalance between JS and TS repos (standardized mean differences: nLOC 0.06, commits 0.17, stars 0.40, creation year 0.75). A DAG-guided covariate selection exercise classifies each variable's causal role for code quality outcomes: `creation_year` and `framework` are confounders, `log_ncloc` is a confounder with minor post-treatment ambiguity, `log_commits` is post-treatment, and `log_stars` has both confounder and collider components (conditioning on it risks Berkson's paradox).
 
-**Stage 2 — Cross-sectional OLS and OVB assessment.** Fits unadjusted (M0) and fully adjusted (M5) OLS models. The TypeScript coefficient attenuates when controls are added, and three independent omitted variable bias diagnostics converge:
-- *Coefficient instability*: The coefficient moves substantially across control sets, and R² remains far from 1, leaving wide scope for unobserved confounders to shift it further.
-- *Cinelli & Hazlett robustness values*: Small RV values — a confounder as strong as project size could plausibly explain away the remaining effect.
+**Stage 2 — DAG-justified vs. kitchen-sink OLS and OVB assessment.** Compares two specifications:
+- *M_dag (DAG-justified)*: `is_ts ~ log_ncloc + creation_year + framework` — only defensible confounders.
+- *M_all (kitchen-sink)*: adds `log_commits + log_stars` — includes post-treatment and collider variables.
+
+Key finding: Conditioning on stars attenuates the code smells coefficient by 32% (−0.0065 → −0.0044) and halves the robustness value (14.1% → 8.9%), consistent with collider bias. Three independent OVB diagnostics converge:
+- *Coefficient instability*: The coefficient moves substantially as controls are added, with a DAG-justified zone (defensible) and a kitchen-sink zone (biased) separated visually.
+- *Cinelli & Hazlett robustness values*: Small RVs under both specifications — a confounder as strong as project size could plausibly explain away the remaining effect. The kitchen-sink specification *weakens* robustness rather than strengthening it.
 - *Oster proportional selection bounds*: δ\* values indicate fragility — unobservables need only be a fraction as important as observables to drive the coefficient to zero.
-- Direction of bias from the DAG: Team capability and organizational maturity are positively correlated with both (a) adopting TypeScript and (b) having lower code smells, meaning OVB pushes the coefficient in the "TS looks better" direction — exactly what the original study reports.
 
-**Stage 3 — Treatment decomposition.** Reframes the treatment from "JS vs. TS" (which confounds type system, ecosystem, community, and team selection) to `any`-type density within TypeScript repos. This narrows the comparison to within-ecosystem variation and improves covariate balance. However, the cross-sectional limitation remains: repos that use strict typing may simply be better-staffed and more disciplined.
+**Stage 3 — PSM and IPW: The estimator is not the bottleneck.** Implements propensity score matching (1:1 nearest-neighbor via MatchIt) and inverse probability weighting under the DAG-justified covariates. Three estimators converge on nearly identical results:
 
-**Stage 4 — The ceiling of cross-sectional data.** Argues that no amount of cross-sectional controls can separate "strict typing improves quality" from "high-quality teams write strict TypeScript." Within-project temporal variation (DiD on migration events) is needed. This motivates the planned but unimplemented next step.
+| Method | Code smells coef | SE | p | RV (point=0) |
+|--------|-----------------|------|-------|-------------|
+| OLS (M_dag) | −0.0065 | 0.0016 | 0.0001 | 14.1% |
+| PSM (1:1 NN) | −0.0060 | 0.0017 | 0.0003 | 12.8% |
+| IPW (ATT) | −0.0065 | 0.0022 | 0.003 | — |
 
-**Assessment: Pedagogically valuable but incomplete.** The diagnostic progression is a clean application of the pragmatic stance — each stage demonstrates a specific tool (covariate balance, OVB diagnostics, treatment decomposition) and shows why it is insufficient on its own. The OVB analysis (three converging methods all indicating fragility) is a textbook demonstration that will teach readers how to evaluate cross-sectional claims. However, **the constructive counterpart (the TypeScript migration DiD) has not been implemented**, so Example B currently only shows what is *wrong* with existing designs without demonstrating what a *better* design produces. This makes it significantly less compelling than Example A, which delivers the full diagnostic-then-constructive arc on the same data.
+The pattern repeats for cognitive complexity (−0.146, −0.143, −0.148) and bug-fix ratio (+0.059, +0.060, +0.065). Matching does not materially improve robustness values (14.1% → 12.8% for code smells; 19.4% → 18.5% for complexity). The IPW effective sample size is only 129 of 299 JS controls, confirming overlap problems. This is the strongest possible demonstration that the binding constraint is unobserved confounding, not the choice of statistical method.
+
+**Stage 4 — The ceiling of cross-sectional data.** Argues that no amount of cross-sectional controls or estimator switching can separate "strict typing improves quality" from "high-quality teams write strict TypeScript." Within-project temporal variation (DiD on migration events) is needed.
+
+**Appendix A — Treatment decomposition via `any`-type density.** Reframes the treatment from "JS vs. TS" to type-strictness intensity within TS repos. Improves covariate balance but no outcomes reach significance (N=305 TS repos). Included for completeness rather than as a central argument.
+
+**Assessment: Strong diagnostic demonstration, still missing constructive counterpart.** The four-stage progression now covers the full diagnostic toolkit — DAG-guided covariate selection, OVB diagnostics, and the "three estimators, same answer" demonstration — making it one of the most thorough cross-sectional diagnostic case studies in the causal inference tutorial literature. The PSM/IPW convergence result is a pedagogically powerful lesson that many SE researchers need to learn: matching is not a magic fix for unobserved confounding. However, **the constructive counterpart (the TypeScript migration DiD) has not been implemented**, so Example B currently only shows what is *wrong* with existing designs without demonstrating what a *better* design produces. This limits its standalone value but makes it an excellent complement to Example A (which provides the constructive arc) or Example C (which shows the sign-flip under FE).
 
 ### Example C: Revisiting the Cursor AI Adoption Study (He et al., MSR 2026)
 
@@ -215,90 +228,93 @@ The sign-flip on quality outcomes is arguably the single most dramatic empirical
 
 The main limitations are: (1) the constructive counterpart (full DiD) lives in the published paper rather than being reimplemented in the tutorial, (2) it introduces a second domain beyond the PL-quality debate, and (3) it is the author's own paper. These are manageable — see the comparative assessment below.
 
-### Which Two Examples Should the Paper Use?
+### Which Examples Should the Paper Use?
 
-Three candidate examples exist. The choice depends on how the paper frames its two worked examples.
+Four candidate examples exist (three primary, one companion). The choice depends on how the paper frames its worked examples.
 
 #### Candidate Summaries
 
-| Dimension | Example A (Ray et al. Panel FE) | Example B (Bogner & Merkel TS DiD) | Example C (Cursor AI ITS → DiD) |
+| Dimension | Example A (Ray et al. Panel FE) | Example B (Bogner & Merkel OVB + PSM/IPW) | Example C (Cursor AI ITS → DiD) |
 |-----------|---|----|---|
 | Data structure | Cross-sectional (repos × languages) | Cross-sectional (JS vs. TS repos) | Longitudinal (repo-months around adoption) |
-| Diagnostic story | Strong: progressive attenuation across 5 models | Strong: 3 converging OVB methods | Strong: sign-flip under FE |
-| Constructive counterpart | **Complete**: panel FE implemented | **Incomplete**: DiD not yet implemented | **External**: full DiD lives in published MSR 2026 paper |
-| Pedagogical novelty | Shows coefficient attenuation (most effects vanish) | Shows OVB diagnostics + treatment decomposition | Shows sign-flip (Simpson's paradox: quality appears to *improve* without FE, *worsens* with FE) |
-| Method demonstrated | Panel FE | DiD (planned) + OVB sensitivity analysis | ITS → DiD |
-| Implementation status | Ready | Diagnostic only; DiD empirically risky | Diagnostic ready; constructive available from published paper |
+| Diagnostic story | Strong: progressive attenuation across 5 models | Strong: DAG-guided covariate selection + 3 OVB methods + 3 estimators converge | Strong: sign-flip under FE |
+| Constructive counterpart | **Complete**: panel FE implemented | **None needed**: diagnostic-only by design (shows the ceiling of cross-sectional methods) | **External**: full DiD lives in published MSR 2026 paper |
+| Pedagogical novelty | Shows coefficient attenuation (most effects vanish) | Shows DAG matters for covariate selection; OLS/PSM/IPW converge (estimator ≠ bottleneck); OVB fragility | Shows sign-flip (Simpson's paradox: quality appears to *improve* without FE, *worsens* with FE) |
+| Methods demonstrated | Panel FE | DAG-guided covariate selection, OVB sensitivity analysis (sensemakr, Oster), PSM, IPW | ITS → DiD |
+| Implementation status | Ready | **Ready** (all four stages implemented with actual results) | Diagnostic ready; constructive available from published paper |
 | Self-citation risk | No (third-party study) | No (third-party study) | Yes (author's own paper) |
 
-#### Option 1: Two PL-Quality Examples (Current Plan: A + B)
+**What changed with Example B:** The notebook now implements a complete four-stage diagnostic arc including PSM and IPW (Stage 3), producing the "three estimators, same fragile answer" result. This eliminates the previous dependency on an unimplemented TypeScript DiD. Example B is now self-contained as a *diagnostic* example --- it does not need a constructive counterpart because its lesson is precisely that no selection-on-observables method can solve the identification problem. The constructive lesson ("you need longitudinal data") is delivered narratively in Stage 4, setting up Example A or C to demonstrate what a better design looks like.
 
-**Framing:** The PL-quality debate as a single unifying case study; two examples demonstrate that the pragmatic stance generates different improved designs from the same debate depending on the data structure (multi-language panel → FE; two-language comparison → DiD).
+#### Option 1: A + C (Cross-Sectional vs. Longitudinal)
 
-**Pros:** Thematic unity; deep engagement with one literature; no self-citation. **Cons:** Example B's DiD is unimplemented and empirically risky; if it fails, the symmetry breaks; both examples are cross-sectional-to-panel upgrades within the same narrow domain.
+**Framing:** Two examples illustrate *structurally different* data settings — a cross-sectional study and a longitudinal pre-post study — and show that both lead to qualitatively wrong conclusions when analyzed naively.
 
-#### Option 2: Cross-Sectional vs. Longitudinal (Proposed Reframing: A + C)
+- **Example A (cross-sectional):** Panel FE on Ray et al.'s data absorbs confounders; most associations attenuate to non-significance.
+- **Example C (longitudinal):** Repo FE on Cursor ITS *flips the sign* on quality outcomes from positive to negative.
 
-**Framing:** The two examples illustrate *structurally different* data settings that SE researchers commonly encounter — a cross-sectional observational study and a longitudinal pre-post study — and show that both lead to qualitatively wrong conclusions when analyzed naively:
+**Pros:** Both empirically complete; dramatically different mechanisms (attenuation vs. sign-flip) deliver the same lesson; broadest reader engagement (PL debate + LLM tools); strongest demonstration of generality. **Cons:** Self-citation with Cursor; breaks single-theme framing; Example B's rich diagnostic material (DAG reasoning, PSM/IPW convergence) is lost or must be folded into the primer.
 
-- **Example A (cross-sectional):** Ray et al. appropriately reported associational findings from a cross-sectional regression, identifying 11 significant language-defect associations. Panel FE on the same data absorbs developer and project confounders; most associations attenuate to non-significance. The cross-sectional associations reflected a mix of genuine language properties and confounding from unobserved developer skill and project characteristics — a distinction that the original design (like all cross-sectional designs of that era) was not equipped to make, and that the authors did not claim to make.
-- **Example C (longitudinal):** Naive ITS on Cursor-adopting repos suggests adoption *improves* code quality (negative level shift on quality warnings and complexity). Repo FE *flips the sign*: quality actually *worsens* within-repo after adoption. The naive model confounded the treatment effect with selection (higher-quality repos adopted earlier). The published DiD with matched controls confirms the FE direction.
+#### Option 2: B + C (Diagnostic Toolkit Showcase + Design-Based Identification)
 
-**The shared punchline** — both examples produce at least one sign-flip or collapse to non-significance when confounders are properly absorbed — is more powerful than any single example because it shows the pattern is *general*, not specific to one domain. Readers learn to distrust naive estimates regardless of whether their data is cross-sectional or longitudinal.
+**Framing:** The two examples demonstrate *complementary phases* of the pragmatic stance. Example B shows *diagnostic discipline* — how to systematically evaluate a cross-sectional claim using DAGs, OVB sensitivity analysis, and multiple estimators, arriving at the conclusion that cross-sectional data cannot support causal claims regardless of the estimator. Example C shows *constructive discipline* — how panel data and within-unit variation (repo FE, DiD) can overcome the limitations that Example B diagnoses.
+
+- **Example B (diagnostic):** The Bogner & Merkel reanalysis demonstrates the full diagnostic arc: DAG-guided covariate selection reveals that "control for everything" is not innocuous (collider bias attenuates the coefficient by 32%); three OVB methods converge on fragility; OLS, PSM, and IPW produce identical estimates (−0.0065, −0.0060, −0.0065 for code smells), proving the estimator is not the bottleneck. The punchline: all selection-on-observables methods hit the same ceiling.
+- **Example C (constructive):** The Cursor reanalysis demonstrates what happens when you have longitudinal data and can apply within-unit identification. Naive ITS suggests Cursor *improves* code quality; repo FE *flips the sign*. The progression from naive → FE → full DiD (in the published paper) shows exactly the kind of design upgrade that Example B argues is necessary.
+
+**The pedagogical arc:** Example B establishes *why* cross-sectional methods fail (regardless of estimator sophistication), creating the motivation for the design-based methods that Example C demonstrates. Together, they walk the reader through the full pragmatic stance: diagnose → recognize the ceiling → redesign.
 
 **Pros:**
-- Demonstrates two fundamentally different data structures (cross-sectional vs. longitudinal) and identification strategies (panel FE vs. ITS/DiD) — a stronger illustration of the pragmatic stance's generality.
-- Both examples deliver the same dramatic lesson (naive analysis gets the answer qualitatively wrong) through different mechanisms (attenuation vs. sign-flip), making the lesson more memorable and harder to dismiss as domain-specific.
-- Both diagnostic analyses are already implemented and produce compelling results. Example C's constructive counterpart (the full DiD) exists in the published paper and can be briefly summarized without reimplementation.
-- Eliminates the empirical risk of the TypeScript DiD, which may not produce clean results.
-- The Cursor example is highly topical (LLM coding agents) and will engage a broader readership than the PL debate alone.
-- Broadens the paper's demonstrated scope: the toolkit works across SE domains, not just the PL niche.
+- Natural narrative arc: B says "this cannot work" → C says "here is what does work." The reader follows the same journey they would in their own research.
+- Example B is now empirically complete as a diagnostic example — no unfinished DiD needed. Its value lies in the *process* of diagnosis, not in a constructive fix.
+- The B+C pairing covers the widest range of methods: DAG reasoning, OVB diagnostics (sensemakr, Oster), PSM, IPW (all from B) plus ITS, FE, DiD (all from C). No other pairing demonstrates as many methods.
+- Both PL-quality and AI-tools domains are covered, demonstrating generality.
+- The PSM/IPW convergence result in B ("matching does not fix unobserved confounding") is a lesson many SE researchers specifically need and is lost in the A+C pairing.
+- Self-citation with Cursor is mitigated by B being the primary diagnostic example (third-party study); C is positioned as the constructive complement.
 
 **Cons:**
-- Breaks the "single unifying case study" framing. Section 4 would need restructuring — the PL debate remains the primary case study (Sections 4.1–4.3 covering literature synthesis, misinterpretation, and Example A), while Example C would need a new subsection introducing the Cursor context. This is manageable but requires rewriting the introduction's framing.
-- Self-citation: using the author's own MSR 2026 paper. This can be mitigated by framing it transparently ("we retrospectively apply the pragmatic stance to our own prior work, demonstrating that even studies employing DiD benefit from the diagnostic discipline"). Many tutorial papers use the authors' own work as examples — it demonstrates practice-what-you-preach credibility. The Cursor paper is already cited in Section 3.3 as an exemplar of DiD in SE.
-- The Cursor ITS analysis currently examines only treated repos (no control group). This is actually a *feature* pedagogically — it shows exactly what goes wrong when you lack a control group — but the constructive step (adding controls via DiD) would need to reference the published paper rather than reimplement it in the tutorial's own analysis.
+- Self-citation (Example C). Same mitigation as Option 1.
+- Example A's "coefficient attenuation across 5 models" narrative is arguably the single most dramatic demonstration in the set. Losing it weakens the paper's empirical impact.
+- Without Example A, the paper loses the direct connection to the PL debate's central study (Ray et al.), which is the subject of the literature synthesis in Sections 4.1--4.2. This creates a narrative gap: Sections 4.1--4.2 discuss Ray et al. at length, but the worked example does not apply the toolkit to it.
 
-#### Option 3: All Three as Briefer Illustrations (A + B-diagnostic-only + C)
+#### Option 3: A + B as Companion Pair (PL-Debate-Only, No Self-Citation)
 
-**Framing:** Example A is the deep worked example (full diagnostic-then-constructive arc). Examples B and C are briefer illustrations — B shows OVB diagnostics on cross-sectional data, C shows the sign-flip — without requiring full constructive counterparts. This maximizes pedagogical coverage but may feel scattered.
+**Framing:** Both examples stay within the PL-quality debate. Example B serves as the cross-sectional diagnostic (showing the ceiling), Example A delivers the constructive upgrade (panel FE on the same domain).
 
-#### Recommendation
+- **Example B**: Full diagnostic arc on Bogner & Merkel — DAG, OVB, PSM/IPW convergence → "cross-sectional data cannot answer this question."
+- **Example A**: Panel FE on Ray et al. → "with longitudinal data and within-unit variation, most effects vanish and two survive."
 
-**Option 2 (A + C) is the strongest choice**, contingent on being comfortable with the self-citation and the structural reframing. The reasons:
+**The pedagogical arc:** B diagnoses the cross-sectional problem; A shows that panel data + FE can solve it within the same domain.
 
-1. **Both examples are empirically complete.** Example A's panel FE is implemented; Example C's diagnostic ITS is implemented and the constructive DiD exists in the published paper. Neither depends on unfinished or risky empirical work.
-2. **The cross-sectional vs. longitudinal pairing is pedagogically optimal.** It directly maps to the two settings SE researchers most commonly encounter: "I have a dataset of projects measured at one point in time" vs. "I have a panel tracking projects over time." Each setting has its own dominant naive approach (cross-sectional regression vs. pre-post comparison) and its own toolkit response (panel FE vs. DiD).
-3. **The shared "sign-flip / collapse" punchline** is the most compelling possible demonstration of why causal methods matter. If both a cross-sectional PL study and a longitudinal tool-adoption study produce qualitatively wrong conclusions when analyzed naively, readers will generalize: *this problem likely affects my own work too*.
-4. **Example B's OVB material is not lost.** The Bogner & Merkel OVB diagnostics (coefficient instability, Cinelli & Hazlett, Oster) can be folded into the primer (Section 3.2 or 3.4) as a worked illustration of sensitivity analysis, rather than requiring a full Section 4.4 example. The treatment decomposition point ("language" → "type system adoption") can be discussed briefly in the pragmatic stance section.
+**Pros:** Thematic unity (everything stays in PL-quality); no self-citation; Example B is now strong enough to stand on its own as the diagnostic half; Example A provides the constructive half. **Cons:** Both are in the same narrow domain (PL-quality); readers from other SE subfields may find this less relevant; loses the dramatic sign-flip from Example C.
 
-**If self-citation is a dealbreaker**, then Option 1 (A + B) remains viable, but completing the TypeScript DiD becomes the critical-path task with significant empirical risk.
+#### Option 4: A + C with B as Primer Illustration
 
-#### Option 3: Example A Only (Single Deep Worked Example)
+Same as Option 1, but the Bogner & Merkel OVB diagnostics and PSM/IPW convergence result are folded into the primer (Section 3.2 or 3.4) as a worked illustration of sensitivity analysis and the "same assumption, same ceiling" lesson. This preserves Example B's pedagogical value without requiring a full Section 4.4.
+
+**Pros:** Best of both worlds — A+C for the main examples plus B's material in the primer. **Cons:** The primer becomes longer and more empirical, which may disrupt its flow.
+
+#### Option 5: A Only (Single Deep Worked Example)
 
 **Framing:** The paper concentrates its entire worked example on one deeply developed demonstration — retrospectively applying the toolkit to Ray et al.'s PL-quality study — and uses the freed space for a richer primer, deeper literature synthesis, or an expanded discussion.
 
-**Why this is a serious option, especially given Example B's risks:**
-- **Example B has a measurement problem that mirrors the very impasse it tries to escape.** Bogner & Merkel's bug-fix commit ratio — the most "surprising" finding (TS 60% higher than JS) — is itself a problematic metric: it conflates bug-tracking discipline, commit granularity, issue-labeling conventions, and actual defect rates. Any reanalysis of this study risks getting drawn into a measurement validity debate ("what does bug-fix ratio even measure?") rather than demonstrating the causal toolkit. The tutorial focuses on the identification dimension of empirical SE controversies while explicitly acknowledging that measurement is an equally important but orthogonal challenge. Sticking with Example B risks conflating these two dimensions, undermining the paper's clear scope.
+**Why this is a serious option:**
 - **Example A is self-sufficient as a demonstration.** It already shows the full arc: naive cross-sectional regression → panel FE → most effects vanish → two survive with interpretable coefficients → measurement error sensitivity confirms robustness. The progressive attenuation across five models is a complete pedagogical story. Adding a second example provides breadth but is not necessary for the paper's claims.
 - **One deep example > two shallow examples.** With only one example, the paper can: (a) walk through the pragmatic stance step-by-step in detail (target trial, DAG, identification, alternative explanations) rather than rushing through two; (b) include richer specification tests and robustness checks; (c) devote more space to the primer and discussion sections, which are the paper's primary contribution.
 
-**What changes in the paper structure:**
-- Section 4 retains: 4.1 (literature synthesis), 4.2 (misinterpretation analysis), and 4.3 (Example A — expanded to include the full pragmatic stance walkthrough and empirical demonstration).
-- Sections 4.4 and 4.5 are dropped. The Bogner & Merkel OVB material can optionally appear as a brief illustration in the primer (Section 3.2 or 3.4). The Cursor sign-flip can be mentioned as a motivating anecdote in the introduction or Section 3.3.
-- The synthesis (former Section 4.5) is replaced by a discussion paragraph in Section 5 noting that the pragmatic stance would generate different designs for different data structures, with brief pointers to published examples (Cursor DiD for longitudinal data, Furia et al. for structural causal models).
-
-**Pros:** Eliminates all empirical risk. Avoids measurement impasse with Bogner & Merkel. Allows deeper treatment of the primer and discussion. The paper's contribution (the primer with pragmatic stance) does not depend on the number of examples — one compelling demonstration suffices. **Cons:** Loses the "different data structures → different designs" demonstration. The paper's empirical section is narrower. Reviewers may ask "does this generalize beyond one study?"
+**Pros:** Eliminates all empirical risk. Allows deeper treatment of the primer and discussion. The paper's contribution (the primer with pragmatic stance) does not depend on the number of examples — one compelling demonstration suffices. **Cons:** Loses the "different data structures → different designs" demonstration. The paper's empirical section is narrower. Reviewers may ask "does this generalize beyond one study?"
 
 **Mitigation for the "generalizability" concern:** The paper can note that the pragmatic stance has already been applied in published SE work — citing He et al. (MSR 2026) for DiD, Cheng et al. (FSE 2022) for panel FE at Google, and Furia et al. (TOSEM 2024) for structural causal models — without needing to reimplement each as a worked example.
 
 #### Updated Recommendation
 
-The three options in order of preference:
+The five options in order of preference:
 
-1. **Option 2 (A + C)** if comfortable with self-citation and structural reframing. Strongest pedagogical pairing; both empirically complete; broadest reader engagement.
-2. **Option 3 (A only)** if wanting to minimize risk and maximize depth. Safest choice; avoids measurement impasse; frees space for the primer. The paper's contribution stands on the toolkit, not the number of examples.
-3. **Option 1 (A + B)** only if the TypeScript DiD is empirically feasible and the bug-fix ratio measurement concern can be sidestepped (e.g., by focusing solely on code smells and cognitive complexity as outcomes). Highest risk; highest payoff if it works.
+1. **Option 2 (B + C)** if comfortable with self-citation. The natural diagnostic→constructive arc is pedagogically the strongest framing; B is now complete as a diagnostic example; the widest range of methods is demonstrated (DAG, OVB, PSM, IPW, ITS, FE, DiD). The main cost is losing Example A's dramatic attenuation story and its connection to the Ray et al. literature synthesis.
+2. **Option 1 (A + C)** if wanting the most dramatic empirical results. Both examples deliver sign-flips or collapse-to-insignificance; broadest reader engagement. Loses B's rich diagnostic material unless folded into the primer (Option 4).
+3. **Option 4 (A + C with B as primer illustration)** if the paper can accommodate the space. Gets the best of all three examples but makes the primer longer.
+4. **Option 3 (A + B)** for thematic unity within the PL debate and no self-citation. Example B no longer requires a risky DiD — it stands on its own as the diagnostic half.
+5. **Option 5 (A only)** if wanting to minimize scope and maximize depth. Safest; frees space for the primer. The paper's contribution stands on the toolkit, not the number of examples.
 
 **Appendices:**
 - Historical development of causal inference and parallels with psychology/epidemiology --- *Drafted.*
@@ -344,13 +360,8 @@ The three options in order of preference:
 - [ ] Construct panel dataset from Ray et al.'s GitHub data (or comparable sample)
 - [ ] Implement panel FE analysis; conduct specification tests and robustness checks
 - [ ] Write up brief empirical demonstration (Section 4.3)
-- [ ] Write diagnostic assessment of Bogner & Merkel (Section 4.4): walk through pragmatic stance showing selection bias
-- [ ] Write treatment decomposition: from "language" to "type system adoption" (Section 4.4)
-- [ ] Write constructive improvement: redesign as TypeScript adoption DiD (Section 4.4)
-- [ ] Identify TypeScript migration events; construct matched treatment-control sample
-- [ ] Implement DiD analysis with event-study plots and pre-trend tests
-- [ ] Write up brief empirical demonstration (Section 4.4)
-  - *See `plans/20260331 - Example B TypeScript DiD Plan.md` for the detailed plan.*
+- [ ] Write diagnostic assessment of Bogner & Merkel (Section 4.4): walk through pragmatic stance showing DAG-guided covariate selection, OVB fragility, and PSM/IPW convergence
+  - *Notebook analysis complete (`notebooks/msr22_reanalysis.Rmd`); see `plans/20260331 - Example B TypeScript DiD Plan.md` and `plans/20260401 - MSR22 Matching IPW Synthetic Control Plan.md` for detailed plans.*
 - [ ] Write synthesis of both examples (Section 4.5): how the pragmatic stance generates different improved designs depending on data structure
 - [ ] If using Example C (Cursor AI ITS → DiD): implement composition bias deep dive and restructure the `msr26_reanalysis.Rmd` notebook to follow a layered-reveal narrative --- *see `plans/20260331 - Cursor Example Composition Bias Deep Dive.md`*
 
@@ -370,7 +381,7 @@ The three options in order of preference:
 
 3. **Empirical feasibility --- Example A (Panel FE):** Depends on sufficient within-developer language variation in the data. Mitigation: assess variation early; even a null or weak result is pedagogically valuable (it illustrates the pragmatic stance's honesty about limitations).
 
-4. **Empirical feasibility --- Example B (TypeScript DiD):** Depends on identifying enough clean TypeScript migration events (JS projects that adopted TS) with comparable pure-JS controls. Mitigation: TypeScript adoption has been widespread since ~2017; initial scoping on GHArchive should reveal whether the sample is sufficient.
+4. **Empirical feasibility --- Example B (resolved):** Example B no longer depends on an unimplemented TypeScript DiD. The notebook now implements a complete four-stage diagnostic (DAG-guided covariate selection, OVB assessment, PSM/IPW convergence, cross-sectional ceiling argument). It stands on its own as a diagnostic example.
 
 5. **Literature synthesis and misinterpretation analysis:** The citation analysis documenting downstream causal interpretations of Ray et al.'s associational findings needs to be rigorous enough to be convincing but scoped enough to remain a supporting argument. The analysis documents a systemic field-level pattern (the absence of identification infrastructure leads to causal overinterpretation), not any shortcoming of the original study. A well-chosen sample (~50--100 citing papers) with clear classification criteria should suffice.
 
