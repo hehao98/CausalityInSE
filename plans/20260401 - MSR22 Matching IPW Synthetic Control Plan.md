@@ -8,10 +8,16 @@ progression on the Bogner & Merkel (MSR 2022) JS-vs-TS dataset (604 repos:
 
 1. **Stage 1** — Replicate raw comparison; document covariate imbalance
    (SMDs: nLOC 0.06, commits 0.17, stars 0.40, creation year 0.75).
-2. **Stage 2** — OLS with controls + three OVB diagnostics (coefficient
-   instability, Cinelli & Hazlett sensemakr, Oster bounds). Conclusion:
-   cross-sectional estimate is fragile (code smells RV = 8.9%, Oster
-   δ* ≈ 1.15).
+   DAG-guided covariate selection classifies each variable's role for the
+   *code quality* outcome: `creation_year` and `framework` are confounders,
+   `log_ncloc` is a confounder with minor post-treatment ambiguity,
+   `log_commits` is post-treatment, and `log_stars` has both confounder
+   and collider components.
+2. **Stage 2** — OLS under two specifications (DAG-justified M_dag vs.
+   kitchen-sink M_all) + three OVB diagnostics. Key finding: conditioning
+   on stars attenuates the code smells coefficient by 32% (−0.0065 →
+   −0.0044) and halves the robustness value (14.1% → 8.9%), consistent
+   with collider bias.
 3. **Stage 3** — Within-TS dose-response on `any`-type density. Sharper
    treatment, better balance, but still cross-sectional.
 4. **Stage 4** — Narrative bridge to longitudinal data.
@@ -27,6 +33,33 @@ from OLS on this dataset.
 
 This plan explores whether adding one or more of these methods would
 strengthen the reanalysis as a pedagogical demonstration.
+
+---
+
+## Critical DAG-Related Design Decision
+
+The DAG analysis in Section 1.3 of the notebook established that GitHub
+stars is ambiguous (confounder + collider) and log(commits) is
+post-treatment. This has direct implications for matching and IPW:
+
+**Which covariates should the propensity score model use?**
+
+The propensity score should be estimated using only the DAG-justified
+confounders: `log_ncloc + creation_year + framework`. Including
+`log_stars` or `log_commits` in the propensity score would propagate
+the same collider/post-treatment bias into the matching and weighting
+estimators — defeating the purpose of using a DAG.
+
+This creates a natural **two-specification comparison** for matching
+and IPW, parallel to the OLS analysis:
+- **DAG-justified PSM/IPW**: propensity score on `log_ncloc +
+  creation_year + framework`
+- **Kitchen-sink PSM/IPW**: propensity score on all five covariates
+
+If both specifications agree, the collider issue does not affect
+matching/IPW conclusions. If they disagree, it reinforces the lesson
+that covariate selection matters for *all* selection-on-observables
+methods, not just OLS.
 
 ---
 
@@ -51,14 +84,14 @@ Discards unmatched units; estimates ATT on the matched sample.
   (creation year SMD = 0.75), so matching will visibly trim the sample
   and improve balance. This is pedagogically dramatic.
 - **Limitation**: Same conditional ignorability assumption as OLS — it
-  can only adjust for observables. The three OVB tools already show this
+  can only adjust for observables. The OVB tools already show this
   is insufficient. But demonstrating this explicitly is the point.
 
 **Implementation**: Use `MatchIt` in R (nearest-neighbor 1:1 matching on
-propensity score from logistic regression on log_ncloc, log_commits,
-log_stars, creation_year, framework). Report: (a) propensity score
+propensity score from logistic regression on DAG-justified covariates:
+log_ncloc, creation_year, framework). Report: (a) propensity score
 distribution by language, (b) love plot, (c) ATT estimates on matched
-sample for each outcome, (d) comparison with OLS.
+sample for each outcome, (d) comparison with M_dag OLS.
 
 ### 2. Inverse Probability Weighting (IPW)
 
@@ -75,14 +108,15 @@ using the inverse of the estimated propensity score as weights.
 
 **Fit with this dataset**:
 - **Moderate**: With strong imbalance, some JS repos will get extreme
-  weights (young, large, popular JS repos that "look like" TS). This
-  illustrates a real practical problem and motivates weight trimming.
+  weights (young, large JS repos that "look like" TS). This illustrates
+  a real practical problem and motivates weight trimming.
 - The result will likely be similar to OLS and PSM, reinforcing the
   message that all selection-on-observables methods hit the same ceiling.
 
-**Implementation**: Fit propensity score model; compute IPW weights for
-ATT; estimate weighted OLS; report effective sample size and compare
-with unweighted OLS. Could use `WeightIt` + `cobalt` packages.
+**Implementation**: Fit propensity score model on DAG-justified
+covariates; compute IPW weights for ATT; estimate weighted OLS; report
+effective sample size and compare with M_dag OLS. Could use `WeightIt`
++ `cobalt` packages.
 
 ### 3. Synthetic Control Method (SCM)
 
@@ -126,67 +160,83 @@ sharper treatment design.
 #### Tasks
 
 - [ ] **2.5a. Propensity score estimation and overlap assessment**
-  - Fit a logistic regression: `is_ts ~ log_ncloc + log_commits +
-    log_stars + creation_year + framework`.
-  - Plot the estimated propensity score distribution by language
-    (overlapping histograms or density plots). Look for overlap
+  - Fit **two** logistic regressions:
+    - DAG-justified: `is_ts ~ log_ncloc + creation_year + framework`
+    - Kitchen-sink: `is_ts ~ log_ncloc + log_commits + log_stars +
+      creation_year + framework`
+  - Plot the estimated propensity score distribution by language for
+    both specifications (overlapping density plots). Look for overlap
     violations — JS repos with near-zero propensity, TS repos with
     near-one propensity.
   - Report common support statistics: what fraction of repos fall in the
-    region of overlap?
+    region of overlap? The kitchen-sink PS (including stars) will likely
+    show *better* separation between JS and TS, which sounds good for
+    prediction but is *bad* for causal inference — it means stars is so
+    strongly associated with treatment that it dominates the PS, and the
+    PS is partly capturing the collider pathway.
   - **Pedagogical point**: If the propensity score distributions barely
     overlap, no amount of matching or weighting can make JS and TS repos
     comparable — we are extrapolating, not interpolating.
 
 - [ ] **2.5b. Propensity score matching (PSM)**
-  - Use `MatchIt` with nearest-neighbor 1:1 matching without replacement
-    on the estimated propensity score.
+  - Primary analysis: Use `MatchIt` with nearest-neighbor 1:1 matching
+    without replacement on the **DAG-justified** propensity score.
   - Produce a **love plot** showing SMDs before and after matching for
-    all covariates. Target: all post-matching SMDs < 0.1.
+    the DAG-justified covariates plus stars and commits (to show whether
+    matching on confounders also improves balance on the excluded
+    variables).
   - Report the number of matched pairs (sample attrition from matching).
   - Estimate the ATT for each of the four outcomes on the matched sample
     using OLS with HC1 robust SEs.
-  - Sensitivity check: repeat with caliper matching (caliper = 0.2 SD
-    of logit propensity score) and with full matching (optimal full
-    matching via `MatchIt`). Report if conclusions differ.
+  - Robustness: repeat with kitchen-sink PS. Compare ATT estimates.
+    If they differ, the difference is attributable to the collider
+    variable's influence on the propensity score.
+  - Additional robustness: caliper matching (caliper = 0.2 SD of logit
+    propensity score) and full matching (optimal full matching via
+    `MatchIt`).
 
 - [ ] **2.5c. Inverse probability weighting (IPW)**
-  - Compute IPW weights for the ATT estimand using the propensity score.
+  - Compute IPW weights for the ATT estimand using the DAG-justified
+    propensity score.
   - Report the effective sample size (ESS) to show how much extreme
     weights reduce the information content.
   - Estimate the ATT using weighted OLS for each outcome.
-  - Compare: unweighted OLS (M5), PSM, and IPW side-by-side. If all
-    three give similar estimates, this reinforces the message: the
-    method of adjustment is not the bottleneck — the bottleneck is
-    unobserved confounding.
+  - Robustness: repeat with kitchen-sink PS weights.
+  - Compare: M_dag OLS, DAG-justified PSM, DAG-justified IPW side-by-side.
 
 - [ ] **2.5d. Re-apply OVB diagnostics to matched/weighted estimates**
-  - Run `sensemakr` on the matched sample (post-matching OLS). Report
-    robustness values.
-  - The key comparison: did matching move the RV meaningfully? If not,
-    the OVB problem is not about functional form or poor balance on
-    observables — it is about missing variables.
+  - Run `sensemakr` on the matched sample (post-matching OLS on
+    DAG-justified covariates). Report robustness values.
+  - The key comparison: did matching move the RV meaningfully compared
+    to M_dag OLS? If not, the OVB problem is not about functional form
+    or poor balance on observables — it is about missing variables.
+  - This is the strongest version of the "same-assumption" lesson:
+    three different estimators, same robustness value, same fragility.
 
 - [ ] **2.5e. Summary table and pedagogical narrative**
   - Produce a combined table:
 
-    | Method | Code smells coef | SE | p | N |
-    |---|---|---|---|---|
-    | M0: Unadjusted OLS | -0.0122 | 0.0016 | <0.001 | 604 |
-    | M5: Adjusted OLS | -0.0044 | 0.0015 | 0.004 | 604 |
-    | PSM (1:1 NN) | ? | ? | ? | ? |
-    | IPW (ATT) | ? | ? | ? | ? |
+    | Method | Code smells coef | SE | p | N | RV |
+    |---|---|---|---|---|---|
+    | M0: Unadjusted OLS | −0.0122 | 0.0016 | <0.001 | 604 | — |
+    | M_dag: DAG-justified OLS | −0.0065 | 0.0018 | <0.001 | 604 | 14.1% |
+    | M_all: Kitchen-sink OLS | −0.0044 | 0.0020 | 0.004 | 604 | 8.9% |
+    | PSM (DAG-justified, 1:1 NN) | ? | ? | ? | ? | ? |
+    | IPW (DAG-justified, ATT) | ? | ? | ? | ? | ? |
+    | PSM (kitchen-sink, 1:1 NN) | ? | ? | ? | ? | ? |
 
-  - Write narrative connecting OLS → matching → IPW → OVB: all three
-    selection-on-observables methods agree (or disagree), illustrating
-    that the identifying assumption — not the estimator — is the
-    binding constraint.
-  - Note that PSM, IPW, and OLS are three estimators for the same
-    estimand under the same assumption. If they disagree, it signals
-    model misspecification; if they agree, it means the estimand is
-    well-estimated *conditional on the assumption holding*, but the
-    assumption itself (conditional ignorability given observables) is
-    the weak link, as the OVB diagnostics already demonstrated.
+  - Write narrative connecting the DAG exercise to matching/IPW:
+    - The DAG tells us *which* covariates to include in the propensity
+      score — the same collider/post-treatment issues apply to matching
+      and IPW as to OLS.
+    - All selection-on-observables methods (OLS, PSM, IPW) under the
+      DAG-justified specification should agree. If they do, the estimand
+      is well-estimated *conditional on the assumption holding*. But
+      the assumption (conditional ignorability given observables) is the
+      weak link, as the OVB diagnostics show.
+    - The convergence of all methods at a fragile estimate creates the
+      strongest possible motivation for pivoting to a design-based
+      strategy.
 
 - [ ] **2.5f. Note on synthetic control**
   - Add a short paragraph explaining that SCM requires a panel structure
@@ -202,9 +252,9 @@ sharper treatment design.
 CEM is another matching method that coarsens covariates into bins and
 matches exactly on coarsened values. It is attractive for its simplicity
 but would likely discard too many observations given the strong imbalance
-on creation year and stars (the coarsened bins may have no overlap in
-extreme regions). Mention as a robustness check if space permits, but
-PSM is more pedagogically central.
+on creation year (the coarsened bins may have no overlap in extreme
+regions). Mention as a robustness check if space permits, but PSM is
+more pedagogically central.
 
 ---
 
@@ -212,11 +262,11 @@ PSM is more pedagogically central.
 
 The new stage slots into the existing notebook structure:
 
-1. Stage 1: Diagnostic (unchanged)
-2. Stage 2: OLS + OVB (unchanged)
+1. Stage 1: Diagnostic + DAG-guided covariate selection (unchanged)
+2. Stage 2: DAG-justified vs. kitchen-sink OLS + OVB (unchanged)
 3. **Stage 2.5: PSM + IPW (NEW)** ← this plan
-4. Stage 3: Within-TS dose-response (unchanged, but renumbered to 3)
-5. Stage 4: Bridge to longitudinal data (unchanged, but renumbered to 4)
+4. Stage 3: Within-TS dose-response (unchanged)
+5. Stage 4: Bridge to longitudinal data (unchanged)
 
 The punchline of Stage 2.5 feeds directly into Stage 3: since all
 selection-on-observables methods hit the same ceiling, the natural next
@@ -228,15 +278,21 @@ would provide even more forcefully.
 
 ## Pedagogical Value for the Paper
 
-Adding matching and IPW serves three purposes in the tutorial paper:
+Adding matching and IPW serves four purposes in the tutorial paper:
 
 1. **Demonstrates the method**: Readers learn *how* to implement PSM and
    IPW in R, including diagnostics (love plots, overlap, ESS).
-2. **Illustrates the "same-assumption" lesson**: Matching, IPW, and OLS
+2. **Extends the DAG lesson to matching**: The same DAG that guided
+   covariate selection for OLS also guides the propensity score model.
+   Showing that the kitchen-sink propensity score produces different
+   matches (and different estimates) than the DAG-justified one reinforces
+   that DAG reasoning applies to *all* selection-on-observables methods.
+3. **Illustrates the "same-assumption" lesson**: Matching, IPW, and OLS
    all require conditional ignorability. Showing they produce similar
-   estimates and then showing (via sensemakr) that all are equally fragile
-   is the most powerful way to teach this insight.
-3. **Motivates design-based methods**: The convergence of all
+   estimates (under the same covariate set) and then showing (via
+   sensemakr) that all are equally fragile is the most powerful way to
+   teach this insight.
+4. **Motivates design-based methods**: The convergence of all
    selection-on-observables methods at the same fragile estimate creates
    the strongest possible motivation for pivoting to a fundamentally
    different identification strategy (fixed effects, DiD, IV).
@@ -247,7 +303,7 @@ Adding matching and IPW serves three purposes in the tutorial paper:
 
 - `MatchIt` — propensity score matching
 - `cobalt` — balance diagnostics and love plots
-- `WeightIt` — IPW weight estimation
+- `WeightIt` — IPW weight estimation (optional; can compute manually)
 - `survey` or `estimatr` — weighted regression with robust SEs
 - `sensemakr` — already loaded; re-use for post-matching sensitivity
 
@@ -256,15 +312,18 @@ Adding matching and IPW serves three purposes in the tutorial paper:
 ## Implementation Notes
 
 - Use the same analysis frame (`df`) from the existing notebook.
-- The propensity score model should use the same covariates as the OLS
-  fully adjusted model (M5): `log_ncloc`, `log_commits`, `log_stars`,
-  `creation_year`, `framework`.
+- **Primary propensity score model**: DAG-justified covariates only
+  (`log_ncloc`, `creation_year`, `framework`). This is consistent with
+  the DAG reasoning in Section 1.3.
+- **Secondary propensity score model**: Kitchen-sink covariates (add
+  `log_commits`, `log_stars`). This is for the DAG vs. kitchen-sink
+  comparison.
 - For the love plot, use `cobalt::love.plot()` with the Linux Libertine
   theme and 8×3 dimensions for consistency with existing figures.
 - All robust SEs should use HC1 for consistency with existing tables.
 - Report both statistical significance and the magnitude of coefficient
-  change relative to OLS, since the pedagogical point is about the
-  *convergence* of estimates, not just p-values.
+  change relative to M_dag OLS, since the pedagogical point is about
+  the *convergence* of estimates, not just p-values.
 
 ---
 
@@ -273,8 +332,10 @@ Adding matching and IPW serves three purposes in the tutorial paper:
 - **Code**: ~150-200 lines of R added to the notebook.
 - **Narrative**: ~1 page in the paper (Section 4.4, between the OVB
   diagnosis and the within-TS design improvement).
-- **Figures**: 2 new (propensity score overlap plot, love plot).
-- **Tables**: 1 new (comparison of OLS, PSM, IPW estimates).
+- **Figures**: 2-3 new (propensity score overlap plot, love plot,
+  possibly a comparison forest plot).
+- **Tables**: 1 new (comparison of M_dag OLS, PSM, IPW estimates with
+  RVs).
 
 ---
 
@@ -294,3 +355,8 @@ Adding matching and IPW serves three purposes in the tutorial paper:
    If space is tight, PSM alone suffices — it is more visual and
    intuitive. IPW adds value by showing a different estimator under
    the same assumption, but is less essential for the pedagogical arc.
+
+4. **Resolved: Which covariates for the propensity score?**
+   Use DAG-justified covariates as primary, kitchen-sink as robustness.
+   This is consistent with the DAG analysis and creates a parallel
+   structure with the OLS comparison in Stage 2.
