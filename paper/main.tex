@@ -137,6 +137,9 @@ The value of these methods lies not in any claim to methodological perfection bu
 When a difference-in-differences study claims a causal effect, it does so under the assumption of parallel trends---an assumption that can be partially tested and openly scrutinized~\cite{roth2023whats}.
 When an instrumental variables analysis identifies an effect, it does so under exclusion restrictions that critics can directly challenge~\cite{deaton2010instruments}.
 These methods do not eliminate the need for judgment, but they insist on making assumptions visible so the research community can evaluate their plausibility---transforming debates from ``correlation vs.\ causation'' into productive discussions about specific identification assumptions.
+This transparency is not merely an exercise in intellectual honesty; it is \emph{generative}.
+Each stated assumption that cannot be fully defended becomes a concrete direction for future work: A DAG with acknowledged unmeasured confounders tells the next researcher exactly what to measure; a parallel trends assumption that can only be partially tested tells the next team to seek staggered adoption data; an exclusion restriction that critics challenge points toward a more convincing instrument.
+The causal framework thus converts methodological limitations into a structured research agenda, making each study a stepping stone rather than a dead end.
 
 The SE community, however, lacks an accessible, unified introduction to this toolkit.
 Our analysis of 5,341 papers from ICSE, FSE, and ASE (2015--2025) reveals that 29\% of empirical SE papers investigate causal questions, yet fewer than 4\% employ any recognized causal inference method---and those that do rely overwhelmingly on controlled experiments or causal fault localization rather than the design-based identification strategies suited to the field's observational data (Section~\ref{sec:bg-adoption}).
@@ -665,6 +668,7 @@ This is not a failure of empirical research but rather the norm; the pragmatic r
 Conclusions should be framed as ``consistent with a causal interpretation under assumptions X, Y, Z'' rather than as definitive causal claims.
 The researcher should also consider whether the causal question can be \emph{reformulated} to exploit available variation---often the most creative and valuable act in a causal inquiry, transforming an intractable question into a tractable one (e.g., ``Does language affect quality?'' is intractable from cross-sectional data, but ``Does adopting a type system reduce defects?'' can be studied with DiD if migration events are observable).
 An honest, well-argued correlational analysis or an imperfect design-based identification strategy that explicitly states its limitations is more valuable than a spurious claim of causation pretending that certain methods ``automatically bring causality.''
+Indeed, the full disclosure of what a study \emph{cannot} identify is one of the causal framework's most powerful outputs: It converts each unfulfilled assumption into an explicit pointer toward a stronger future design---telling the next researcher precisely what data to collect, what variation to exploit, or what confounder to measure.
 
 \paragraph{Engage with Alternative Explanations.}
 \label{sec:guide-credibility}
@@ -675,7 +679,7 @@ Three common patterns of alternative explanations arise in SE research.
 \emph{Unmeasured confounding}: A hidden variable drives both treatment and outcome; sensitivity analysis (Rosenbaum bounds, robustness values) quantifies the required strength, and falsification tests probe whether the confounding story predicts spurious effects on unrelated outcomes.
 \emph{Reverse causality}: The outcome drives the treatment rather than the reverse; panel data can reveal temporal signatures that distinguish causal direction.
 SE research faces distinctive measurement challenges that compound these threats: noisy proxies for latent constructs (e.g., bug-fix commits as a proxy for defect proneness), construct validity issues (e.g., lines of code as a measure of complexity), and potential SUTVA violations in interconnected software ecosystems where one project's treatment spills over to affect another's outcomes.
-The mark of a credible causal study is not the absence of limitations but the transparency and rigor with which they are addressed.
+The mark of a credible causal study is not the absence of limitations but the transparency and rigor with which they are addressed---and the degree to which honestly stated limitations chart a path for subsequent work to follow.
 
 \paragraph{Promises and Perils of Causal Inference in SE Research.}
 Some features of the SE research landscape make this synthesis particularly promising.
@@ -769,6 +773,8 @@ When a study reports that \emph{``language class has a modest but significant ef
 Readers fill the gap with their priors, and the result is the 2:1 causal-to-hedged ratio we observe.
 Resolving this pattern requires progress on two orthogonal fronts: identification (can the design support a causal claim?) and measurement (are the proxies valid for the constructs of interest?).
 The pragmatic stance we advocate (Section~\ref{sec:primer-stance}) addresses the identification dimension: By requiring researchers to state their causal question, draw their DAG, and argue for identification, it replaces the ``correlation vs.\ causation'' impasse with a transparent discussion of assumptions that readers can evaluate.
+Crucially, this transparency is not only diagnostic but \emph{constructive}: Each assumption that a study cannot fully defend---an unmeasured confounder in the DAG, a parallel trends assumption that lacks pre-treatment data, an exclusion restriction that remains debatable---becomes a concrete specification for the next study's design.
+A research community that accumulates explicit, falsifiable assumptions builds knowledge cumulatively; one that accumulates hedged correlations does not.
 The measurement dimension---whether bug-fix commits reliably proxy for defects, whether ``language'' is a well-defined treatment---is an equally important challenge that the causal toolkit does not itself solve but that the pragmatic stance surfaces by requiring researchers to specify their treatment and outcome precisely.
 The worked examples that follow demonstrate how this works in practice.
 
