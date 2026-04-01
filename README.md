@@ -152,6 +152,57 @@ This section summarizes the key results from the analysis notebooks, assesses th
 
 **Assessment: Pedagogically valuable but incomplete.** The diagnostic progression is a clean application of the pragmatic stance — each stage demonstrates a specific tool (covariate balance, OVB diagnostics, treatment decomposition) and shows why it is insufficient on its own. The OVB analysis (three converging methods all indicating fragility) is a textbook demonstration that will teach readers how to evaluate cross-sectional claims. However, **the constructive counterpart (the TypeScript migration DiD) has not been implemented**, so Example B currently only shows what is *wrong* with existing designs without demonstrating what a *better* design produces. This makes it significantly less compelling than Example A, which delivers the full diagnostic-then-constructive arc on the same data.
 
+### Example C: Revisiting the Cursor AI Adoption Study (He et al., MSR 2026)
+
+**Notebook:** `notebooks/msr26_reanalysis.Rmd` (descriptive pre-post and interrupted time series analysis).
+
+**Context.** He et al. (MSR 2026), "Speed at the Cost of Quality: How Cursor AI Increases Short-Term Velocity and Long-Term Complexity in Open-Source Projects," studied the causal impact of Cursor AI adoption on development velocity and code quality using a staggered DiD design with matched controls. This reanalysis notebook strips away the DiD methodology and asks: What would you conclude from progressively weaker designs applied to the treated-repos-only panel data?
+
+**Story.** The notebook uses monthly panel data (4,563 repo-months, ±6 months around Cursor adoption) for repos that adopted Cursor, examining five outcomes: commits, lines added, quality warnings, duplicated lines density, and cognitive complexity. All outcomes are log-transformed. The analysis progresses through two stages: a raw pre-post comparison, then an interrupted time series (ITS) across four model specifications.
+
+**Raw pre-post comparison** (N=1,265 pre, 3,298 post observations):
+- Commits: +8.1% (p=0.002), Lines Added: +14.4% (p<0.001) — velocity increases.
+- Quality Warnings: +2.0% (p=0.39 n.s.), Duplicated Lines: +2.0% (p=0.38 n.s.) — no significant quality change in raw means.
+- Cognitive Complexity: +5.7% (p<0.001) — complexity increases.
+
+The raw comparison already hints at the velocity-quality trade-off, but the quality signal is weak and mixed. The ITS models reveal why.
+
+**Interrupted Time Series (ITS) across four specifications.** The ITS decomposes the post-adoption trajectory into a level shift (immediate jump at adoption) and a slope change (trend after adoption), estimated across four model specifications: (1) no covariates, no FE; (2) with covariates (age, nLOC, contributors, stars, issues), no FE; (3) repo FE only; (4) repo FE + covariates.
+
+| Outcome | Level (no FE) | Level (Repo FE+Cov) | Post slope (no FE) | Post slope (Repo FE+Cov) |
+|---------|---------------|----------------------|---------------------|--------------------------|
+| Commits | +0.49\*\*\* | +0.38\*\*\* | −0.17\*\*\* | −0.14\*\*\* |
+| Lines Added | +1.39\*\*\* | +0.92\*\*\* | −0.42\*\*\* | −0.31\*\*\* |
+| Quality Warnings | **−0.54\*\*\*** | **+0.065\*** | +0.27\*\*\* | +0.05\*\*\* |
+| Duplicated Lines | −0.13\* | +0.017 n.s. | +0.046\* | −0.014 n.s. |
+| Cognitive Complexity | **−0.33\*\*** | **+0.103\*\*\*** | +0.17\*\*\* | +0.045\*\*\* |
+
+**Key patterns:**
+
+- *Velocity outcomes (commits, lines added)*: Large, highly significant positive level shift at adoption — repos immediately start producing more commits and more lines of code. But the negative post-slope indicates the boost fades over subsequent months. This pattern is robust across all four specifications: the direction and significance do not change with or without FE, though effect sizes attenuate somewhat. The velocity story is straightforward and not confounded.
+
+- *Quality outcomes — the sign flips under FE*: This is the central result. In naive models without repo FE:
+  - Quality Warnings show a **negative** level shift (−0.54\*\*\*) — adoption appears to *reduce* quality warnings.
+  - Cognitive Complexity shows a **negative** level shift (−0.33\*\*) — adoption appears to *reduce* complexity.
+  
+  A naive analyst would conclude: "Cursor adoption improves code quality." But with Repo FE (which absorbs all time-invariant repo characteristics):
+  - Quality Warnings show a **positive** level shift (+0.065\*) — adoption actually *increases* quality warnings within the same repo.
+  - Cognitive Complexity shows a **positive** level shift (+0.103\*\*\*) — adoption actually *increases* complexity within the same repo.
+  
+  **The sign has flipped.** The naive model gets the direction of the quality effect *exactly backwards*.
+
+- *Why the sign flips — selection into treatment*: The explanation is selection bias. Repos that adopted Cursor early were systematically higher-quality to begin with — they had fewer quality warnings and lower complexity at baseline, likely because better-maintained projects with more active developers are the ones that adopt new AI tools. The naive model (without FE) confounds this baseline quality difference with the treatment effect: it compares post-adoption observations (which come from high-quality repos) against pre-adoption observations (which include a mix), making adoption *look* beneficial. Repo FE removes this confounding by comparing each repo against *its own* pre-adoption baseline, revealing that quality actually deteriorated within-repo after adoption.
+
+- *Consistency with the published DiD*: The FE-corrected ITS direction (velocity up, quality down) matches the published MSR 2026 DiD results, which used matched control repos and a staggered adoption design. This convergence between the within-repo ITS and the full DiD provides triangulation: both designs point to the same conclusion, strengthening confidence in the causal interpretation.
+
+- *What the ITS still cannot do*: Even with Repo FE, the treated-only ITS cannot distinguish the Cursor effect from secular time trends (e.g., repos naturally accumulating complexity as they age). This is precisely why the published paper uses a control group — the DiD differences out any time trends shared by treated and control repos. The progression from naive ITS → FE-corrected ITS → full DiD illustrates the pragmatic stance in action: each step addresses a specific threat (selection bias, then time trends), and the researcher must honestly assess which threats remain.
+
+**Assessment: Highly compelling as a pedagogical demonstration.**
+
+The sign-flip on quality outcomes is arguably the single most dramatic empirical result across all three candidate examples. It concretely illustrates Simpson's paradox in a real SE dataset — the kind of vivid, counterintuitive finding that readers remember and that motivates learning the toolkit. The velocity results (robust across specifications) provide a useful contrast: not every coefficient flips, and the difference between "robust to FE" and "flipped by FE" itself teaches readers how to interpret specification sensitivity.
+
+The main limitations are: (1) the constructive counterpart (full DiD) lives in the published paper rather than being reimplemented in the tutorial, (2) it introduces a second domain beyond the PL-quality debate, and (3) it is the author's own paper. These are manageable — see the comparative assessment below.
+
 ### Which Two Examples Should the Paper Use?
 
 Three candidate examples exist. The choice depends on how the paper frames its two worked examples.
@@ -210,6 +261,32 @@ Three candidate examples exist. The choice depends on how the paper frames its t
 4. **Example B's OVB material is not lost.** The Bogner & Merkel OVB diagnostics (coefficient instability, Cinelli & Hazlett, Oster) can be folded into the primer (Section 3.2 or 3.4) as a worked illustration of sensitivity analysis, rather than requiring a full Section 4.4 example. The treatment decomposition point ("language" → "type system adoption") can be discussed briefly in the pragmatic stance section.
 
 **If self-citation is a dealbreaker**, then Option 1 (A + B) remains viable, but completing the TypeScript DiD becomes the critical-path task with significant empirical risk.
+
+#### Option 3: Example A Only (Single Deep Worked Example)
+
+**Framing:** The paper concentrates its entire diagnostic-then-constructive demonstration on one deeply developed example — Ray et al.'s PL-quality study — and uses the freed space for a richer primer, deeper literature synthesis, or an expanded discussion.
+
+**Why this is a serious option, especially given Example B's risks:**
+- **Example B has a measurement problem that mirrors the very impasse it tries to escape.** Bogner & Merkel's bug-fix commit ratio — the most "surprising" finding (TS 60% higher than JS) — is itself a problematic metric: it conflates bug-tracking discipline, commit granularity, issue-labeling conventions, and actual defect rates. Any reanalysis of this study risks getting drawn into a measurement validity debate ("what does bug-fix ratio even measure?") rather than demonstrating the causal toolkit. The tutorial's purpose is to teach identification, not to arbitrate measurement disputes. Sticking with Example B risks reproducing exactly the kind of unproductive methodological impasse (measurement vs. identification) that the paper argues against.
+- **Example A is self-sufficient as a demonstration.** It already shows the full arc: naive cross-sectional regression → panel FE → most effects vanish → two survive with interpretable coefficients → measurement error sensitivity confirms robustness. The progressive attenuation across five models is a complete pedagogical story. Adding a second example provides breadth but is not necessary for the paper's claims.
+- **One deep example > two shallow examples.** With only one example, the paper can: (a) walk through the pragmatic stance step-by-step in detail (target trial, DAG, identification, alternative explanations) rather than rushing through two; (b) include richer specification tests and robustness checks; (c) devote more space to the primer and discussion sections, which are the paper's primary contribution.
+
+**What changes in the paper structure:**
+- Section 4 retains: 4.1 (literature synthesis), 4.2 (misinterpretation analysis), and 4.3 (Example A — expanded to include the full pragmatic stance walkthrough and empirical demonstration).
+- Sections 4.4 and 4.5 are dropped. The Bogner & Merkel OVB material can optionally appear as a brief illustration in the primer (Section 3.2 or 3.4). The Cursor sign-flip can be mentioned as a motivating anecdote in the introduction or Section 3.3.
+- The synthesis (former Section 4.5) is replaced by a discussion paragraph in Section 5 noting that the pragmatic stance would generate different designs for different data structures, with brief pointers to published examples (Cursor DiD for longitudinal data, Furia et al. for structural causal models).
+
+**Pros:** Eliminates all empirical risk. Avoids measurement impasse with Bogner & Merkel. Allows deeper treatment of the primer and discussion. The paper's contribution (the primer with pragmatic stance) does not depend on the number of examples — one compelling demonstration suffices. **Cons:** Loses the "different data structures → different designs" demonstration. The paper's empirical section is narrower. Reviewers may ask "does this generalize beyond one study?"
+
+**Mitigation for the "generalizability" concern:** The paper can note that the pragmatic stance has already been applied in published SE work — citing He et al. (MSR 2026) for DiD, Cheng et al. (FSE 2022) for panel FE at Google, and Furia et al. (TOSEM 2024) for structural causal models — without needing to reimplement each as a worked example.
+
+#### Updated Recommendation
+
+The three options in order of preference:
+
+1. **Option 2 (A + C)** if comfortable with self-citation and structural reframing. Strongest pedagogical pairing; both empirically complete; broadest reader engagement.
+2. **Option 3 (A only)** if wanting to minimize risk and maximize depth. Safest choice; avoids measurement impasse; frees space for the primer. The paper's contribution stands on the toolkit, not the number of examples.
+3. **Option 1 (A + B)** only if the TypeScript DiD is empirically feasible and the bug-fix ratio measurement concern can be sidestepped (e.g., by focusing solely on code smells and cognitive complexity as outcomes). Highest risk; highest payoff if it works.
 
 **Appendices:**
 - Historical development of causal inference and parallels with psychology/epidemiology --- *Drafted.*
