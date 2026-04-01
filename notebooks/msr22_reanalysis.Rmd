@@ -24,10 +24,13 @@ The DAG-justified and kitchen-sink specifications yield different estimates
 (−0.0065 vs. −0.0044 for code smells) and different OVB conclusions
 (robustness value 14.1% vs. 8.9%), demonstrating that covariate selection
 is not a formality.
-Stage 3 shows how reframing the treatment as type system adoption intensity
-(measured by `any`-type density within TypeScript repos) improves the design
-by reducing covariate imbalance and sharpening the treatment definition, while
-remaining fundamentally limited by the cross-sectional data structure.
+Stage 3 demonstrates that the estimator is not the bottleneck by showing
+that propensity score matching (PSM) and inverse probability weighting (IPW)
+produce nearly identical estimates to OLS under the same DAG-justified
+covariates (−0.0065, −0.0060, −0.0065 for code smells), and that matching
+does not materially improve robustness values (14.1% → 12.8%).
+An appendix explores treatment decomposition via `any`-type density within
+TypeScript repos.
 
 # Setup
 
@@ -889,165 +892,348 @@ covariate set — cannot credibly identify a causal effect of TypeScript
 on code quality. The DAG exercise does not solve this problem, but it
 makes the *reasoning* transparent: we know *what* we are assuming and
 *where* the assumptions are weakest.
-Stage 3 explores a sharper treatment definition; Stage 4 motivates the
-need for longitudinal data.
+
+**A note on treatment decomposition.**
+The DAG in Section 1.3 identifies "type system enforcement" as a mediator
+on the causal path from language to code quality.
+This suggests a natural treatment refinement: rather than comparing JS
+vs. TS (a compound treatment bundling type system, tooling, ecosystem, and
+community), we could measure how strictly the type system is *used* within
+TypeScript, operationalized by `any`-type density.
+Bogner and Merkel themselves observed that `any` density correlates with
+quality within their TS sample (Spearman ρ = 0.17–0.26), but did not
+pursue this with regression controls or causal reasoning.
+The pragmatic stance formalizes this intuition: decompose compound
+treatments into specific interventions with sharper estimands.
+A dose-response analysis within the 305 TypeScript repos (Appendix A)
+finds a significant association between `any` density and code smells
+(β = 0.20, p < 0.001), but the remaining three metrics show no
+significant association, and the cross-sectional design cannot
+distinguish causation from selection (disciplined teams both use `any`
+less *and* write cleaner code).
+The refined treatment does, however, point naturally toward a stronger
+design: observing within-project changes in `any` density over time.
+
+Stage 3 now asks whether alternative selection-on-observables methods
+(matching, IPW) yield different answers from OLS.
 
 
-# Stage 3: A Cleverer Design — Type System Adoption Intensity
+# Stage 3: Propensity Score Matching and Inverse Probability Weighting
 
-## 3.1 Reframing the Treatment
+The OVB assessment in Stage 2 established that the cross-sectional
+estimate is fragile under OLS.
+A natural follow-up question is: does the *estimator* matter?
+OLS, propensity score matching (PSM), and inverse probability weighting
+(IPW) are three different estimators for the same causal quantity under
+the same identifying assumption — conditional ignorability given observed
+covariates.
+If they agree, the estimand is well-estimated conditional on the
+assumption. If they disagree, one or more specifications may be
+misspecified.
+Either way, the OVB ceiling — unobserved confounding — applies equally
+to all three.
 
-Comparing JavaScript to TypeScript compares *different projects in different
-ecosystems*.
-A sharper design restricts the comparison to within the TypeScript ecosystem,
-using `any`-type density as a continuous measure of how much the type system
-is actually used.
+Following the DAG reasoning in Section 1.3, we estimate the propensity
+score using only the DAG-justified confounders (`log_ncloc`,
+`creation_year`, `framework`), excluding `log_stars` (collider risk)
+and `log_commits` (post-treatment).
 
-This improves the design in two ways:
+## 3.1 Propensity Score Estimation and Overlap
 
-1. **Sharper treatment definition**: The question becomes "how much does
-   strict use of the type system associate with quality?" rather than the
-   compound "JS vs. TS" comparison.
-2. **Narrower comparison group**: All repos are TypeScript, so TS-specific
-   tooling, community norms, and IDE integration are held constant.
-   The remaining variation is within-ecosystem.
-
-The threat, of course, is that repos choosing strict typing may differ
-systematically from lenient-typing repos on unobservables (team discipline,
-code review culture).
-We assess whether observable balance improves, then estimate the dose-response.
-
-## 3.2 Improved Covariate Balance Within TypeScript
-
-```{r within_ts_balance}
-ts_df <- df %>% filter(lang == "TypeScript", !is.na(any_density))
-
-# Split at median any density
-ts_df$any_high <- as.integer(ts_df$any_density >= median(ts_df$any_density))
-
-# SMDs within TS (low-any vs. high-any)
-within_ts_smds <- sapply(covariates, function(v) {
-  round(smd(ts_df[[v]], ts_df$any_high), 3)
-})
-
-# Cross-language SMDs (from Stage 1)
-cross_lang_smds <- sapply(covariates, function(v) {
-  round(smd(df[[v]], df$is_ts), 3)
-})
-
-balance_comparison <- data.frame(
-  Covariate = cov_labels,
-  `JS vs TS (SMD)` = cross_lang_smds,
-  `Low-any vs High-any TS (SMD)` = within_ts_smds,
-  check.names = FALSE
-)
-
-kable(balance_comparison,
-      caption = paste0("Table 10. Covariate balance comparison. ",
-                       "Within-TS SMDs (low-any vs. high-any, median split) compared with ",
-                       "cross-language SMDs (JS vs. TS). Smaller SMDs indicate a more ",
-                       "balanced comparison on observables.")) %>%
-  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```{r psm_setup, message=FALSE, warning=FALSE}
+required_pkgs2 <- c("MatchIt", "cobalt")
+missing_pkgs2 <- required_pkgs2[!sapply(required_pkgs2, requireNamespace, quietly = TRUE)]
+if (length(missing_pkgs2) > 0) {
+  install.packages(missing_pkgs2, repos = "https://cloud.r-project.org")
+}
+library(MatchIt)
+library(cobalt)
 ```
 
-## 3.3 Dose-Response Within TypeScript Repositories
+```{r propensity_score, fig.width=8, fig.height=3, message=FALSE, warning=FALSE}
+# Fit propensity score model (DAG-justified covariates)
+ps_mod <- glm(is_ts ~ log_ncloc + creation_year + framework,
+              data = df, family = binomial)
+df$ps <- predict(ps_mod, type = "response")
 
-```{r any_dose_response, message=FALSE, warning=FALSE}
-any_reg <- lapply(outcomes_vec, function(v) {
-  f  <- as.formula(paste(v,
-    "~ any_density + log_ncloc + log_commits + creation_year"))
-  m  <- lm(f, data = ts_df)
+# Propensity score overlap plot
+ggplot(df, aes(x = ps, fill = lang)) +
+  geom_density(alpha = 0.5) +
+  scale_fill_manual(values = c("JavaScript" = "#4E79A7", "TypeScript" = "#F28E2B")) +
+  geom_vline(xintercept = c(min(df$ps[df$is_ts == 1]),
+                              max(df$ps[df$is_ts == 0])),
+             linetype = "dashed", colour = "grey40", linewidth = 0.4) +
+  labs(x = "Estimated Propensity Score P(TypeScript | X)",
+       y = "Density", fill = "Language") +
+  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
+  theme(
+    legend.position      = "bottom",
+    legend.margin        = margin(t = -5, r = 0, b = -3, l = 0),
+    legend.box.margin    = margin(t = -5, r = 0, b = -3, l = 0),
+    axis.title.y         = element_text(size = rel(0.8)),
+    panel.grid.major.x   = element_blank(),
+    panel.grid.minor.x   = element_blank()
+  )
+
+# Common support statistics
+cs_min <- max(min(df$ps[df$is_ts == 1]), min(df$ps[df$is_ts == 0]))
+cs_max <- min(max(df$ps[df$is_ts == 1]), max(df$ps[df$is_ts == 0]))
+in_support <- mean(df$ps >= cs_min & df$ps <= cs_max)
+cat(sprintf("Common support region: [%.3f, %.3f]\n", cs_min, cs_max))
+cat(sprintf("Fraction of repos in common support: %.1f%%\n", 100 * in_support))
+```
+
+The overlap plot reveals how well the JS and TS propensity score
+distributions coincide.
+If the distributions are well-separated, matching and IPW are
+extrapolating rather than interpolating — and estimates become
+sensitive to model specification.
+
+## 3.2 Propensity Score Matching
+
+```{r psm_matching, message=FALSE, warning=FALSE}
+# 1:1 nearest-neighbor matching without replacement (DAG-justified PS)
+m_nn <- matchit(is_ts ~ log_ncloc + creation_year + framework,
+                data = df, method = "nearest", distance = "glm",
+                replace = FALSE)
+
+cat(sprintf("Matched pairs: %d (of %d TS repos)\n",
+            sum(m_nn$weights[df$is_ts == 1] > 0),
+            sum(df$is_ts == 1)))
+cat(sprintf("Unmatched TS repos: %d\n",
+            sum(m_nn$weights[df$is_ts == 1] == 0)))
+cat(sprintf("Matched sample size: %d\n", sum(m_nn$weights > 0)))
+```
+
+```{r love_plot, fig.width=8, fig.height=3, message=FALSE, warning=FALSE}
+# Love plot: SMDs before and after matching
+love.plot(m_nn,
+          stats = "mean.diffs",
+          abs = TRUE,
+          thresholds = c(m = 0.1),
+          var.names = c(log_ncloc = "log(nLOC)",
+                        creation_year = "Creation year",
+                        log_stars = "log(Stars)",
+                        log_commits = "log(Commits)"),
+          colors = c("#E15759", "#59A14F"),
+          shapes = c(17, 16),
+          sample.names = c("Before matching", "After matching"),
+          position = "bottom") +
+  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
+  theme(
+    legend.position      = "bottom",
+    legend.margin        = margin(t = -5, r = 0, b = -3, l = 0),
+    legend.box.margin    = margin(t = -5, r = 0, b = -3, l = 0)
+  )
+```
+
+```{r psm_estimates, message=FALSE, warning=FALSE}
+# Extract matched data and estimate ATT
+md <- match.data(m_nn)
+
+psm_results <- lapply(outcomes_vec, function(v) {
+  sub <- md %>% filter(is.finite(.data[[v]]))
+  f <- as.formula(paste(v, "~ is_ts + log_ncloc + creation_year + framework"))
+  m <- lm(f, data = sub, weights = weights)
   ct <- coeftest(m, vcov = vcovHC(m, type = "HC1"))
   data.frame(
     outcome = OUTCOMES[v],
-    coef    = round(ct["any_density", "Estimate"], 4),
-    se      = round(ct["any_density", "Std. Error"], 4),
-    pval    = round(ct["any_density", "Pr(>|t|)"], 4),
-    n       = nobs(m),
-    r2      = round(summary(m)$r.squared, 3)
+    method  = "PSM (1:1 NN)",
+    coef    = round(ct["is_ts", "Estimate"], 4),
+    se      = round(ct["is_ts", "Std. Error"], 4),
+    pval    = round(ct["is_ts", "Pr(>|t|)"], 4),
+    n       = nrow(sub)
+  )
+}) %>% bind_rows()
+```
+
+## 3.3 Inverse Probability Weighting
+
+```{r ipw_estimates, message=FALSE, warning=FALSE}
+# IPW weights for ATT: treated get weight 1, controls get PS/(1-PS)
+df$ipw_att <- ifelse(df$is_ts == 1, 1, df$ps / (1 - df$ps))
+
+# Effective sample size
+ess_control <- sum(df$ipw_att[df$is_ts == 0])^2 /
+               sum(df$ipw_att[df$is_ts == 0]^2)
+cat(sprintf("IPW effective sample size (controls): %.0f of %d\n",
+            ess_control, sum(df$is_ts == 0)))
+
+ipw_results <- lapply(outcomes_vec, function(v) {
+  sub <- df %>% filter(is.finite(.data[[v]]))
+  f <- as.formula(paste(v, "~ is_ts"))
+  m <- lm(f, data = sub, weights = ipw_att)
+  ct <- coeftest(m, vcov = vcovHC(m, type = "HC1"))
+  data.frame(
+    outcome = OUTCOMES[v],
+    method  = "IPW (ATT)",
+    coef    = round(ct["is_ts", "Estimate"], 4),
+    se      = round(ct["is_ts", "Std. Error"], 4),
+    pval    = round(ct["is_ts", "Pr(>|t|)"], 4),
+    n       = nrow(sub)
+  )
+}) %>% bind_rows()
+```
+
+## 3.4 Comparison: OLS, Matching, and IPW
+
+```{r method_comparison}
+# Gather OLS results from Stage 2
+ols_dag_results <- lapply(outcomes_vec, function(v) {
+  sub <- df %>% filter(is.finite(.data[[v]]))
+  f <- as.formula(paste(v, "~ is_ts + log_ncloc + creation_year + framework"))
+  m <- lm(f, data = sub)
+  ct <- coeftest(m, vcov = vcovHC(m, type = "HC1"))
+  data.frame(
+    outcome = OUTCOMES[v],
+    method  = "OLS (M_dag)",
+    coef    = round(ct["is_ts", "Estimate"], 4),
+    se      = round(ct["is_ts", "Std. Error"], 4),
+    pval    = round(ct["is_ts", "Pr(>|t|)"], 4),
+    n       = nrow(sub)
   )
 }) %>% bind_rows()
 
-kable(any_reg,
-      caption = paste0(
-        "Table 11. Dose-response: effect of any-type density on quality metrics",
-        " within the 305 TypeScript repositories.",
-        " Controls: log(nLOC), log(commits), creation year. HC1 robust SEs.")) %>%
+all_methods <- bind_rows(ols_dag_results, psm_results, ipw_results) %>%
+  mutate(method = factor(method, levels = c("OLS (M_dag)", "PSM (1:1 NN)", "IPW (ATT)")))
+
+kable(all_methods,
+      col.names = c("Outcome", "Method", "Coef", "SE", "p", "N"),
+      caption = paste0("Table 10. Comparison of three selection-on-observables estimators. ",
+                       "All use DAG-justified covariates (log(nLOC), creation year, framework). ",
+                       "OLS adjusts via regression; PSM matches on propensity score; ",
+                       "IPW re-weights controls. HC1 robust SEs.")) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
 ```
 
-```{r any_scatter_plots, fig.width=8, fig.height=3, message=FALSE, warning=FALSE}
-plot_outcomes <- c("code_smells_ncloc", "cog_complexity_ncloc",
-                   "bug_fix_ratio", "avg_bug_time_days")
+```{r method_comparison_plot, fig.width=8, fig.height=3}
+all_methods <- all_methods %>%
+  mutate(ci_lo = coef - 1.96 * se,
+         ci_hi = coef + 1.96 * se)
 
-ts_long <- ts_df %>%
-  select(any_density, all_of(plot_outcomes)) %>%
-  pivot_longer(-any_density, names_to = "variable", values_to = "value") %>%
-  mutate(label = factor(OUTCOMES[variable], levels = OUTCOMES))
-
-ggplot(ts_long, aes(x = any_density, y = value)) +
-  geom_point(alpha = 0.35, size = 1.2, colour = "#F28E2B") +
-  geom_smooth(method = "lm", se = TRUE, colour = "#333333", linewidth = 0.8) +
-  facet_wrap(~label, scales = "free_y", nrow = 1) +
-  labs(x = "any-Type Density (count / nLOC)", y = "Metric Value") +
+ggplot(all_methods, aes(x = coef, xmin = ci_lo, xmax = ci_hi,
+                         y = outcome, colour = method, shape = method)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey60") +
+  geom_errorbarh(height = 0.25, position = position_dodge(width = 0.6)) +
+  geom_point(size = 2.5, position = position_dodge(width = 0.6)) +
+  scale_colour_manual(values = c("OLS (M_dag)"  = "#59A14F",
+                                  "PSM (1:1 NN)" = "#4E79A7",
+                                  "IPW (ATT)"    = "#F28E2B")) +
+  labs(x = "Coefficient for TypeScript (vs. JavaScript)",
+       y = NULL, colour = "Method", shape = "Method") +
   theme_minimal(base_size = 13, base_family = "Linux Libertine") +
   theme(
-    axis.title.y       = element_text(size = rel(0.8)),
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank()
+    legend.position      = "bottom",
+    legend.margin        = margin(t = -5, r = 0, b = -3, l = 0),
+    legend.box.margin    = margin(t = -5, r = 0, b = -3, l = 0),
+    axis.title.y         = element_text(size = rel(0.8)),
+    panel.grid.major.y   = element_blank()
   )
 ```
 
-## 3.4 Remaining Threats
+## 3.5 OVB Diagnosis on Matched Sample
 
-The within-TS dose-response is a genuine design improvement over the raw
-JS-vs-TS comparison: the treatment is sharper (type strictness vs. "language"),
-the comparison group is narrower (305 TS repos vs. 604 mixed), and observable
-balance improves substantially (creation year SMD drops from 0.75 to −0.26,
-stars from 0.40 to 0.16).
-The dose-response results show a significant positive association between
-`any` density and code smells (β = 0.20, p < 0.001): repos that use the type
-system less strictly have more code smells per line.
-Cognitive complexity trends in the same direction (β = 0.69, p = 0.055) but
-falls short of significance.
-Bug-fix ratio and bug resolution time show no significant association with
-type strictness (p > 0.2).
+```{r psm_sensemakr, message=FALSE, warning=FALSE}
+# Run sensemakr on matched sample for comparison with Stage 2
+sens_psm <- lapply(outcomes_vec, function(v) {
+  sub <- md %>% filter(is.finite(.data[[v]]))
+  f <- as.formula(paste(v,
+    "~ is_ts + log_ncloc + creation_year + framework"))
+  m <- lm(f, data = sub, weights = weights)
+  s <- sensemakr(model = m, treatment = "is_ts",
+                 benchmark_covariates = c("log_ncloc", "creation_year"),
+                 kd = 1:3, q = 1, alpha = 0.05)
+  data.frame(
+    outcome   = OUTCOMES[v],
+    method    = "PSM (matched)",
+    estimate  = round(s$sensitivity_stats$estimate, 4),
+    rv_q      = paste0(round(100 * s$sensitivity_stats$rv_q, 1), "%"),
+    rv_qa     = paste0(round(100 * s$sensitivity_stats$rv_qa, 1), "%")
+  )
+}) %>% bind_rows()
 
-But the fundamental problem remains: **this is still a cross-sectional
-comparison across different repositories**.
-Repos that use `any` heavily may be rushed or legacy projects with weaker
-engineering practices; repos that adopt strict typing may be better-staffed
-and more disciplined.
-The direction of this confounding — disciplined teams → strict typing AND
-higher quality — is the same as in the JS-vs-TS comparison, just attenuated.
+# Combine with OLS RVs from Stage 2
+sens_ols_dag <- lapply(outcomes_vec, function(v) {
+  s <- sens_dag[[v]]$sensitivity_stats
+  data.frame(
+    outcome   = OUTCOMES[v],
+    method    = "OLS (M_dag)",
+    estimate  = round(s$estimate, 4),
+    rv_q      = paste0(round(100 * s$rv_q, 1), "%"),
+    rv_qa     = paste0(round(100 * s$rv_qa, 1), "%")
+  )
+}) %>% bind_rows()
 
-We cannot resolve this with additional controls or matching, because the key
-confounders (team discipline, code review culture, management quality) are
-unobserved in these data.
-What is needed is a design that exploits **within-project** variation.
+sens_compare <- bind_rows(sens_ols_dag, sens_psm)
+
+kable(sens_compare,
+      col.names = c("Outcome", "Method", "Estimate",
+                     "RV (point = 0)", "RV (CI incl. 0)"),
+      caption = paste0("Table 11. Robustness values: OLS vs. matched sample. ",
+                       "If matching does not improve the RV, the fragility is ",
+                       "driven by unobserved confounders, not by poor covariate ",
+                       "balance on observables.")) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+## 3.6 The Selection-on-Observables Verdict
+
+The results above deliver a clear and pedagogically important message:
+**the estimator is not the bottleneck — the identifying assumption is.**
+
+Three different estimators — OLS, propensity score matching, and inverse
+probability weighting — all operating under the same DAG-justified covariate
+set (`log_ncloc`, `creation_year`, `framework`) produce nearly identical
+estimates.  For the lead outcome (code smells / nLOC), the coefficients are
+−0.0065 (OLS), −0.0060 (PSM), and −0.0065 (IPW).  The pattern repeats for
+cognitive complexity (−0.146, −0.143, −0.148) and bug-fix ratio (+0.059,
++0.060, +0.065).  The only meaningful divergence is for bug resolution time,
+where PSM yields a marginally non-significant result (p = 0.061) due to the
+slight loss of sample size from matching, while OLS (p = 0.020) and IPW
+(p = 0.016) remain significant.
+
+This convergence is not surprising — all three methods require the same
+conditional ignorability assumption — but it is worth demonstrating
+explicitly.  Researchers sometimes hope that matching will "fix" an
+observational design where OLS fails.  The results here show that switching
+estimators changes neither the point estimate nor its fragility.
+
+The sensitivity analysis confirms this:  matching does not materially improve
+robustness values.  For code smells, the RV drops slightly from 14.1% (OLS)
+to 12.8% (PSM); for cognitive complexity it moves from 19.4% to 18.5%.
+These are not meaningful improvements.  For bug resolution time, the RV
+drops from 11.1% to 8.7% and the confidence interval already includes zero
+on the matched sample (RV~α~ = 0%).
+
+The IPW effective sample size is also informative: only 129 of 299 JS
+control repos carry meaningful weight, confirming the overlap problems
+visible in the propensity score distributions above.
+
+**Bottom line**: All selection-on-observables methods converge on the same
+fragile estimate.  The binding constraint is unobserved confounding — team
+quality, engineering culture, organizational maturity — not the choice of
+statistical method.  Breaking this ceiling requires a fundamentally different
+identification strategy: within-project longitudinal variation.
 
 
 # Stage 4: Why Cross-Sectional Data Hits a Ceiling
 
 The stages above establish a clear progression:
 
-1. The raw JS-vs-TS comparison is severely confounded by selection bias:
-   TS repos are 3 years younger (median 2018 vs. 2015, SMD = 0.75), nearly
-   9× more popular (738 vs. 84 median stars, SMD = 0.40), and more active.
-2. DAG-guided covariate selection reveals that the "obvious" choice of
-   controlling for all available variables is not innocuous: GitHub stars
-   has both confounder and collider components, and conditioning on it
-   risks introducing Berkson's paradox. Comparing DAG-justified and
-   kitchen-sink specifications shows that covariate selection materially
-   affects the estimated coefficient and the conclusions of all three OVB
-   diagnostics.
-3. Reframing the treatment as `any`-type density within TypeScript improves
-   observable balance (creation year SMD drops from 0.75 to −0.26) and finds
-   a significant dose-response for code smells (β = 0.20, p < 0.001), but
-   remains fundamentally limited by the cross-sectional data structure.
+1. **Selection bias is large**: TS repos are 3 years younger
+   (median 2018 vs. 2015, SMD = 0.75), nearly 9× more popular
+   (738 vs. 84 median stars, SMD = 0.40), and more active.
+2. **DAG reasoning matters**: Conditioning on stars (collider risk)
+   attenuates the coefficient by 32% and halves the robustness value.
+   The "control for everything" default is not innocuous.
+3. **The estimator is not the bottleneck**: OLS, matching, and IPW
+   produce nearly identical estimates (−0.0065, −0.0060, −0.0065 for
+   code smells) and nearly identical robustness values (14.1%, 12.8%).
+   The binding constraint is unobserved confounding, not the choice of
+   statistical method.
 
 **The core limitation** is that cross-sectional data cannot distinguish
-"strict typing improves quality" from "high-quality teams write strict TypeScript."
+"TypeScript improves quality" from "high-quality teams adopt TypeScript."
 Both stories are consistent with the observed association.
 Separating cause from selection requires **within-project temporal variation**:
 observing the *same project* before and after it tightens its type discipline,
@@ -1070,22 +1256,25 @@ summary_df <- data.frame(
     "Stage 1: Raw comparison + covariate balance",
     "Stage 1: DAG-guided covariate selection",
     "Stage 2: DAG-justified vs. kitchen-sink OLS",
-    "Stage 2: OVB assessment",
-    "Stage 3: any dose-response (within TS)"
+    "Stage 2: OVB assessment (sensemakr, Oster)",
+    "Stage 3: PSM and IPW",
+    "Stage 3: OVB on matched sample"
   ),
   Finding = c(
     "TS appears better on code smells and complexity; worse on bug-fix ratio. Large SMDs on stars (0.40) and creation year (0.75)",
     "Stars has both confounder and collider components; commits is post-treatment. Only creation_year, log_ncloc, and framework are defensible confounders",
-    "DAG-justified and kitchen-sink models yield different coefficients; covariate selection is not innocuous",
-    "All three OVB methods indicate fragility under both specifications — plausible unobserved confounders could explain the remaining effect",
-    "Higher any density associated with worse quality within TS, but cross-sectional design cannot rule out selection"
+    "DAG-justified and kitchen-sink models yield different coefficients (−0.0065 vs. −0.0044 for code smells); covariate selection is not innocuous",
+    "All three OVB methods indicate fragility under both specifications — robustness value drops from 14.1% to 8.9% when conditioning on collider",
+    "OLS, PSM, and IPW converge on similar estimates under the same DAG-justified covariates",
+    "Matching does not materially improve robustness values — the fragility is driven by unobserved confounders"
   ),
   Implication = c(
     "Confounded: JS and TS repos differ systematically on observables",
     "DAG reasoning prevents mindless 'control for everything' — forces justification of each variable",
-    "Conditioning on a collider (stars) or post-treatment variable (commits) can change conclusions",
+    "Conditioning on a collider (stars) or post-treatment variable (commits) changes conclusions",
     "Cannot credibly claim a causal effect from cross-sectional OLS regardless of covariate set",
-    "Design improvement, but within-project longitudinal variation needed for causal identification"
+    "The estimator is not the bottleneck — the identifying assumption is",
+    "Need within-project longitudinal variation for causal identification"
   ),
   check.names = FALSE
 )
@@ -1093,4 +1282,85 @@ summary_df <- data.frame(
 kable(summary_df,
       caption = "Table 12. Summary of findings across stages.") %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+
+# Appendix A: Treatment Refinement — `any`-Type Density Within TypeScript
+
+Bogner and Merkel observed that `any`-type density correlates with quality
+within their TypeScript sample (Spearman ρ = 0.17–0.26).
+The pragmatic stance formalizes this as a treatment refinement: decompose
+the compound "language" treatment into the specific "type strictness"
+intervention, operationalized by `any` density.
+This yields a sharper estimand but the same cross-sectional identification,
+so the analysis is presented here as supplementary material.
+
+```{r appendix_any_setup}
+ts_df <- df %>% filter(lang == "TypeScript", !is.na(any_density))
+ts_df$any_high <- as.integer(ts_df$any_density >= median(ts_df$any_density))
+```
+
+```{r appendix_any_balance}
+within_ts_smds <- sapply(covariates, function(v) {
+  round(smd(ts_df[[v]], ts_df$any_high), 3)
+})
+cross_lang_smds <- sapply(covariates, function(v) {
+  round(smd(df[[v]], df$is_ts), 3)
+})
+
+balance_comparison <- data.frame(
+  Covariate = cov_labels,
+  `JS vs TS (SMD)` = cross_lang_smds,
+  `Low-any vs High-any TS (SMD)` = within_ts_smds,
+  check.names = FALSE
+)
+
+kable(balance_comparison,
+      caption = paste0("Table A1. Covariate balance: JS vs. TS compared with ",
+                       "within-TS (low-any vs. high-any, median split).")) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+```{r appendix_any_regression, message=FALSE, warning=FALSE}
+any_reg <- lapply(outcomes_vec, function(v) {
+  f  <- as.formula(paste(v,
+    "~ any_density + log_ncloc + creation_year + framework"))
+  m  <- lm(f, data = ts_df)
+  ct <- coeftest(m, vcov = vcovHC(m, type = "HC1"))
+  data.frame(
+    outcome = OUTCOMES[v],
+    coef    = round(ct["any_density", "Estimate"], 4),
+    se      = round(ct["any_density", "Std. Error"], 4),
+    pval    = round(ct["any_density", "Pr(>|t|)"], 4),
+    n       = nobs(m),
+    r2      = round(summary(m)$r.squared, 3)
+  )
+}) %>% bind_rows()
+
+kable(any_reg,
+      caption = paste0(
+        "Table A2. Dose-response: effect of any-type density on quality metrics",
+        " within TypeScript repositories.",
+        " Controls: log(nLOC), creation year, framework. HC1 robust SEs.")) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+```{r appendix_any_scatter, fig.width=8, fig.height=3, message=FALSE, warning=FALSE}
+ts_long <- ts_df %>%
+  select(any_density, all_of(c("code_smells_ncloc", "cog_complexity_ncloc",
+                                "bug_fix_ratio", "avg_bug_time_days"))) %>%
+  pivot_longer(-any_density, names_to = "variable", values_to = "value") %>%
+  mutate(label = factor(OUTCOMES[variable], levels = OUTCOMES))
+
+ggplot(ts_long, aes(x = any_density, y = value)) +
+  geom_point(alpha = 0.35, size = 1.2, colour = "#F28E2B") +
+  geom_smooth(method = "lm", se = TRUE, colour = "#333333", linewidth = 0.8) +
+  facet_wrap(~label, scales = "free_y", nrow = 1) +
+  labs(x = "any-Type Density (count / nLOC)", y = "Metric Value") +
+  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
+  theme(
+    axis.title.y       = element_text(size = rel(0.8)),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
 ```
