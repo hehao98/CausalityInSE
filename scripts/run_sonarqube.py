@@ -185,13 +185,48 @@ def run_scan(repo_path: Path, project_key: str) -> bool:
 
 # ── Main pipeline ────────────────────────────────────────────────────────────
 
-def load_completed(csv_path: Path) -> set[str]:
-    """Load full_name values from the output CSV for resume support."""
+def load_completed(csv_path: Path) -> tuple[set[str], set[str]]:
+    """Load results from the output CSV for resume support.
+
+    Returns (completed, needs_retry):
+      - completed: repos with scan_success == "true" or "skipped_too_large"
+        (do not re-process)
+      - needs_retry: repos with scan_success == "metrics_unavailable"
+        (scan was done but metrics weren't ready; retry fetching metrics)
+    """
     if not csv_path.exists():
-        return set()
+        return set(), set()
+    completed = set()
+    needs_retry = set()
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        return {r["full_name"] for r in reader if "full_name" in r}
+        for r in reader:
+            name = r.get("full_name", "")
+            status = r.get("scan_success", "")
+            if status == "metrics_unavailable":
+                needs_retry.add(name)
+            elif name:
+                completed.add(name)
+    return completed, needs_retry
+
+
+def rewrite_csv_without(csv_path: Path, names_to_remove: set[str]):
+    """Remove rows for repos that need retrying so they can be re-appended."""
+    if not csv_path.exists() or not names_to_remove:
+        return
+    rows = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        for r in reader:
+            if r.get("full_name") not in names_to_remove:
+                rows.append(r)
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    log.info("Removed %d metrics_unavailable rows from %s for retry",
+             len(names_to_remove), csv_path)
 
 
 def main():
@@ -230,10 +265,13 @@ def main():
     log.info("Size cutoff (p%.0f): %.1f MB — repos larger than this will be skipped",
              SIZE_PERCENTILE_CUTOFF * 100, max_size_kb / 1e3)
 
-    # Resume support
-    completed = load_completed(OUTPUT_CSV)
+    # Resume support: skip completed, retry metrics_unavailable
+    completed, needs_retry = load_completed(OUTPUT_CSV)
     if completed:
-        log.info("Resuming: %d repos already processed", len(completed))
+        log.info("Resuming: %d repos completed, %d need metrics retry",
+                 len(completed), len(needs_retry))
+    if needs_retry:
+        rewrite_csv_without(OUTPUT_CSV, needs_retry)
 
     # Open output CSV in append mode
     file_exists = OUTPUT_CSV.exists() and len(completed) > 0
@@ -251,9 +289,11 @@ def main():
             full_name = repo["full_name"]
             project_key = full_name.replace("/", "_")
 
-            # Skip already completed
+            # Skip already completed (but not metrics_unavailable — those get retried)
             if full_name in completed:
                 continue
+
+            is_retry = full_name in needs_retry
 
             # Skip ignored repos
             if full_name in REPO_IGNORE:
@@ -279,8 +319,10 @@ def main():
                 total_skipped += 1
                 continue
 
-            log.info("[%d/%d] Processing %s (%s, %.1f MB)",
-                     i + 1, len(repos), full_name,
+            log.info("[%d/%d] %s%s (%s, %.1f MB)",
+                     i + 1, len(repos),
+                     "Retrying metrics for " if is_retry else "Processing ",
+                     full_name,
                      repo.get("primary_language", "?"), size_kb / 1e3)
 
             row = {
@@ -292,7 +334,17 @@ def main():
 
             clone_path = CLONE_DIR / project_key
 
-            if args.skip_scan:
+            if is_retry:
+                # Scan already succeeded last run; just try fetching metrics again
+                metrics = get_metrics(project_key)
+                if metrics:
+                    row.update(metrics)
+                    row["scan_success"] = "true"
+                    log.info("  Retry succeeded for %s", full_name)
+                else:
+                    row["scan_success"] = "metrics_unavailable"
+                    log.warning("  Metrics still unavailable for %s", full_name)
+            elif args.skip_scan:
                 # Only try to fetch metrics from existing project
                 if project_exists(project_key):
                     metrics = get_metrics(project_key)
