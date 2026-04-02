@@ -837,6 +837,58 @@ ggplot(matched_traj, aes(x = month_idx, y = mean_log,
   theme_panel()
 ```
 
+## TWFE DiD on PSM-Matched Panel (No Time-Varying Covariates)
+
+Matching handles selection on observables *before* the regression.  If the
+matched control group is comparable at baseline, even a simple TWFE without
+time-varying covariates may suffice --- the matching does the heavy lifting
+that covariates did in Stage 3.  Comparing this estimate with Stages 2--3
+disentangles the contribution of matching vs. covariate adjustment.
+
+```{r matched_twfe_static}
+twfe_matched <- feols(
+  log_commits ~ treated | repo_id + month_idx,
+  data = panel_matched,
+  cluster = ~repo_id
+)
+
+cat("=== TWFE DiD on PSM-Matched Sample (No Covariates) ===\n")
+summary(twfe_matched)
+```
+
+```{r matched_twfe_event, fig.width=8, fig.height=4}
+twfe_matched_es <- feols(
+  log_commits ~ i(event_time, ref = -1) | repo_id + month_idx,
+  data = panel_matched %>% filter(is.na(event_time) |
+                                  (event_time >= -12 & event_time <= 12)),
+  cluster = ~repo_id
+)
+
+iplot(twfe_matched_es,
+      main = "TWFE Event Study: PSM-Matched Sample, No Covariates",
+      xlab = "Months Since AI Tool Adoption",
+      ylab = "Coefficient (log commits)")
+```
+
+```{r matched_twfe_pretrends}
+pre_coefs_matched <- grep("event_time::-[0-9]",
+                          names(coef(twfe_matched_es)), value = TRUE)
+pre_coefs_matched <- setdiff(pre_coefs_matched, "event_time::-1")
+
+if (length(pre_coefs_matched) > 0) {
+  pre_test_matched <- wald(twfe_matched_es, pre_coefs_matched)
+  cat(sprintf("Pre-trends F-test (matched, no covariates): F = %.2f, p = %.4f\n",
+              pre_test_matched$stat, pre_test_matched$p))
+}
+```
+
+The key comparison: Stage 2 (TWFE, full sample, no covariates) vs. this
+specification (TWFE, matched sample, no covariates).  If the estimates
+differ substantially, the unmatched control group contained repos on
+different trajectories, and matching corrected for that.  If they are
+similar, the full control group was already adequate for the parallel
+trends assumption.
+
 ## Borusyak DiD on PSM-Matched Panel
 
 ```{r matched_borusyak}
@@ -967,6 +1019,18 @@ results <- rbind(results, data.frame(
   CI_low = twc_ct[twc_idx, "Estimate"] - 1.96 * twc_ct[twc_idx, "Std. Error"],
   CI_high = twc_ct[twc_idx, "Estimate"] + 1.96 * twc_ct[twc_idx, "Std. Error"],
   N_obs = nobs(twfe_cov)
+))
+
+# TWFE (matched, no covariates)
+twm_ct <- summary(twfe_matched)$coeftable
+twm_idx <- which(rownames(twm_ct) == "treated")
+results <- rbind(results, data.frame(
+  Design = "TWFE (PSM-matched, no covariates)",
+  Estimate = twm_ct[twm_idx, "Estimate"],
+  SE = twm_ct[twm_idx, "Std. Error"],
+  CI_low = twm_ct[twm_idx, "Estimate"] - 1.96 * twm_ct[twm_idx, "Std. Error"],
+  CI_high = twm_ct[twm_idx, "Estimate"] + 1.96 * twm_ct[twm_idx, "Std. Error"],
+  N_obs = nobs(twfe_matched)
 ))
 
 # Stage 4: Borusyak (full sample)
