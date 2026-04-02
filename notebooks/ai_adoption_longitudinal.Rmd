@@ -771,13 +771,13 @@ ggplot(match_data, aes(x = pscore,
 ```
 
 ```{r psm_match, fig.width=8, fig.height=5}
-# 1:3 nearest-neighbour matching on the propensity score
+# 1:1 nearest-neighbour matching on the propensity score
 m_match <- matchit(
   ps_formula,
   data = match_data,
   method = "nearest",
   distance = "glm",
-  ratio = 3,
+  ratio = 1,
   replace = FALSE,
   caliper = 0.2
 )
@@ -833,7 +833,7 @@ ggplot(matched_traj, aes(x = month_idx, y = mean_log,
        color = NULL,
        title = "Pre-Treatment Trajectories After PSM",
        caption = paste0("Months 1-", earliest_treat_idx - 1,
-                        ". Matched 1:3 NN on propensity score.")) +
+                        ". Matched 1:1 NN on propensity score.")) +
   theme_panel()
 ```
 
@@ -949,7 +949,7 @@ ggplot(es_matched_df, aes(x = event_time, y = estimate)) +
   labs(x = "Months Since AI Tool Adoption",
        y = "Estimated Effect on log(1 + Commits)",
        title = "Borusyak DiD Event Study: PSM-Matched Sample",
-       caption = "95% CIs. Matched 1:3 NN on propensity score + time-varying covariates.") +
+       caption = "95% CIs. Matched 1:1 NN on propensity score + time-varying covariates.") +
   theme_panel()
 ```
 
