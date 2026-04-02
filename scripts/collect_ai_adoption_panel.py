@@ -42,7 +42,7 @@ DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 REPOS_CSV = os.path.join(DATA_DIR, "ai_adoption_repos.csv")
 PANEL_CSV = os.path.join(DATA_DIR, "ai_adoption_panel.csv")
 
-DEFAULT_CLONE_DIR = os.path.join(PROJECT_ROOT, "repos_bare")
+DEFAULT_CLONE_DIR = os.path.join(PROJECT_ROOT, "data/repos")
 
 # ── Panel window ─────────────────────────────────────────────────────────────
 
@@ -71,8 +71,10 @@ SORTED_MONTHS = sorted(ALL_MONTHS)
 
 PANEL_FIELDS = [
     "full_name", "month",
-    # outcome + confounder
+    # outcome + git-based confounder
     "commits", "active_contributors",
+    # GHArchive confounders (filled later via BigQuery; empty during collection)
+    "new_stars", "new_issues", "new_forks", "prs_merged", "new_releases",
     # treatment
     "treatment_date", "treatment_month", "first_ai_file",
     "treated", "months_since_treatment",
@@ -303,6 +305,12 @@ def process_repo(
             "month": m,
             "commits": data["commits"],
             "active_contributors": data["active_contributors"],
+            # GHArchive columns — placeholders; filled by BigQuery join later
+            "new_stars": "",
+            "new_issues": "",
+            "new_forks": "",
+            "prs_merged": "",
+            "new_releases": "",
             "treatment_date": t_date,
             "treatment_month": t_month,
             "first_ai_file": t_file,
