@@ -2,28 +2,23 @@
 """Collect longitudinal monthly panel data by cloning repos and mining git history.
 
 Reads the repo list from data/ai_adoption_repos.csv (output of the cross-
-sectional collection) and produces three panel CSVs covering 2024-01 through
-2026-03 (27 months):
+sectional collection) and writes a single analysis-ready panel CSV covering
+2024-01 through 2026-03 (27 months).  Each repo contributes 27 rows (one per
+month) with:
 
-  1. Monthly commit counts (outcome variable)
-  2. Monthly active contributors (time-varying confounder)
-  3. Treatment timing — first commit that introduced an L2+ AI config file
+  - commits, active_contributors  (from git log)
+  - treatment_date, treatment_month, first_ai_file  (first L2+ config commit)
+  - treated, months_since_treatment  (derived)
+  - time-invariant covariates from the cross-sectional dataset
 
-Each repo is cloned as a bare blobless clone (commits + trees, no file
-content), so disk usage is ~50 GB for 1,000 repos.
+Supports pause/resume: repos already present in the output CSV are skipped.
 
 Usage:
-  # Full run with 8 parallel workers (default)
   python scripts/collect_ai_adoption_panel.py
-
-  # Fewer workers / custom clone directory
   python scripts/collect_ai_adoption_panel.py --workers 4 --clone-dir /scratch/repos
 
 Output:
-  data/ai_adoption_panel_commits.csv
-  data/ai_adoption_panel_contributors.csv
-  data/ai_adoption_treatment_timing.csv
-  data/ai_adoption_panel.csv              — merged analysis-ready panel
+  data/ai_adoption_panel.csv
 """
 
 import argparse
@@ -45,10 +40,6 @@ log = setup_logging()
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 REPOS_CSV = os.path.join(DATA_DIR, "ai_adoption_repos.csv")
-
-COMMITS_CSV = os.path.join(DATA_DIR, "ai_adoption_panel_commits.csv")
-CONTRIBUTORS_CSV = os.path.join(DATA_DIR, "ai_adoption_panel_contributors.csv")
-TREATMENT_CSV = os.path.join(DATA_DIR, "ai_adoption_treatment_timing.csv")
 PANEL_CSV = os.path.join(DATA_DIR, "ai_adoption_panel.csv")
 
 DEFAULT_CLONE_DIR = os.path.join(PROJECT_ROOT, "repos_bare")
@@ -75,6 +66,20 @@ def _month_range(start: str, end: str) -> list[str]:
 
 ALL_MONTHS = set(_month_range(PANEL_START, PANEL_END))
 SORTED_MONTHS = sorted(ALL_MONTHS)
+
+# ── Panel columns (fixed order for CSV output) ──────────────────────────────
+
+PANEL_FIELDS = [
+    "full_name", "month",
+    # outcome + confounder
+    "commits", "active_contributors",
+    # treatment
+    "treatment_date", "treatment_month", "first_ai_file",
+    "treated", "months_since_treatment",
+    # time-invariant covariates (from cross-sectional data)
+    "owner_type", "queried_language", "primary_language",
+    "created_at", "license", "ai_maturity_level",
+]
 
 # ── AI maturity classification (mirrors collect_ai_adoption_data.py) ─────────
 
@@ -253,12 +258,23 @@ def extract_treatment_timing(clone_dir: str) -> dict:
 # ── Per-repo pipeline ────────────────────────────────────────────────────────
 
 
-def process_repo(
-    full_name: str, clone_base: str,
-) -> tuple[str, list[dict], list[dict], dict]:
-    """Clone (if needed) and extract all panel variables for one repo.
+def _months_since(treatment_month: str, month: str) -> int:
+    """Signed integer distance in months (negative = pre-treatment)."""
+    ty, tm = map(int, treatment_month.split("-"))
+    my, mm = map(int, month.split("-"))
+    return (my - ty) * 12 + (mm - tm)
 
-    Returns ``(full_name, commit_rows, contributor_rows, treatment_row)``.
+
+def process_repo(
+    full_name: str,
+    clone_base: str,
+    repo_covariates: dict,
+) -> tuple[str, list[dict]]:
+    """Clone (if needed) and build complete panel rows for one repo.
+
+    Returns ``(full_name, rows)`` where *rows* is a list of 27 dicts (one
+    per panel month), each containing every column in ``PANEL_FIELDS``.
+    On clone failure, returns an empty list.
     """
     safe_name = full_name.replace("/", "__")
     clone_dir = os.path.join(clone_base, safe_name + ".git")
@@ -266,36 +282,37 @@ def process_repo(
     # Clone if not already present (allows resume without re-downloading)
     if not os.path.isdir(clone_dir):
         if not clone_repo(full_name, clone_dir):
-            empty_treatment = {
-                "full_name": full_name,
-                "treatment_date": "",
-                "treatment_month": "",
-                "first_ai_file": "",
-            }
-            return full_name, [], [], empty_treatment
+            return full_name, []
 
     # Monthly commits + contributors
     monthly = extract_monthly_data(clone_dir)
-    commit_rows = []
-    contrib_rows = []
-    for m in SORTED_MONTHS:
-        data = monthly.get(m, {"commits": 0, "active_contributors": 0})
-        commit_rows.append({
-            "full_name": full_name,
-            "month": m,
-            "commits": data["commits"],
-        })
-        contrib_rows.append({
-            "full_name": full_name,
-            "month": m,
-            "active_contributors": data["active_contributors"],
-        })
 
     # Treatment timing
     treatment = extract_treatment_timing(clone_dir)
-    treatment["full_name"] = full_name
+    t_date = treatment["treatment_date"]
+    t_month = treatment["treatment_month"]
+    t_file = treatment["first_ai_file"]
 
-    return full_name, commit_rows, contrib_rows, treatment
+    rows = []
+    for m in SORTED_MONTHS:
+        data = monthly.get(m, {"commits": 0, "active_contributors": 0})
+        treated = 1 if (t_month and m >= t_month) else 0
+        mst = _months_since(t_month, m) if t_month else ""
+        row = {
+            "full_name": full_name,
+            "month": m,
+            "commits": data["commits"],
+            "active_contributors": data["active_contributors"],
+            "treatment_date": t_date,
+            "treatment_month": t_month,
+            "first_ai_file": t_file,
+            "treated": treated,
+            "months_since_treatment": mst,
+        }
+        row.update(repo_covariates)
+        rows.append(row)
+
+    return full_name, rows
 
 
 # ── Resume support ───────────────────────────────────────────────────────────
@@ -310,74 +327,6 @@ def load_processed_repos(csv_path: str) -> set[str]:
         return set(df["full_name"].unique())
     except Exception:
         return set()
-
-
-# ── Panel assembly ───────────────────────────────────────────────────────────
-
-
-def assemble_panel():
-    """Merge commits, contributors, and treatment timing into one panel CSV.
-
-    Joins on (full_name, month), adds treatment status and event-time
-    variables, and attaches time-invariant repo covariates from the
-    cross-sectional dataset.
-    """
-    log.info("Assembling merged panel …")
-
-    commits = pd.read_csv(COMMITS_CSV)
-    contribs = pd.read_csv(CONTRIBUTORS_CSV)
-    treatment = pd.read_csv(TREATMENT_CSV)
-
-    # Start from commits (one row per repo-month), merge contributors
-    panel = commits.merge(contribs, on=["full_name", "month"], how="left")
-    panel["active_contributors"] = (
-        panel["active_contributors"].fillna(0).astype(int)
-    )
-
-    # Merge treatment timing (one row per repo → broadcast to all months)
-    panel = panel.merge(
-        treatment[["full_name", "treatment_date", "treatment_month",
-                    "first_ai_file"]],
-        on="full_name", how="left",
-    )
-
-    # Construct panel variables
-    panel["treated"] = (
-        panel["treatment_month"].notna()
-        & (panel["month"] >= panel["treatment_month"])
-    ).astype(int)
-
-    # Event-time: months since treatment (negative = pre, 0 = onset month)
-    def _months_between(row):
-        if pd.isna(row["treatment_month"]) or row["treatment_month"] == "":
-            return None
-        ty, tm = map(int, row["treatment_month"].split("-"))
-        my, mm = map(int, row["month"].split("-"))
-        return (my - ty) * 12 + (mm - tm)
-
-    panel["months_since_treatment"] = panel.apply(_months_between, axis=1)
-
-    # Attach time-invariant covariates from cross-sectional data
-    if os.path.exists(REPOS_CSV):
-        repo_covs = pd.read_csv(REPOS_CSV)
-        # Keep only columns that are plausibly time-invariant
-        keep_cols = [
-            "full_name", "owner_type", "queried_language", "primary_language",
-            "created_at", "license", "ai_maturity_level",
-        ]
-        keep_cols = [c for c in keep_cols if c in repo_covs.columns]
-        panel = panel.merge(repo_covs[keep_cols], on="full_name", how="left")
-
-    panel.sort_values(["full_name", "month"], inplace=True)
-    panel.to_csv(PANEL_CSV, index=False)
-
-    n_repos = panel["full_name"].nunique()
-    n_months = panel["month"].nunique()
-    n_treated = panel.loc[panel["treated"] == 1, "full_name"].nunique()
-    log.info(
-        "Panel saved to %s  (%d repos × %d months = %d rows, %d ever-treated)",
-        PANEL_CSV, n_repos, n_months, len(panel), n_treated,
-    )
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -403,101 +352,88 @@ def main():
         log.error("Repo list not found: %s", REPOS_CSV)
         sys.exit(1)
 
-    repos_df = pd.read_csv(REPOS_CSV, usecols=["full_name"])
+    repos_df = pd.read_csv(REPOS_CSV)
     all_repos = repos_df["full_name"].tolist()
     log.info("Loaded %d repos from %s", len(all_repos), REPOS_CSV)
 
+    # Build a lookup of time-invariant covariates per repo
+    covariate_cols = [
+        "owner_type", "queried_language", "primary_language",
+        "created_at", "license", "ai_maturity_level",
+    ]
+    covariate_cols = [c for c in covariate_cols if c in repos_df.columns]
+    repo_cov_lookup: dict[str, dict] = {}
+    for _, row in repos_df.iterrows():
+        repo_cov_lookup[row["full_name"]] = {c: row[c] for c in covariate_cols}
+
     # ── Resume ───────────────────────────────────────────────────────────────
-    processed = load_processed_repos(TREATMENT_CSV)
+    processed = load_processed_repos(PANEL_CSV)
     if processed:
-        log.info("Resuming: %d repos already processed", len(processed))
+        log.info("Resuming: %d repos already in panel", len(processed))
 
     remaining = [r for r in all_repos if r not in processed]
     log.info("Repos to process: %d", len(remaining))
 
     if not remaining:
-        log.info("All repos already processed — assembling panel")
-        assemble_panel()
+        log.info("All repos already processed — nothing to do")
         return
 
     # ── Prepare output ───────────────────────────────────────────────────────
     os.makedirs(args.clone_dir, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    commit_fields = ["full_name", "month", "commits"]
-    contrib_fields = ["full_name", "month", "active_contributors"]
-    treatment_fields = ["full_name", "treatment_date", "treatment_month",
-                        "first_ai_file"]
-
     if not processed:
-        pd.DataFrame(columns=commit_fields).to_csv(COMMITS_CSV, index=False)
-        pd.DataFrame(columns=contrib_fields).to_csv(CONTRIBUTORS_CSV, index=False)
-        pd.DataFrame(columns=treatment_fields).to_csv(TREATMENT_CSV, index=False)
+        pd.DataFrame(columns=PANEL_FIELDS).to_csv(PANEL_CSV, index=False)
 
     # ── Process repos ────────────────────────────────────────────────────────
     completed = len(processed)
     failed = 0
-
-    commit_buf: list[dict] = []
-    contrib_buf: list[dict] = []
-    treatment_buf: list[dict] = []
+    row_buf: list[dict] = []
 
     def flush():
-        nonlocal commit_buf, contrib_buf, treatment_buf
-        if commit_buf:
-            pd.DataFrame(commit_buf).to_csv(
-                COMMITS_CSV, mode="a", header=False, index=False)
-            commit_buf = []
-        if contrib_buf:
-            pd.DataFrame(contrib_buf).to_csv(
-                CONTRIBUTORS_CSV, mode="a", header=False, index=False)
-            contrib_buf = []
-        if treatment_buf:
-            pd.DataFrame(treatment_buf).to_csv(
-                TREATMENT_CSV, mode="a", header=False, index=False)
-            treatment_buf = []
+        nonlocal row_buf
+        if row_buf:
+            pd.DataFrame(row_buf, columns=PANEL_FIELDS).to_csv(
+                PANEL_CSV, mode="a", header=False, index=False)
+            row_buf = []
 
     try:
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
             futures = {
-                executor.submit(process_repo, repo, args.clone_dir): repo
+                executor.submit(
+                    process_repo, repo, args.clone_dir,
+                    repo_cov_lookup.get(repo, {}),
+                ): repo
                 for repo in remaining
             }
             for future in as_completed(futures):
                 repo = futures[future]
                 try:
-                    full_name, c_rows, ct_rows, t_row = future.result()
+                    full_name, rows = future.result()
                 except Exception:
                     log.exception("Unhandled error for %s", repo)
                     failed += 1
-                    treatment_buf.append({
-                        "full_name": repo,
-                        "treatment_date": "",
-                        "treatment_month": "",
-                        "first_ai_file": "",
-                    })
-                    if len(treatment_buf) >= 10:
-                        flush()
                     continue
 
-                if not c_rows:
-                    log.warning("No data for %s (clone may have failed)", full_name)
+                if not rows:
+                    log.warning("No data for %s (clone may have failed)",
+                                full_name)
                     failed += 1
-                else:
-                    commit_buf.extend(c_rows)
-                    contrib_buf.extend(ct_rows)
+                    continue
 
-                treatment_buf.append(t_row)
+                row_buf.extend(rows)
                 completed += 1
 
-                total_commits = sum(r["commits"] for r in c_rows) if c_rows else 0
+                total_commits = sum(r["commits"] for r in rows)
+                t_month = rows[0].get("treatment_month") or "never"
                 log.info(
                     "[%d/%d] %s  commits=%d  treated=%s",
                     completed, len(all_repos), full_name, total_commits,
-                    t_row.get("treatment_month") or "never",
+                    t_month,
                 )
 
-                if len(treatment_buf) >= 10:
+                # Flush every 10 repos
+                if completed % 10 == 0:
                     flush()
 
     except KeyboardInterrupt:
@@ -505,12 +441,8 @@ def main():
     finally:
         flush()
 
-    log.info(
-        "Done. %d processed (%d failed). Output:\n  %s\n  %s\n  %s",
-        completed, failed, COMMITS_CSV, CONTRIBUTORS_CSV, TREATMENT_CSV,
-    )
-
-    assemble_panel()
+    log.info("Done. %d processed (%d failed). Output: %s",
+             completed, failed, PANEL_CSV)
 
 
 if __name__ == "__main__":
