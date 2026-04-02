@@ -26,7 +26,6 @@ Output:
 """
 
 import argparse
-import csv
 import os
 import shutil
 import subprocess
@@ -35,6 +34,7 @@ import time
 from multiprocessing import Pool
 from pathlib import Path
 
+import pandas as pd
 import requests
 from dotenv import load_dotenv
 
@@ -190,24 +190,16 @@ def load_completed(csv_path: Path) -> tuple[set[str], set[str]]:
     """Load results from the output CSV for resume support.
 
     Returns (completed, needs_retry):
-      - completed: repos with scan_success == "true" or "skipped_too_large"
+      - completed: repos with scan_success != "metrics_unavailable"
         (do not re-process)
       - needs_retry: repos with scan_success == "metrics_unavailable"
         (scan was done but metrics weren't ready; retry fetching metrics)
     """
     if not csv_path.exists():
         return set(), set()
-    completed = set()
-    needs_retry = set()
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for r in reader:
-            name = r.get("full_name", "")
-            status = r.get("scan_success", "")
-            if status == "metrics_unavailable":
-                needs_retry.add(name)
-            elif name:
-                completed.add(name)
+    df = pd.read_csv(csv_path, usecols=["full_name", "scan_success"])
+    needs_retry = set(df.loc[df["scan_success"] == "metrics_unavailable", "full_name"])
+    completed = set(df.loc[df["scan_success"] != "metrics_unavailable", "full_name"])
     return completed, needs_retry
 
 
@@ -215,17 +207,9 @@ def rewrite_csv_without(csv_path: Path, names_to_remove: set[str]):
     """Remove rows for repos that need retrying so they can be re-appended."""
     if not csv_path.exists() or not names_to_remove:
         return
-    rows = []
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames
-        for r in reader:
-            if r.get("full_name") not in names_to_remove:
-                rows.append(r)
-    with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    df = pd.read_csv(csv_path)
+    df = df[~df["full_name"].isin(names_to_remove)]
+    df.to_csv(csv_path, index=False)
     log.info("Removed %d metrics_unavailable rows from %s for retry",
              len(names_to_remove), csv_path)
 
@@ -399,16 +383,25 @@ def main():
 
     log.info("Processing %d repos with %d workers", len(tasks), args.workers)
 
-    # Open output CSV in append mode
     file_exists = OUTPUT_CSV.exists() and len(completed) > 0
-    out_f = open(OUTPUT_CSV, "a", newline="", encoding="utf-8")
-    writer = csv.DictWriter(out_f, fieldnames=OUTPUT_FIELDS, extrasaction="ignore")
-    if not file_exists:
-        writer.writeheader()
-
     total_done = len(completed)
     total_skipped = 0
     total_failed = 0
+    pending_rows: list[dict] = []
+
+    def flush_rows():
+        """Append pending rows to the output CSV."""
+        nonlocal pending_rows
+        if not pending_rows:
+            return
+        batch = pd.DataFrame(pending_rows, columns=OUTPUT_FIELDS)
+        need_header = not OUTPUT_CSV.exists() or OUTPUT_CSV.stat().st_size == 0
+        batch.to_csv(OUTPUT_CSV, mode="a", header=need_header, index=False)
+        pending_rows = []
+
+    # Write header if starting fresh
+    if not file_exists:
+        pd.DataFrame(columns=OUTPUT_FIELDS).to_csv(OUTPUT_CSV, index=False)
 
     try:
         with Pool(processes=args.workers) as pool:
@@ -417,8 +410,7 @@ def main():
                     total_skipped += 1
                     continue
 
-                writer.writerow(row)
-                out_f.flush()
+                pending_rows.append(row)
 
                 status = row["scan_success"]
                 if status in ("scan_failed", "clone_failed"):
@@ -428,13 +420,17 @@ def main():
                 else:
                     total_done += 1
 
+                # Flush every 10 results for incremental resume
+                if len(pending_rows) >= 10:
+                    flush_rows()
+
                 log.info("  Progress: %d done, %d skipped, %d failed",
                          total_done, total_skipped, total_failed)
 
     except KeyboardInterrupt:
         log.info("Interrupted — progress saved (%d done)", total_done)
     finally:
-        out_f.close()
+        flush_rows()
 
     log.info("Finished. %d done, %d skipped, %d failed. Output: %s",
              total_done, total_skipped, total_failed, OUTPUT_CSV)

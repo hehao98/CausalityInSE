@@ -23,7 +23,6 @@ Output:
 """
 
 import argparse
-import csv
 import os
 import re
 import sys
@@ -31,6 +30,7 @@ import time
 from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 
+import pandas as pd
 import requests
 from dotenv import load_dotenv
 
@@ -487,9 +487,8 @@ def load_existing(csv_path: str) -> set[str]:
     """Load full_name values from an existing CSV for resume support."""
     if not os.path.exists(csv_path):
         return set()
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        return {r["full_name"] for r in reader if "full_name" in r}
+    df = pd.read_csv(csv_path, usecols=["full_name"])
+    return set(df["full_name"])
 
 
 def main():
@@ -507,27 +506,36 @@ def main():
     if existing:
         log.info("Resuming: %d repos already collected", len(existing))
 
-    # Determine if we need to write headers
-    repos_file_exists = os.path.exists(REPOS_CSV) and len(existing) > 0
-    monthly_file_exists = os.path.exists(MONTHLY_CSV) and len(existing) > 0
-
     # Month columns for the repo CSV header
     month_cols = [f"commits_{s.strftime('%Y-%m')}" for s, _ in OUTCOME_MONTHS]
     repo_fields = REPO_CSV_FIELDS + month_cols
+    monthly_fields = ["full_name", "month", "commits"]
 
-    repos_f = open(REPOS_CSV, "a", newline="", encoding="utf-8")
-    repos_writer = csv.DictWriter(repos_f, fieldnames=repo_fields, extrasaction="ignore")
-    if not repos_file_exists:
-        repos_writer.writeheader()
-
-    monthly_f = open(MONTHLY_CSV, "a", newline="", encoding="utf-8")
-    monthly_writer = csv.DictWriter(monthly_f, fieldnames=["full_name", "month", "commits"])
-    if not monthly_file_exists:
-        monthly_writer.writeheader()
+    # Write headers if starting fresh
+    if not (os.path.exists(REPOS_CSV) and len(existing) > 0):
+        pd.DataFrame(columns=repo_fields).to_csv(REPOS_CSV, index=False)
+    if not (os.path.exists(MONTHLY_CSV) and len(existing) > 0):
+        pd.DataFrame(columns=monthly_fields).to_csv(MONTHLY_CSV, index=False)
 
     seen_full_names = set(existing)
     total_collected = len(existing)
     total_skipped = 0
+    pending_repos: list[dict] = []
+    pending_monthly: list[dict] = []
+
+    def flush_rows():
+        """Append pending rows to both output CSVs."""
+        nonlocal pending_repos, pending_monthly
+        if pending_repos:
+            pd.DataFrame(pending_repos, columns=repo_fields).to_csv(
+                REPOS_CSV, mode="a", header=False, index=False,
+            )
+            pending_repos = []
+        if pending_monthly:
+            pd.DataFrame(pending_monthly, columns=monthly_fields).to_csv(
+                MONTHLY_CSV, mode="a", header=False, index=False,
+            )
+            pending_monthly = []
 
     try:
         for lang in LANGUAGES:
@@ -557,11 +565,12 @@ def main():
                 for mr in monthly_rows:
                     row[f"commits_{mr['month']}"] = mr["commits"]
 
-                repos_writer.writerow(row)
-                repos_f.flush()
+                pending_repos.append(row)
+                pending_monthly.extend(monthly_rows)
 
-                monthly_writer.writerows(monthly_rows)
-                monthly_f.flush()
+                # Flush every 5 repos for incremental resume
+                if len(pending_repos) >= 5:
+                    flush_rows()
 
                 total_collected += 1
                 log.info("  ✓ %s  L%d  commits=%s  [%d collected, %d skipped]",
@@ -572,8 +581,7 @@ def main():
     except KeyboardInterrupt:
         log.info("Interrupted — progress saved (%d repos collected)", total_collected)
     finally:
-        repos_f.close()
-        monthly_f.close()
+        flush_rows()
 
     log.info("Done. %d repos collected, %d skipped. Output: %s, %s",
              total_collected, total_skipped, REPOS_CSV, MONTHLY_CSV)
