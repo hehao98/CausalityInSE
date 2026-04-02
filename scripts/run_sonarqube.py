@@ -7,8 +7,8 @@ For each repo in data/ai_adoption_repos.csv, this script:
 3. Fetches the resulting metrics from the SonarQube API
 4. Writes one row per repo to data/ai_adoption_sonarqube.csv
 
-Repos are processed sequentially (SonarQube's Elasticsearch can crash under
-high parallelism).  Already-analysed repos are skipped on re-run.
+Repos are processed in parallel (default 8 workers).
+Already-analysed repos are skipped on re-run.
 
 Usage:
   python scripts/run_sonarqube.py                  # all repos
@@ -32,6 +32,7 @@ import shutil
 import subprocess
 import sys
 import time
+from multiprocessing import Pool
 from pathlib import Path
 
 import requests
@@ -71,10 +72,10 @@ METRICS = [
 # Repos known to be problematic for SonarQube (hang, crash, etc.)
 REPO_IGNORE = set()
 
-# Top 1% largest repos by size_kb are skipped automatically (computed at
+# Top 5% largest repos by size_kb are skipped automatically (computed at
 # runtime from the input CSV).  This avoids cloning multi-GB repos that
 # would fill the disk and take hours to scan.
-SIZE_PERCENTILE_CUTOFF = 0.99
+SIZE_PERCENTILE_CUTOFF = 0.95
 
 OUTPUT_FIELDS = [
     "full_name", "primary_language", "ai_maturity_level",
@@ -229,6 +230,111 @@ def rewrite_csv_without(csv_path: Path, names_to_remove: set[str]):
              len(names_to_remove), csv_path)
 
 
+def process_repo(task: dict) -> dict | None:
+    """Process a single repo: clone, scan, fetch metrics.
+
+    Designed to run in a worker process.  Returns a result row dict,
+    or None if the repo was already completed / should be skipped entirely
+    (caller handles the skip-counting).
+    """
+    repo = task["repo"]
+    idx = task["idx"]
+    total = task["total"]
+    is_retry = task["is_retry"]
+    skip_scan = task["skip_scan"]
+    cleanup = task["cleanup"]
+    max_size_kb = task["max_size_kb"]
+
+    full_name = repo["full_name"]
+    project_key = full_name.replace("/", "_")
+
+    # Skip ignored repos
+    if full_name in REPO_IGNORE:
+        log.info("[%d/%d] Skipping %s (in ignore list)", idx, total, full_name)
+        return None
+
+    # Skip repos that exceed size cutoff
+    size_kb = int(repo.get("size_kb", 0) or 0)
+    if size_kb > max_size_kb:
+        log.info("[%d/%d] Skipping %s (%.1f MB > %.1f MB cutoff)",
+                 idx, total, full_name, size_kb / 1e3, max_size_kb / 1e3)
+        return {
+            "full_name": full_name,
+            "primary_language": repo.get("primary_language", ""),
+            "ai_maturity_level": repo.get("ai_maturity_level", ""),
+            "scan_success": "skipped_too_large",
+        }
+
+    log.info("[%d/%d] %s%s (%s, %.1f MB)",
+             idx, total,
+             "Retrying metrics for " if is_retry else "Processing ",
+             full_name,
+             repo.get("primary_language", "?"), size_kb / 1e3)
+
+    row = {
+        "full_name": full_name,
+        "primary_language": repo.get("primary_language", ""),
+        "ai_maturity_level": repo.get("ai_maturity_level", ""),
+        "scan_success": "false",
+    }
+
+    clone_path = CLONE_DIR / project_key
+
+    if is_retry:
+        metrics = get_metrics(project_key)
+        if metrics:
+            row.update(metrics)
+            row["scan_success"] = "true"
+            log.info("  Retry succeeded for %s", full_name)
+        else:
+            row["scan_success"] = "metrics_unavailable"
+            log.warning("  Metrics still unavailable for %s", full_name)
+    elif skip_scan:
+        if project_exists(project_key):
+            metrics = get_metrics(project_key)
+            if metrics:
+                row.update(metrics)
+                row["scan_success"] = "true"
+                log.info("  Fetched existing metrics for %s", full_name)
+        else:
+            log.info("  No existing analysis for %s", full_name)
+    else:
+        if project_exists(project_key):
+            log.info("  Analysis already exists in SonarQube, fetching metrics")
+            metrics = get_metrics(project_key)
+            if metrics:
+                row.update(metrics)
+                row["scan_success"] = "true"
+        else:
+            if not shallow_clone(full_name, clone_path):
+                row["scan_success"] = "clone_failed"
+                return row
+
+            scan_ok = run_scan(clone_path, project_key)
+            if scan_ok:
+                time.sleep(5)
+                metrics = get_metrics(project_key)
+                if metrics:
+                    row.update(metrics)
+                    row["scan_success"] = "true"
+                else:
+                    row["scan_success"] = "metrics_unavailable"
+                    log.warning("  Scan succeeded but metrics not yet available for %s",
+                                full_name)
+            else:
+                row["scan_success"] = "scan_failed"
+
+            if cleanup and clone_path.exists():
+                shutil.rmtree(clone_path, ignore_errors=True)
+                log.info("  Cleaned up clone for %s", full_name)
+
+    log.info("  Done %s [%s]", full_name, row["scan_success"])
+    return row
+
+
+NUM_WORKERS = 8
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=0,
@@ -237,6 +343,8 @@ def main():
                         help="Delete each clone after scanning to save disk")
     parser.add_argument("--skip-scan", action="store_true",
                         help="Skip scanning, only fetch metrics for existing projects")
+    parser.add_argument("--workers", type=int, default=NUM_WORKERS,
+                        help=f"Number of parallel workers (default {NUM_WORKERS})")
     args = parser.parse_args()
 
     # Validate environment
@@ -258,7 +366,7 @@ def main():
         repos = repos[:args.limit]
         log.info("Limiting to first %d repos", args.limit)
 
-    # Compute size cutoff: skip the top 1% largest repos
+    # Compute size cutoff: skip the top 5% largest repos
     sizes = sorted(int(r.get("size_kb", 0) or 0) for r in repos)
     cutoff_idx = int(len(sizes) * SIZE_PERCENTILE_CUTOFF)
     max_size_kb = sizes[min(cutoff_idx, len(sizes) - 1)]
@@ -273,6 +381,24 @@ def main():
     if needs_retry:
         rewrite_csv_without(OUTPUT_CSV, needs_retry)
 
+    # Build task list — filter out already-completed repos
+    tasks = []
+    for i, repo in enumerate(repos):
+        full_name = repo["full_name"]
+        if full_name in completed:
+            continue
+        tasks.append({
+            "repo": repo,
+            "idx": i + 1,
+            "total": len(repos),
+            "is_retry": full_name in needs_retry,
+            "skip_scan": args.skip_scan,
+            "cleanup": args.cleanup,
+            "max_size_kb": max_size_kb,
+        })
+
+    log.info("Processing %d repos with %d workers", len(tasks), args.workers)
+
     # Open output CSV in append mode
     file_exists = OUTPUT_CSV.exists() and len(completed) > 0
     out_f = open(OUTPUT_CSV, "a", newline="", encoding="utf-8")
@@ -285,122 +411,25 @@ def main():
     total_failed = 0
 
     try:
-        for i, repo in enumerate(repos):
-            full_name = repo["full_name"]
-            project_key = full_name.replace("/", "_")
+        with Pool(processes=args.workers) as pool:
+            for row in pool.imap_unordered(process_repo, tasks):
+                if row is None:
+                    total_skipped += 1
+                    continue
 
-            # Skip already completed (but not metrics_unavailable — those get retried)
-            if full_name in completed:
-                continue
-
-            is_retry = full_name in needs_retry
-
-            # Skip ignored repos
-            if full_name in REPO_IGNORE:
-                log.info("[%d/%d] Skipping %s (in ignore list)",
-                         i + 1, len(repos), full_name)
-                total_skipped += 1
-                continue
-
-            # Skip top 1% largest repos
-            size_kb = int(repo.get("size_kb", 0) or 0)
-            if size_kb > max_size_kb:
-                log.info("[%d/%d] Skipping %s (%.1f MB > %.1f MB cutoff)",
-                         i + 1, len(repos), full_name,
-                         size_kb / 1e3, max_size_kb / 1e3)
-                row = {
-                    "full_name": full_name,
-                    "primary_language": repo.get("primary_language", ""),
-                    "ai_maturity_level": repo.get("ai_maturity_level", ""),
-                    "scan_success": "skipped_too_large",
-                }
                 writer.writerow(row)
                 out_f.flush()
-                total_skipped += 1
-                continue
 
-            log.info("[%d/%d] %s%s (%s, %.1f MB)",
-                     i + 1, len(repos),
-                     "Retrying metrics for " if is_retry else "Processing ",
-                     full_name,
-                     repo.get("primary_language", "?"), size_kb / 1e3)
-
-            row = {
-                "full_name": full_name,
-                "primary_language": repo.get("primary_language", ""),
-                "ai_maturity_level": repo.get("ai_maturity_level", ""),
-                "scan_success": "false",
-            }
-
-            clone_path = CLONE_DIR / project_key
-
-            if is_retry:
-                # Scan already succeeded last run; just try fetching metrics again
-                metrics = get_metrics(project_key)
-                if metrics:
-                    row.update(metrics)
-                    row["scan_success"] = "true"
-                    log.info("  Retry succeeded for %s", full_name)
+                status = row["scan_success"]
+                if status in ("scan_failed", "clone_failed"):
+                    total_failed += 1
+                elif status == "skipped_too_large":
+                    total_skipped += 1
                 else:
-                    row["scan_success"] = "metrics_unavailable"
-                    log.warning("  Metrics still unavailable for %s", full_name)
-            elif args.skip_scan:
-                # Only try to fetch metrics from existing project
-                if project_exists(project_key):
-                    metrics = get_metrics(project_key)
-                    if metrics:
-                        row.update(metrics)
-                        row["scan_success"] = "true"
-                        log.info("  Fetched existing metrics for %s", full_name)
-                else:
-                    log.info("  No existing analysis for %s", full_name)
-            else:
-                # Check if analysis already exists in SonarQube
-                if project_exists(project_key):
-                    log.info("  Analysis already exists in SonarQube, fetching metrics")
-                    metrics = get_metrics(project_key)
-                    if metrics:
-                        row.update(metrics)
-                        row["scan_success"] = "true"
-                    # Skip cloning and scanning
-                else:
-                    # Clone
-                    if not shallow_clone(full_name, clone_path):
-                        row["scan_success"] = "clone_failed"
-                        total_failed += 1
-                        writer.writerow(row)
-                        out_f.flush()
-                        continue
+                    total_done += 1
 
-                    # Scan
-                    scan_ok = run_scan(clone_path, project_key)
-                    if scan_ok:
-                        # Wait briefly for SonarQube to process
-                        time.sleep(5)
-                        metrics = get_metrics(project_key)
-                        if metrics:
-                            row.update(metrics)
-                            row["scan_success"] = "true"
-                        else:
-                            row["scan_success"] = "metrics_unavailable"
-                            log.warning("  Scan succeeded but metrics not yet available for %s",
-                                        full_name)
-                    else:
-                        row["scan_success"] = "scan_failed"
-                        total_failed += 1
-
-                    # Cleanup clone if requested
-                    if args.cleanup and clone_path.exists():
-                        shutil.rmtree(clone_path, ignore_errors=True)
-                        log.info("  Cleaned up clone for %s", full_name)
-
-            writer.writerow(row)
-            out_f.flush()
-            total_done += 1
-
-            status = row["scan_success"]
-            log.info("  Done %s [%s]  (%d done, %d skipped, %d failed)",
-                     full_name, status, total_done, total_skipped, total_failed)
+                log.info("  Progress: %d done, %d skipped, %d failed",
+                         total_done, total_skipped, total_failed)
 
     except KeyboardInterrupt:
         log.info("Interrupted — progress saved (%d done)", total_done)
