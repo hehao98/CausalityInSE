@@ -24,8 +24,10 @@ Output:
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
+import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -150,21 +152,35 @@ def _run_git(clone_dir: str, *args: str, timeout: int = 120) -> str:
     return result.stdout
 
 
+MAX_CLONE_RETRIES = 3
+
+
 def clone_repo(full_name: str, clone_dir: str) -> bool:
-    """Bare blobless clone from GitHub.  Returns True on success."""
+    """Bare blobless clone from GitHub with retries.  Returns True on success."""
     url = f"https://github.com/{full_name}.git"
-    try:
-        subprocess.run(
-            ["git", "clone", "--filter=blob:none", "--bare", url, clone_dir],
-            capture_output=True, text=True, timeout=600, check=True,
-        )
-        return True
-    except subprocess.TimeoutExpired:
-        log.warning("Clone timed out for %s", full_name)
-        return False
-    except subprocess.CalledProcessError as e:
-        log.warning("Clone failed for %s: %s", full_name, e.stderr[:200] if e.stderr else e)
-        return False
+    for attempt in range(1, MAX_CLONE_RETRIES + 1):
+        # Clean up any partial clone from a previous failed attempt
+        if os.path.isdir(clone_dir):
+            shutil.rmtree(clone_dir)
+        try:
+            subprocess.run(
+                ["git", "clone", "--filter=blob:none", "--bare", url, clone_dir],
+                capture_output=True, text=True, timeout=600, check=True,
+            )
+            return True
+        except subprocess.TimeoutExpired:
+            log.warning("Clone timed out for %s (attempt %d/%d)",
+                        full_name, attempt, MAX_CLONE_RETRIES)
+        except subprocess.CalledProcessError as e:
+            msg = e.stderr[:200] if e.stderr else str(e)
+            log.warning("Clone failed for %s (attempt %d/%d): %s",
+                        full_name, attempt, MAX_CLONE_RETRIES, msg)
+        if attempt < MAX_CLONE_RETRIES:
+            time.sleep(2 ** attempt)
+    # All retries exhausted — clean up any partial directory
+    if os.path.isdir(clone_dir):
+        shutil.rmtree(clone_dir)
+    return False
 
 
 # ── Extraction ───────────────────────────────────────────────────────────────

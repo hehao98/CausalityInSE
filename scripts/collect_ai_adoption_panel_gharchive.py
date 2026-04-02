@@ -3,8 +3,8 @@
 
 Queries the public githubarchive dataset on BigQuery for the ~1,000 repos
 in the panel, aggregating monthly counts of stars, issues opened, forks,
-PRs merged, and releases.  The results are joined back into
-data/ai_adoption_panel.csv, filling the previously empty columns:
+PRs merged, and releases.  The results are joined directly into
+data/ai_adoption_panel.csv, filling the columns:
 
   new_stars, new_issues, new_forks, prs_merged, new_releases
 
@@ -19,12 +19,8 @@ Usage:
   # Use a specific GCP project for billing
   python scripts/collect_ai_adoption_panel_gharchive.py --project my-gcp-project
 
-  # Query only, save raw BigQuery results without updating the panel
-  python scripts/collect_ai_adoption_panel_gharchive.py --query-only
-
 Output:
-  data/ai_adoption_panel_gharchive.csv  — raw BigQuery results (backup)
-  data/ai_adoption_panel.csv            — updated in place
+  data/ai_adoption_panel.csv  — updated in place
 """
 
 import argparse
@@ -43,9 +39,7 @@ log = setup_logging()
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
-REPOS_CSV = os.path.join(DATA_DIR, "ai_adoption_repos.csv")
 PANEL_CSV = os.path.join(DATA_DIR, "ai_adoption_panel.csv")
-GHARCHIVE_CSV = os.path.join(DATA_DIR, "ai_adoption_panel_gharchive.csv")
 
 # GHArchive columns that this script fills
 GHARCHIVE_COLS = ["new_stars", "new_issues", "new_forks", "prs_merged",
@@ -53,9 +47,6 @@ GHARCHIVE_COLS = ["new_stars", "new_issues", "new_forks", "prs_merged",
 
 # ── BigQuery ─────────────────────────────────────────────────────────────────
 
-# BigQuery has a query size limit (~1 MB).  With 1,000 repo names averaging
-# ~30 chars each, the IN list is ~40 KB — well within the limit.  But we
-# chunk the query into batches if the repo list ever grows.
 BATCH_SIZE = 500  # repos per BigQuery query
 
 
@@ -77,9 +68,9 @@ def build_query(repo_names: list[str]) -> str:
                         '$.pull_request.merged') = 'true')
             AS prs_merged,
           COUNTIF(type = 'ReleaseEvent') AS new_releases
-        FROM `githubarchive.day.*`
+        FROM `githubarchive.day.2*`
         WHERE
-          _TABLE_SUFFIX BETWEEN '20240101' AND '20260331'
+          _TABLE_SUFFIX BETWEEN '0240101' AND '0260331'
           AND repo.name IN ({quoted})
           AND type IN ('WatchEvent', 'IssuesEvent', 'ForkEvent',
                        'PullRequestEvent', 'ReleaseEvent')
@@ -102,7 +93,10 @@ def run_bigquery(repo_names: list[str], project: str | None) -> pd.DataFrame:
 
         query = build_query(batch)
         job = client.query(query)
-        df = job.to_dataframe()
+        # Avoid job.to_dataframe() which requires db-dtypes (incompatible
+        # with pandas 3.x).  Fetch raw rows and build the DataFrame manually.
+        rows = [dict(row) for row in job.result()]
+        df = pd.DataFrame(rows, columns=["full_name", "month"] + GHARCHIVE_COLS)
 
         bytes_billed = job.total_bytes_billed or 0
         log.info("  Batch %d done: %d rows, %.2f GB billed",
@@ -113,54 +107,10 @@ def run_bigquery(repo_names: list[str], project: str | None) -> pd.DataFrame:
         return pd.DataFrame(columns=["full_name", "month"] + GHARCHIVE_COLS)
 
     result = pd.concat(frames, ignore_index=True)
-
-    total_billed_tb = sum(
-        (f.attrs.get("bytes_billed", 0) for f in frames), 0
-    ) / 1e12
     log.info("BigQuery total: %d rows across %d repos",
              len(result), result["full_name"].nunique())
 
     return result
-
-
-# ── Panel update ─────────────────────────────────────────────────────────────
-
-
-def update_panel(gharchive_df: pd.DataFrame):
-    """Join BigQuery results into the existing panel CSV."""
-    if not os.path.exists(PANEL_CSV):
-        log.error("Panel CSV not found: %s", PANEL_CSV)
-        sys.exit(1)
-
-    panel = pd.read_csv(PANEL_CSV, dtype=str)
-    log.info("Loaded panel: %d rows", len(panel))
-
-    # Drop old GHArchive columns (they were empty placeholders)
-    panel.drop(columns=GHARCHIVE_COLS, errors="ignore", inplace=True)
-
-    # Ensure BigQuery result types
-    gha = gharchive_df.copy()
-    for col in GHARCHIVE_COLS:
-        if col in gha.columns:
-            gha[col] = gha[col].astype(int)
-
-    # Left-join on (full_name, month)
-    panel = panel.merge(
-        gha[["full_name", "month"] + GHARCHIVE_COLS],
-        on=["full_name", "month"],
-        how="left",
-    )
-
-    # Repos/months with no GHArchive events get 0 (not NaN)
-    for col in GHARCHIVE_COLS:
-        panel[col] = panel[col].fillna(0).astype(int)
-
-    panel.to_csv(PANEL_CSV, index=False)
-
-    coverage = panel[GHARCHIVE_COLS].sum().to_dict()
-    log.info("Panel updated: %s", PANEL_CSV)
-    log.info("  Column totals: %s",
-             ", ".join(f"{k}={v}" for k, v in coverage.items()))
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -175,38 +125,52 @@ def main():
         "--project", type=str, default=None,
         help="GCP project ID for BigQuery billing (uses default if omitted)",
     )
-    parser.add_argument(
-        "--query-only", action="store_true",
-        help="Save raw BigQuery results to CSV without updating the panel",
-    )
     args = parser.parse_args()
 
-    # Load repo list
-    if not os.path.exists(REPOS_CSV):
-        log.error("Repo list not found: %s", REPOS_CSV)
+    # ── Load panel ───────────────────────────────────────────────────────────
+    if not os.path.exists(PANEL_CSV):
+        log.error("Panel CSV not found: %s", PANEL_CSV)
         sys.exit(1)
 
-    repos_df = pd.read_csv(REPOS_CSV, usecols=["full_name"])
-    repo_names = repos_df["full_name"].tolist()
-    log.info("Loaded %d repos", len(repo_names))
+    panel = pd.read_csv(PANEL_CSV)
+    log.info("Loaded panel: %d rows, %d repos",
+             len(panel), panel["full_name"].nunique())
 
-    # Check for existing BigQuery results (skip re-querying if present)
-    if os.path.exists(GHARCHIVE_CSV):
-        log.info("Found existing %s — loading instead of re-querying",
-                 GHARCHIVE_CSV)
-        gha_df = pd.read_csv(GHARCHIVE_CSV)
-        log.info("  %d rows, %d repos",
-                 len(gha_df), gha_df["full_name"].nunique())
-    else:
-        gha_df = run_bigquery(repo_names, args.project)
-        gha_df.to_csv(GHARCHIVE_CSV, index=False)
-        log.info("Raw results saved to %s", GHARCHIVE_CSV)
-
-    if args.query_only:
-        log.info("--query-only: skipping panel update")
+    # Check if GHArchive columns are already populated
+    already_filled = all(
+        col in panel.columns and panel[col].notna().any() and (panel[col] != 0).any()
+        for col in GHARCHIVE_COLS
+    )
+    if already_filled:
+        log.info("GHArchive columns already populated — nothing to do")
         return
 
-    update_panel(gha_df)
+    # ── Query BigQuery ───────────────────────────────────────────────────────
+    repo_names = panel["full_name"].unique().tolist()
+    gha = run_bigquery(repo_names, args.project)
+
+    for col in GHARCHIVE_COLS:
+        if col in gha.columns:
+            gha[col] = gha[col].astype(int)
+
+    # ── Update panel in place ────────────────────────────────────────────────
+    panel.drop(columns=GHARCHIVE_COLS, errors="ignore", inplace=True)
+
+    panel = panel.merge(
+        gha[["full_name", "month"] + GHARCHIVE_COLS],
+        on=["full_name", "month"],
+        how="left",
+    )
+
+    for col in GHARCHIVE_COLS:
+        panel[col] = panel[col].fillna(0).astype(int)
+
+    panel.to_csv(PANEL_CSV, index=False)
+
+    coverage = panel[GHARCHIVE_COLS].sum().to_dict()
+    log.info("Panel updated: %s", PANEL_CSV)
+    log.info("  Column totals: %s",
+             ", ".join(f"{k}={v}" for k, v in coverage.items()))
 
 
 if __name__ == "__main__":
