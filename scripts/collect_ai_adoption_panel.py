@@ -23,6 +23,7 @@ Output:
   data/ai_adoption_panel_commits.csv
   data/ai_adoption_panel_contributors.csv
   data/ai_adoption_treatment_timing.csv
+  data/ai_adoption_panel.csv              — merged analysis-ready panel
 """
 
 import argparse
@@ -48,6 +49,7 @@ REPOS_CSV = os.path.join(DATA_DIR, "ai_adoption_repos.csv")
 COMMITS_CSV = os.path.join(DATA_DIR, "ai_adoption_panel_commits.csv")
 CONTRIBUTORS_CSV = os.path.join(DATA_DIR, "ai_adoption_panel_contributors.csv")
 TREATMENT_CSV = os.path.join(DATA_DIR, "ai_adoption_treatment_timing.csv")
+PANEL_CSV = os.path.join(DATA_DIR, "ai_adoption_panel.csv")
 
 DEFAULT_CLONE_DIR = os.path.join(PROJECT_ROOT, "repos_bare")
 
@@ -310,6 +312,74 @@ def load_processed_repos(csv_path: str) -> set[str]:
         return set()
 
 
+# ── Panel assembly ───────────────────────────────────────────────────────────
+
+
+def assemble_panel():
+    """Merge commits, contributors, and treatment timing into one panel CSV.
+
+    Joins on (full_name, month), adds treatment status and event-time
+    variables, and attaches time-invariant repo covariates from the
+    cross-sectional dataset.
+    """
+    log.info("Assembling merged panel …")
+
+    commits = pd.read_csv(COMMITS_CSV)
+    contribs = pd.read_csv(CONTRIBUTORS_CSV)
+    treatment = pd.read_csv(TREATMENT_CSV)
+
+    # Start from commits (one row per repo-month), merge contributors
+    panel = commits.merge(contribs, on=["full_name", "month"], how="left")
+    panel["active_contributors"] = (
+        panel["active_contributors"].fillna(0).astype(int)
+    )
+
+    # Merge treatment timing (one row per repo → broadcast to all months)
+    panel = panel.merge(
+        treatment[["full_name", "treatment_date", "treatment_month",
+                    "first_ai_file"]],
+        on="full_name", how="left",
+    )
+
+    # Construct panel variables
+    panel["treated"] = (
+        panel["treatment_month"].notna()
+        & (panel["month"] >= panel["treatment_month"])
+    ).astype(int)
+
+    # Event-time: months since treatment (negative = pre, 0 = onset month)
+    def _months_between(row):
+        if pd.isna(row["treatment_month"]) or row["treatment_month"] == "":
+            return None
+        ty, tm = map(int, row["treatment_month"].split("-"))
+        my, mm = map(int, row["month"].split("-"))
+        return (my - ty) * 12 + (mm - tm)
+
+    panel["months_since_treatment"] = panel.apply(_months_between, axis=1)
+
+    # Attach time-invariant covariates from cross-sectional data
+    if os.path.exists(REPOS_CSV):
+        repo_covs = pd.read_csv(REPOS_CSV)
+        # Keep only columns that are plausibly time-invariant
+        keep_cols = [
+            "full_name", "owner_type", "queried_language", "primary_language",
+            "created_at", "license", "ai_maturity_level",
+        ]
+        keep_cols = [c for c in keep_cols if c in repo_covs.columns]
+        panel = panel.merge(repo_covs[keep_cols], on="full_name", how="left")
+
+    panel.sort_values(["full_name", "month"], inplace=True)
+    panel.to_csv(PANEL_CSV, index=False)
+
+    n_repos = panel["full_name"].nunique()
+    n_months = panel["month"].nunique()
+    n_treated = panel.loc[panel["treated"] == 1, "full_name"].nunique()
+    log.info(
+        "Panel saved to %s  (%d repos × %d months = %d rows, %d ever-treated)",
+        PANEL_CSV, n_repos, n_months, len(panel), n_treated,
+    )
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
@@ -346,7 +416,8 @@ def main():
     log.info("Repos to process: %d", len(remaining))
 
     if not remaining:
-        log.info("All repos already processed — nothing to do")
+        log.info("All repos already processed — assembling panel")
+        assemble_panel()
         return
 
     # ── Prepare output ───────────────────────────────────────────────────────
@@ -438,6 +509,8 @@ def main():
         "Done. %d processed (%d failed). Output:\n  %s\n  %s\n  %s",
         completed, failed, COMMITS_CSV, CONTRIBUTORS_CSV, TREATMENT_CSV,
     )
+
+    assemble_panel()
 
 
 if __name__ == "__main__":
