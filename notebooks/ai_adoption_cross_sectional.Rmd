@@ -14,19 +14,20 @@ raw association is enormous and survives conventional controls:
 
 - **Stage 1** documents severe covariate imbalance between repos with AI
   tool configuration files (L2+) and those without (L1).  L2+ repos average
-  4.4x more monthly commits, but they are also systematically larger, more
-  popular, more likely to be organization-owned, and more likely to have
-  CI/CD --- all observable proxies for the unobservable confounders
+  5.8x more monthly commits (412 vs. 71; the median gap is even starker at
+  15x), but they are also systematically larger (SMD = 0.75), have far more
+  PRs (0.91), more total commits (0.74), and are more likely to have CI/CD
+  (0.54) --- all observable proxies for the unobservable confounders
   (developer skill, team culture) that drive both adoption and productivity.
-- **Stage 2** shows that the treatment coefficient drops by ~47% (from 2.21
-  to 1.18) when DAG-justified confounders are added, yet remains highly
+- **Stage 2** shows that the treatment coefficient drops by 47% (from 2.31
+  to 1.23) when DAG-justified confounders are added, yet remains highly
   significant (p < 0.001).  This is *not* reassuring: the Oster bound
-  (δ* ≈ 0.5) reveals that unobservables need only be half as important as
-  observables to explain the residual effect entirely, and the sensemakr
-  robustness value (~20%) is plausible given the obvious unobserved
+  (δ* = 0.56) reveals that unobservables need only be about half as
+  important as observables to explain the residual effect entirely, and the
+  sensemakr robustness value (23%) is plausible given the obvious unobserved
   confounders.
 - **Stage 3** shows that PSM and IPW produce nearly identical estimates to
-  OLS (~1.18, ~1.21, ~1.12) --- the estimator is not the bottleneck.
+  OLS (1.23, 1.17, 1.18) --- the estimator is not the bottleneck.
 - **Stage 4** synthesises the cross-sectional ceiling argument: the
   coefficient's apparent robustness to controls is *exactly* what we would
   expect under selection bias (productive teams adopt AI tools), because the
@@ -240,17 +241,17 @@ smd_df %>%
 
 ## 1.4 Interpretation
 
-The balance diagnostics confirm the selection story.  Every covariate except
-repo age and discussions exceeds the conventional ±0.1 SMD threshold, with
-total PRs (SMD ≈ 0.9), total commits (≈ 0.7), CI presence (≈ 0.7), and
-repo size (≈ 0.7) showing the most severe imbalances.
+The balance diagnostics confirm the selection story.  Every covariate
+exceeds the conventional ±0.1 SMD threshold, with total PRs (SMD = 0.91),
+repo size (0.75), total commits (0.74), releases (0.61), and CI presence
+(0.54) showing the most severe imbalances.
 
 These are not random differences --- they reflect a coherent selection
 mechanism: well-resourced, actively maintained, organization-backed
 projects are the ones that adopt AI tools.  These same characteristics
 independently predict high commit velocity.  Language confounding amplifies
-the problem: TypeScript (53% treated) and Rust (56%) have strong AI tooling
-ecosystems, while Swift (0%) and Java (13%) barely participate.
+the problem: TypeScript (53% treated) and Go (31%) have strong AI tooling
+ecosystems, while C (9%) and Swift (13%) barely participate.
 
 The proposed causal DAG encodes this structure:
 
@@ -266,9 +267,10 @@ The proposed causal DAG encodes this structure:
   in tooling.  These are the confounders that matter most and that no
   amount of GitHub API data can capture.
 
-The 4.4x raw gap in monthly commits is strikingly large but causally
-uninterpretable.  The question is how much survives after controlling for
-observable confounders --- and whether the residual is credible.
+The 5.8x raw gap in monthly commits (15x at the median) is strikingly
+large but causally uninterpretable.  The question is how much survives
+after controlling for observable confounders --- and whether the residual
+is credible.
 
 # Stage 2: OLS and Omitted Variable Bias Diagnostics
 
@@ -320,11 +322,11 @@ ols_results %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
-The coefficient drops by ~47% from the bivariate estimate when DAG-justified
-confounders are added (language, age, org type, CI, size, releases absorb
-a large portion of the raw gap).  The kitchen-sink model adds another ~24%
-attenuation.  Yet both controlled estimates remain highly significant
-(p < 0.001).
+The coefficient drops by 47% from the bivariate estimate (2.31 → 1.23) when
+DAG-justified confounders are added (language, age, org type, CI, size,
+releases absorb a large portion of the raw gap).  The kitchen-sink model
+adds another 23% attenuation (→ 0.95).  Yet both controlled estimates
+remain highly significant (p < 0.001), and the R² jumps from 0.21 to 0.53.
 
 A naive analyst might take this as evidence that the effect is "robust to
 controls."  The OVB diagnostics below show why that conclusion is premature.
@@ -375,7 +377,7 @@ ggplot(stability, aes(x = spec, y = coef)) +
 ```
 
 The coefficient stability plot shows steady attenuation as controls are
-added: from ~2.2 (bivariate) to ~1.2 (M_dag) to ~0.9 (M_all).  The
+added: from 2.31 (bivariate) to 1.23 (M_dag) to 0.95 (M_all).  The
 trajectory is monotonically downward, and even the kitchen-sink estimate
 remains far from zero.
 
@@ -412,10 +414,10 @@ cat("=== M_all: Sensitivity analysis ===\n")
 summary(sense_all)
 ```
 
-The robustness value (RV) for the DAG-justified model is ~20%.  This means
-a single unobserved confounder would need to explain at least ~20% of the
+The robustness value (RV) for the DAG-justified model is 23%.  This means
+a single unobserved confounder would need to explain at least 23% of the
 residual variation in both treatment assignment and outcome to nullify the
-estimate at the 5% level.  Is 20% plausible?
+estimate at the 5% level.  Is 23% plausible?
 
 Consider "developer skill" as a confounder.  Skilled developers are more
 likely to adopt AI tools (they are early adopters, they configure their
@@ -471,7 +473,7 @@ it tells us how strong selection on unobservables must be, relative to the
 selection on observables we already see, to drive the treatment effect to
 zero.
 
-A δ* of ~0.5 means that unobservables need only be **half as important**
+A δ* of 0.56 means that unobservables need only be **about half as important**
 as the observables we added (language, age, org type, CI, size, releases)
 to explain the entire residual association.  Given that the most important
 confounders (developer skill, team culture, organizational resources) are
@@ -616,21 +618,22 @@ ggplot(all_results, aes(x = method, y = coef)) +
 
 The four stages build a cumulative case:
 
-1. **The raw gap is enormous** (4.4x), but covariate balance shows that
-   L2+ repos differ from L1 on *every* observable dimension.  The treated
-   group is a systematically different population, not a random subset.
+1. **The raw gap is enormous** (5.8x in means, 15x at the median), but
+   covariate balance shows that L2+ repos differ from L1 on *every*
+   observable dimension.  The treated group is a systematically different
+   population, not a random subset.
 
-2. **Controls cut the coefficient by ~47%** (2.21 → 1.18), and the
-   coefficient *keeps falling* as more controls are added (→ 0.89).
+2. **Controls cut the coefficient by 47%** (2.31 → 1.23), and the
+   coefficient *keeps falling* as more controls are added (→ 0.95).
    The downward trajectory has not flattened.
 
-3. **OVB diagnostics say the residual is fragile**: Oster δ* ≈ 0.5 means
-   unobservables need only be half as important as observables to explain
-   everything away.  The sensemakr RV of ~20% is well within what
+3. **OVB diagnostics say the residual is fragile**: Oster δ* = 0.56 means
+   unobservables need only be about half as important as observables to
+   explain everything away.  The sensemakr RV of 23% is well within what
    "developer skill" or "team culture" could plausibly contribute.
 
 4. **The estimator is not the bottleneck**: OLS, PSM, and IPW converge
-   tightly (~1.18, ~1.21, ~1.12).  Switching from regression to matching
+   tightly (1.23, 1.17, 1.18).  Switching from regression to matching
    to weighting changes nothing because all three share the same
    identifying assumption --- and that assumption is violated.
 
@@ -683,12 +686,13 @@ summary_stages <- data.frame(
             "Stage 3: PSM and IPW",
             "Stage 4: Cross-sectional ceiling"),
   Finding = c(
-    paste0("L2+ repos average 4.4x more monthly commits, but differ on every ",
-           "observable (total PRs SMD ≈ 0.9, commits ≈ 0.7, CI ≈ 0.7, size ≈ 0.7)"),
-    paste0("Coefficient drops ~47% (2.21 → 1.18) with DAG controls, but stays ",
-           "significant (p < 0.001); Oster δ* ≈ 0.5 says unobservables need only ",
-           "be half as strong as observables to explain it away"),
-    paste0("OLS (1.18), PSM (1.21), IPW (1.12) converge tightly — the estimator ",
+    paste0("L2+ repos average 5.8x more monthly commits (15x at the median), ",
+           "but differ on every observable (total PRs SMD = 0.91, size = 0.75, ",
+           "commits = 0.74, CI = 0.54)"),
+    paste0("Coefficient drops 47% (2.31 → 1.23) with DAG controls, but stays ",
+           "significant (p < 0.001); Oster δ* = 0.56 says unobservables need only ",
+           "be about half as strong as observables to explain it away; RV = 23%"),
+    paste0("OLS (1.23), PSM (1.17), IPW (1.18) converge tightly — the estimator ",
            "is not the bottleneck; the identifying assumption is"),
     paste0("The persistent coefficient is consistent with selection bias (skilled ",
            "teams both adopt AI tools and commit more); only within-repo longitudinal ",
