@@ -1,0 +1,1061 @@
+---
+title: "Longitudinal Panel Analysis: AI Coding Tool Adoption and Development Productivity"
+output: html_document
+---
+
+This notebook is the natural follow-up to the cross-sectional diagnostic in
+`ai_adoption_cross_sectional.Rmd`.  The cross-section showed that the
+estimator is not the bottleneck --- unobserved confounding is.  Here we use
+within-repo temporal variation to absorb time-invariant confounders and
+progressively build toward a credible causal estimate.
+
+The causal question remains: "Does adopting AI coding tools increase
+development productivity (measured by monthly commits)?"  We now have a
+balanced monthly panel (999 repos × 27 months, 2024-01 through 2026-03)
+with staggered treatment adoption (240 ever-treated repos, 759 never-treated)
+and time-varying covariates.
+
+The notebook follows a **progression of increasingly credible designs**:
+
+- **Stage 0**: Naive before/after (no control group, no trend adjustment)
+- **Stage 1**: Interrupted time series (trend-adjusted, no control group)
+- **Stage 2**: TWFE DiD without time-varying covariates
+- **Stage 3**: TWFE DiD with time-varying covariates
+- **Stage 4**: Borusyak et al. imputation DiD (modern staggered estimator)
+
+Each stage builds on the previous one's limitations.
+
+# Setup
+
+```{r setup, message=FALSE, warning=FALSE}
+required_pkgs <- c("dplyr", "tidyr", "ggplot2", "knitr", "kableExtra",
+                   "fixest", "didimputation", "showtext", "scales",
+                   "MatchIt", "cobalt", "data.table")
+missing_pkgs <- required_pkgs[!sapply(required_pkgs, requireNamespace,
+                                       quietly = TRUE)]
+if (length(missing_pkgs) > 0) {
+  install.packages(missing_pkgs, repos = "https://cloud.r-project.org")
+}
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(fixest)
+library(didimputation)
+library(showtext)
+library(scales)
+library(MatchIt)
+library(cobalt)
+
+font_add("Linux Libertine", regular = "LinLibertine_Rah.ttf")
+showtext_auto()
+
+# Shared theme for all plots
+theme_panel <- function(base_size = 13) {
+  theme_minimal(base_size = base_size, base_family = "Linux Libertine") +
+    theme(
+      legend.position = "bottom",
+      legend.margin = margin(t = -5, r = 0, b = -3, l = 0),
+      legend.box.margin = margin(t = -5, r = 0, b = -3, l = 0),
+      axis.title.y = element_text(size = rel(0.8)),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank()
+    )
+}
+```
+
+# Load and Prepare Data
+
+```{r load_data, message=FALSE, warning=FALSE}
+panel_raw <- read.csv("../data/ai_adoption_panel.csv",
+                       stringsAsFactors = FALSE)
+cat(sprintf("Raw panel: %d obs, %d repos, %d months\n",
+            nrow(panel_raw), n_distinct(panel_raw$full_name),
+            n_distinct(panel_raw$month)))
+```
+
+```{r prepare_data}
+# treatment_month and months_since_treatment are "" (not NA) for never-treated
+panel <- panel_raw %>%
+  mutate(
+    treatment_month = na_if(treatment_month, ""),
+    treatment_date  = na_if(treatment_date, ""),
+    first_ai_file   = na_if(first_ai_file, ""),
+    months_since_treatment = as.integer(na_if(
+      as.character(months_since_treatment), ""
+    ))
+  )
+
+# Repos with treatment_month outside the panel window (e.g., 2026-04)
+# are effectively never-treated within our observation period
+panel_months <- sort(unique(panel$month))
+panel <- panel %>%
+  mutate(
+    treatment_month = ifelse(
+      !is.na(treatment_month) & !(treatment_month %in% panel_months),
+      NA_character_, treatment_month
+    ),
+    treated = ifelse(is.na(treatment_month), 0L, treated),
+    months_since_treatment = ifelse(is.na(treatment_month),
+                                    NA_integer_, months_since_treatment)
+  )
+
+panel <- panel %>%
+  mutate(
+    # Numeric repo ID for fixest / didimputation
+    repo_id = as.integer(factor(full_name)),
+    # Numeric month index (1 = 2024-01, ..., 27 = 2026-03)
+    month_idx = as.integer(factor(month, levels = sort(unique(month)))),
+    # Log-transformed outcome
+    log_commits = log1p(commits),
+    # Treatment cohort for didimputation: first treated month_idx, 0 if never
+    treatment_cohort = ifelse(
+      is.na(treatment_month), 0L,
+      as.integer(factor(treatment_month,
+                        levels = sort(unique(month))))
+    ),
+    # Ever-treated indicator (repo-level, time-invariant)
+    ever_treated = as.integer(!is.na(treatment_month)),
+    # Log-transformed time-varying covariates
+    log_contributors = log1p(active_contributors),
+    log_stars         = log1p(new_stars),
+    log_issues        = log1p(new_issues),
+    log_forks         = log1p(new_forks),
+    log_releases      = log1p(new_releases),
+    # Binary covariates
+    is_org = as.integer(owner_type == "Organization"),
+    # Repo age at panel start (years)
+    created_date = as.Date(substr(created_at, 1, 10)),
+    repo_age_yr = as.numeric(
+      difftime(as.Date("2024-01-01"), created_date, units = "days")
+    ) / 365.25
+  )
+
+# For the event study: never-treated repos get NA event_time
+panel <- panel %>%
+  mutate(
+    event_time = ifelse(is.na(months_since_treatment), NA_integer_,
+                        as.integer(months_since_treatment))
+  )
+
+cat(sprintf("Ever-treated: %d repos  |  Never-treated: %d repos\n",
+            sum(panel$ever_treated[panel$month_idx == 1]),
+            sum(panel$ever_treated[panel$month_idx == 1] == 0)))
+cat(sprintf("Treatment cohorts span month_idx %d to %d\n",
+            min(panel$treatment_cohort[panel$treatment_cohort > 0]),
+            max(panel$treatment_cohort[panel$treatment_cohort > 0])))
+```
+
+# Descriptive Analysis
+
+## Treatment Timing
+
+```{r treatment_timing, fig.width=8, fig.height=3}
+cohort_counts <- panel %>%
+  filter(ever_treated == 1) %>%
+  distinct(full_name, treatment_month) %>%
+  count(treatment_month, name = "n_repos")
+
+ggplot(cohort_counts, aes(x = treatment_month, y = n_repos)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  labs(x = "Treatment Month", y = "Number of Repos",
+       title = "Staggered AI Tool Adoption Timing") +
+  theme_panel() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Treatment adoption is staggered across 2024-11 through 2026-03, with the
+bulk of adoption occurring in 2025 and early 2026.  This staggered structure
+is what motivates the modern DiD estimator in Stage 4.
+
+## Average Trajectories
+
+```{r trajectories, fig.width=8, fig.height=3}
+trajectory <- panel %>%
+  group_by(month, ever_treated) %>%
+  summarise(
+    mean_commits = mean(commits, na.rm = TRUE),
+    mean_log     = mean(log_commits, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(group = ifelse(ever_treated == 1,
+                        "Ever-treated (will adopt AI tools)",
+                        "Never-treated (control)"))
+
+ggplot(trajectory, aes(x = month, y = mean_log,
+                       color = group, group = group)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.5) +
+  labs(x = "Month", y = "Mean log(1 + Commits)",
+       color = NULL,
+       title = "Average Monthly Commits by Treatment Group") +
+  theme_panel() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+The gap between ever-treated and never-treated repos is visible *throughout
+the entire panel* --- including well before any repo adopted AI tools.  This
+confirms the cross-sectional finding: repos that eventually adopt AI tools
+are systematically more active.  The key question for DiD is whether the
+*trajectories are parallel*, not whether the levels are equal.
+
+## Pre-Treatment Covariate Balance
+
+```{r balance, fig.width=8, fig.height=4}
+# Use the first month as a baseline snapshot for time-invariant comparison
+baseline <- panel %>%
+  filter(month_idx == 1) %>%
+  mutate(
+    log_baseline_commits = log_commits,
+    log_baseline_contrib = log_contributors
+  )
+
+balance_vars <- c("repo_age_yr", "is_org", "log_baseline_commits",
+                  "log_baseline_contrib")
+balance_labels <- c(
+  "repo_age_yr"            = "Repo age (years)",
+  "is_org"                 = "Organization owner",
+  "log_baseline_commits"   = "log(Baseline commits)",
+  "log_baseline_contrib"   = "log(Baseline contributors)"
+)
+
+compute_smd <- function(data, var, treat_col = "ever_treated") {
+  t_vals <- data[[var]][data[[treat_col]] == 1]
+  c_vals <- data[[var]][data[[treat_col]] == 0]
+  pooled_sd <- sqrt((var(t_vals, na.rm = TRUE) +
+                     var(c_vals, na.rm = TRUE)) / 2)
+  if (pooled_sd < 1e-10) return(0)
+  (mean(t_vals, na.rm = TRUE) - mean(c_vals, na.rm = TRUE)) / pooled_sd
+}
+
+smd_df <- data.frame(
+  variable = balance_vars,
+  label = balance_labels[balance_vars],
+  smd = sapply(balance_vars, function(v) compute_smd(baseline, v))
+) %>%
+  mutate(label = reorder(label, abs(smd)))
+
+ggplot(smd_df, aes(x = smd, y = label)) +
+  geom_point(size = 3) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = c(-0.1, 0.1), linetype = "dotted",
+             color = "red", alpha = 0.5) +
+  labs(x = "Standardised Mean Difference (Ever-Treated vs Never-Treated)",
+       y = NULL,
+       title = "Baseline Covariate Balance",
+       caption = "Dotted red lines mark the ±0.1 SMD threshold") +
+  theme_panel() +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank())
+```
+
+```{r balance_table}
+smd_df %>%
+  arrange(desc(abs(smd))) %>%
+  mutate(smd = sprintf("%.3f", smd)) %>%
+  select(Covariate = label, SMD = smd) %>%
+  kable(caption = "Baseline Standardised Mean Differences") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+The balance diagnostics show that ever-treated and never-treated repos differ
+at baseline --- the same selection story as the cross-section.  DiD does *not*
+require baseline balance; it requires *parallel trends*.  But large baseline
+differences make parallel trends less plausible a priori, which is why we
+test pre-trends carefully in the event studies below.
+
+# Stage 0: Naive Before/After Comparison
+
+For each ever-treated repo, compare mean monthly commits before vs. after
+adoption.  This is the simplest possible estimate --- and the most biased,
+because it attributes all temporal trends to the treatment.
+
+```{r stage0}
+ba <- panel %>%
+  filter(ever_treated == 1, !is.na(event_time)) %>%
+  mutate(post = as.integer(event_time >= 0)) %>%
+  group_by(full_name, post) %>%
+  summarise(mean_commits = mean(commits, na.rm = TRUE),
+            mean_log     = mean(log_commits, na.rm = TRUE),
+            .groups = "drop") %>%
+  pivot_wider(names_from = post,
+              values_from = c(mean_commits, mean_log),
+              names_sep = "_") %>%
+  mutate(
+    diff_raw = mean_commits_1 - mean_commits_0,
+    diff_log = mean_log_1 - mean_log_0
+  )
+
+cat("=== Naive Before/After (Treated Repos Only) ===\n")
+cat(sprintf("N repos: %d\n", nrow(ba)))
+cat(sprintf("Mean pre-treatment commits:  %.1f\n", mean(ba$mean_commits_0)))
+cat(sprintf("Mean post-treatment commits: %.1f\n", mean(ba$mean_commits_1)))
+cat(sprintf("Mean within-repo change:     %.1f commits/month\n",
+            mean(ba$diff_raw)))
+cat(sprintf("Mean change in log scale:    %.3f\n", mean(ba$diff_log)))
+
+# Paired t-test on log scale
+t_ba <- t.test(ba$mean_log_1, ba$mean_log_0, paired = TRUE)
+cat(sprintf("Paired t-test (log): t = %.2f, p = %.4f, 95%% CI [%.3f, %.3f]\n",
+            t_ba$statistic, t_ba$p.value,
+            t_ba$conf.int[1], t_ba$conf.int[2]))
+```
+
+```{r stage0_plot, fig.width=8, fig.height=3}
+ggplot(ba, aes(x = diff_log)) +
+  geom_histogram(bins = 40, fill = "steelblue", alpha = 0.7) +
+  geom_vline(xintercept = mean(ba$diff_log), color = "red",
+             linetype = "dashed", linewidth = 0.8) +
+  labs(x = "Within-Repo Change in log(1 + Monthly Commits)",
+       y = "Number of Repos",
+       title = "Naive Before/After: Distribution of Within-Repo Changes",
+       caption = "Red dashed line = mean change. No control group; confounded by secular trends.") +
+  theme_panel()
+```
+
+The naive before/after comparison shows the raw within-repo change but has no
+control group.  If all repos experienced a secular trend over 2024--2026
+(e.g., growing commit activity due to platform growth), the estimate
+confounds the treatment effect with the trend.
+
+# Stage 1: Interrupted Time Series (No Control Group)
+
+ITS models the pre-treatment trend explicitly and tests for a level shift
+and/or slope change at treatment onset.  Still no control group.
+
+```{r stage1}
+# Restrict to ever-treated repos
+its_data <- panel %>%
+  filter(ever_treated == 1) %>%
+  mutate(
+    post = as.integer(treated == 1),
+    # Time since treatment (0 for pre-treatment periods)
+    time_since = ifelse(post == 1, event_time, 0)
+  )
+
+# ITS with repo FE: level shift + slope change
+its_model <- feols(
+  log_commits ~ month_idx + post + time_since | repo_id,
+  data = its_data,
+  cluster = ~repo_id
+)
+
+cat("=== ITS Model (Treated Repos Only, Repo FE) ===\n")
+summary(its_model)
+```
+
+```{r stage1_plot, fig.width=8, fig.height=3}
+# Average trajectory for treated repos, centred on event time
+its_trajectory <- panel %>%
+  filter(ever_treated == 1, !is.na(event_time),
+         event_time >= -12, event_time <= 12) %>%
+  group_by(event_time) %>%
+  summarise(mean_log = mean(log_commits, na.rm = TRUE),
+            se = sd(log_commits, na.rm = TRUE) / sqrt(n()),
+            n = n(),
+            .groups = "drop")
+
+ggplot(its_trajectory, aes(x = event_time, y = mean_log)) +
+  geom_vline(xintercept = -0.5, linetype = "dashed", color = "grey50") +
+  geom_ribbon(aes(ymin = mean_log - 1.96 * se,
+                  ymax = mean_log + 1.96 * se),
+              alpha = 0.2, fill = "steelblue") +
+  geom_line(color = "steelblue", linewidth = 0.8) +
+  geom_point(color = "steelblue", size = 1.5) +
+  annotate("text", x = -6, y = max(its_trajectory$mean_log),
+           label = "Pre-treatment", family = "Linux Libertine",
+           size = 3.5, color = "grey40") +
+  annotate("text", x = 6, y = max(its_trajectory$mean_log),
+           label = "Post-treatment", family = "Linux Libertine",
+           size = 3.5, color = "grey40") +
+  labs(x = "Months Since AI Tool Adoption",
+       y = "Mean log(1 + Commits)",
+       title = "ITS: Average Trajectory of Treated Repos Around Adoption",
+       caption = "No control group. Vertical dashed line = treatment onset.") +
+  theme_panel()
+```
+
+The ITS level-shift coefficient (`post`) tests whether commits jump
+discretely at adoption.  The slope-change coefficient (`time_since`) tests
+whether the post-treatment trajectory differs from the pre-treatment trend.
+However, without a control group, we cannot rule out that a contemporaneous
+shock (e.g., a GitHub platform change, a seasonal pattern) drives the result.
+
+# Stage 2: TWFE DiD Without Time-Varying Covariates
+
+The classic two-way fixed effects specification absorbs all time-invariant
+repo heterogeneity (α_i) and all common temporal shocks (γ_t).
+
+```{r stage2_static}
+# Static TWFE
+twfe_base <- feols(
+  log_commits ~ treated | repo_id + month_idx,
+  data = panel,
+  cluster = ~repo_id
+)
+
+cat("=== TWFE DiD (No Covariates) ===\n")
+summary(twfe_base)
+```
+
+```{r stage2_event, fig.width=8, fig.height=4}
+# Event study: use sunab() for clean staggered event study in fixest
+# sunab(cohort, event_time) implements Sun & Abraham (2021) decomposition
+# but we use i() for the classic TWFE event study first
+twfe_es <- feols(
+  log_commits ~ i(event_time, ref = -1) | repo_id + month_idx,
+  data = panel %>% filter(is.na(event_time) |
+                          (event_time >= -12 & event_time <= 12)),
+  cluster = ~repo_id
+)
+
+cat("=== TWFE Event Study (No Covariates) ===\n")
+summary(twfe_es)
+```
+
+```{r stage2_esplot, fig.width=8, fig.height=4}
+iplot(twfe_es,
+      main = "TWFE Event Study: No Covariates",
+      xlab = "Months Since AI Tool Adoption",
+      ylab = "Coefficient (log commits)")
+```
+
+```{r stage2_pretrends}
+# Pre-trends F-test: joint test that all pre-treatment coefficients = 0
+pre_coefs <- grep("event_time::-[0-9]", names(coef(twfe_es)), value = TRUE)
+# Exclude the reference period (-1) which is dropped
+pre_coefs <- setdiff(pre_coefs, "event_time::-1")
+
+if (length(pre_coefs) > 0) {
+  pre_test <- wald(twfe_es, pre_coefs)
+  cat(sprintf("Pre-trends F-test: F = %.2f, p = %.4f\n",
+              pre_test$stat, pre_test$p))
+}
+```
+
+The event study plot shows coefficients relative to the month before adoption
+(k = -1).  Pre-treatment coefficients near zero support the parallel trends
+assumption.  Post-treatment coefficients show the dynamic treatment effect.
+
+# Stage 3: TWFE DiD With Time-Varying Covariates
+
+Adding time-varying controls absorbs repo-specific shocks that vary over
+time --- the remaining threat after repo FE absorbs time-invariant
+confounders and month FE absorbs common shocks.
+
+We include: `log1p(active_contributors)`, `log1p(new_stars)`,
+`log1p(new_issues)`, `log1p(new_forks)`, `log1p(new_releases)`.
+We exclude `prs_merged` because PRs are mechanistically downstream of
+commits (merging a PR is committing), so conditioning on them risks blocking
+the causal path.
+
+```{r stage3_static}
+twfe_cov <- feols(
+  log_commits ~ treated + log_contributors + log_stars + log_issues +
+    log_forks + log_releases | repo_id + month_idx,
+  data = panel,
+  cluster = ~repo_id
+)
+
+cat("=== TWFE DiD (With Time-Varying Covariates) ===\n")
+summary(twfe_cov)
+```
+
+```{r stage3_event, fig.width=8, fig.height=4}
+twfe_cov_es <- feols(
+  log_commits ~ i(event_time, ref = -1) + log_contributors + log_stars +
+    log_issues + log_forks + log_releases | repo_id + month_idx,
+  data = panel %>% filter(is.na(event_time) |
+                          (event_time >= -12 & event_time <= 12)),
+  cluster = ~repo_id
+)
+
+cat("=== TWFE Event Study (With Covariates) ===\n")
+summary(twfe_cov_es)
+```
+
+```{r stage3_esplot, fig.width=8, fig.height=4}
+iplot(twfe_cov_es,
+      main = "TWFE Event Study: With Time-Varying Covariates",
+      xlab = "Months Since AI Tool Adoption",
+      ylab = "Coefficient (log commits)")
+```
+
+```{r stage3_pretrends}
+pre_coefs_cov <- grep("event_time::-[0-9]",
+                      names(coef(twfe_cov_es)), value = TRUE)
+pre_coefs_cov <- setdiff(pre_coefs_cov, "event_time::-1")
+
+if (length(pre_coefs_cov) > 0) {
+  pre_test_cov <- wald(twfe_cov_es, pre_coefs_cov)
+  cat(sprintf("Pre-trends F-test (with covariates): F = %.2f, p = %.4f\n",
+              pre_test_cov$stat, pre_test_cov$p))
+}
+```
+
+```{r stage23_comparison}
+# Side-by-side comparison
+etable(twfe_base, twfe_cov,
+       headers = c("TWFE (no covariates)", "TWFE (with covariates)"),
+       se.below = TRUE,
+       keep = "treated")
+```
+
+Adding time-varying covariates addresses observable repo-specific shocks.
+If the ATT changes substantially, time-varying confounders matter.  However,
+both TWFE specifications share a fundamental limitation under staggered
+treatment: already-treated units serve as implicit controls for later-treated
+units, and if treatment effects are heterogeneous, this can produce biased
+estimates with negative weights.  Stage 4 addresses this.
+
+# Stage 4: Borusyak et al. Imputation DiD
+
+The imputation estimator of Borusyak, Jaravel, and Spiess (2024) avoids the
+negative-weighting problem of TWFE.  It fits a model for Y(0) using only
+untreated observations (never-treated + not-yet-treated), imputes the
+counterfactual for each treated (i, t) cell, and averages the residuals.
+
+```{r stage4_prep}
+# didimputation requires: idname, tname, gname (cohort: 0 = never-treated),
+# yname, and optionally first_stage for covariates.
+# Ensure data types are correct
+did_data <- panel %>%
+  mutate(
+    repo_id = as.integer(repo_id),
+    month_idx = as.integer(month_idx),
+    treatment_cohort = as.integer(treatment_cohort)
+  ) %>%
+  as.data.frame()
+
+cat(sprintf("Panel for didimputation: %d obs, %d repos, %d months\n",
+            nrow(did_data), n_distinct(did_data$repo_id),
+            n_distinct(did_data$month_idx)))
+cat(sprintf("Treatment cohorts: %d (0 = never-treated)\n",
+            n_distinct(did_data$treatment_cohort)))
+```
+
+## Static ATT
+
+```{r stage4_static}
+# Static ATT (single average treatment effect)
+did_static <- did_imputation(
+  data = did_data,
+  yname = "log_commits",
+  gname = "treatment_cohort",
+  tname = "month_idx",
+  idname = "repo_id",
+  first_stage = ~ log_contributors + log_stars + log_issues +
+                  log_forks + log_releases,
+  cluster_var = "repo_id"
+)
+
+cat("=== Borusyak et al. Imputation DiD: Static ATT ===\n")
+print(did_static)
+```
+
+## Event Study
+
+```{r stage4_event}
+# Event study with pre-trends
+did_es <- did_imputation(
+  data = did_data,
+  yname = "log_commits",
+  gname = "treatment_cohort",
+  tname = "month_idx",
+  idname = "repo_id",
+  first_stage = ~ log_contributors + log_stars + log_issues +
+                  log_forks + log_releases,
+  horizon = TRUE,
+  pretrends = TRUE,
+  cluster_var = "repo_id"
+)
+
+cat("=== Borusyak et al. Event Study ===\n")
+print(did_es)
+```
+
+```{r stage4_esplot, fig.width=8, fig.height=4}
+# Build event study plot from did_es output
+es_df <- as.data.frame(did_es) %>%
+  mutate(
+    event_time = as.integer(as.character(term)),
+    is_pre = event_time < 0
+  ) %>%
+  filter(event_time >= -12, event_time <= 12)
+
+ggplot(es_df, aes(x = event_time, y = estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = -0.5, linetype = "dashed", color = "grey70") +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.15, fill = "steelblue") +
+  geom_point(aes(color = is_pre), size = 2) +
+  geom_line(color = "steelblue", linewidth = 0.6) +
+  scale_color_manual(values = c("TRUE" = "grey50", "FALSE" = "steelblue"),
+                     labels = c("TRUE" = "Pre-treatment", "FALSE" = "Post-treatment"),
+                     name = NULL) +
+  labs(x = "Months Since AI Tool Adoption",
+       y = "Estimated Effect on log(1 + Commits)",
+       title = "Borusyak et al. Imputation DiD: Event Study",
+       caption = "95% CIs. Pre-treatment coefficients test parallel trends.") +
+  theme_panel()
+```
+
+## Pre-Trends Assessment
+
+```{r stage4_pretrends}
+pre_es <- es_df %>% filter(event_time < 0)
+
+if (nrow(pre_es) > 0) {
+  cat("Pre-treatment coefficients (Borusyak):\n")
+  cat(sprintf("  Max |coef|: %.4f (at k = %d)\n",
+              max(abs(pre_es$estimate)),
+              pre_es$event_time[which.max(abs(pre_es$estimate))]))
+  cat(sprintf("  Mean |coef|: %.4f\n", mean(abs(pre_es$estimate))))
+
+  # Check how many pre-treatment CIs exclude zero
+  n_sig <- sum(pre_es$conf.low > 0 | pre_es$conf.high < 0)
+  cat(sprintf("  Pre-treatment periods with CI excluding zero: %d / %d\n",
+              n_sig, nrow(pre_es)))
+}
+```
+
+# Control Group Assessment
+
+Do we need to match the control group?  We assess this through three
+diagnostics: (1) the event-study pre-trends from Stages 2--4 (already shown),
+(2) pre-treatment trajectory comparison, and (3) robustness to trimming
+structurally inactive repos.
+
+## Pre-Treatment Trajectory Comparison
+
+```{r pretreat_trajectory, fig.width=8, fig.height=3}
+# Earliest treatment month is 2024-11 (month_idx ~ 11)
+# Use months 1-10 (2024-01 to 2024-10) as the "pure pre-treatment" window
+earliest_treat_idx <- min(panel$treatment_cohort[panel$treatment_cohort > 0])
+
+pre_traj <- panel %>%
+  filter(month_idx < earliest_treat_idx) %>%
+  group_by(month, month_idx, ever_treated) %>%
+  summarise(mean_log = mean(log_commits, na.rm = TRUE),
+            .groups = "drop") %>%
+  mutate(group = ifelse(ever_treated == 1,
+                        "Ever-treated", "Never-treated"))
+
+ggplot(pre_traj, aes(x = month_idx, y = mean_log,
+                     color = group, group = group)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.5) +
+  labs(x = "Month Index",
+       y = "Mean log(1 + Commits)",
+       color = NULL,
+       title = "Pre-Treatment Trajectories (Before Any Repo Adopts)",
+       caption = paste0("Months 1-", earliest_treat_idx - 1,
+                        " (before any treatment). Parallel = good for DiD.")) +
+  theme_panel()
+```
+
+## Trimming Inactive Repos
+
+Many never-treated repos may be structurally dormant (zero commits throughout
+the panel).  These contribute trivially parallel trends (flat at zero) but
+dilute the comparison.  We test robustness by dropping repos with fewer than
+10 total commits across the entire panel.
+
+```{r trim_inactive}
+# Identify active repos
+repo_total <- panel %>%
+  group_by(full_name, repo_id, ever_treated) %>%
+  summarise(total_commits = sum(commits, na.rm = TRUE), .groups = "drop")
+
+cat("Repos by activity level:\n")
+cat(sprintf("  Total commits = 0:  %d repos (%d control, %d treated)\n",
+            sum(repo_total$total_commits == 0),
+            sum(repo_total$total_commits == 0 & repo_total$ever_treated == 0),
+            sum(repo_total$total_commits == 0 & repo_total$ever_treated == 1)))
+cat(sprintf("  Total commits < 10: %d repos (%d control, %d treated)\n",
+            sum(repo_total$total_commits < 10),
+            sum(repo_total$total_commits < 10 & repo_total$ever_treated == 0),
+            sum(repo_total$total_commits < 10 & repo_total$ever_treated == 1)))
+cat(sprintf("  Total commits >= 10: %d repos (%d control, %d treated)\n",
+            sum(repo_total$total_commits >= 10),
+            sum(repo_total$total_commits >= 10 & repo_total$ever_treated == 0),
+            sum(repo_total$total_commits >= 10 & repo_total$ever_treated == 1)))
+
+# Re-run Borusyak on trimmed sample
+active_repos <- repo_total %>% filter(total_commits >= 10)
+did_data_trim <- did_data %>% filter(repo_id %in% active_repos$repo_id)
+
+cat(sprintf("\nTrimmed panel: %d obs, %d repos\n",
+            nrow(did_data_trim), n_distinct(did_data_trim$repo_id)))
+```
+
+```{r trim_borusyak}
+did_trim <- did_imputation(
+  data = did_data_trim,
+  yname = "log_commits",
+  gname = "treatment_cohort",
+  tname = "month_idx",
+  idname = "repo_id",
+  first_stage = ~ log_contributors + log_stars + log_issues +
+                  log_forks + log_releases,
+  cluster_var = "repo_id"
+)
+
+cat("=== Borusyak DiD on Trimmed Sample (>= 10 total commits) ===\n")
+print(did_trim)
+```
+
+## Propensity Score Matching
+
+The parallel trends assumption is more plausible when treated and control
+units are comparable at baseline.  We use propensity score matching (PSM) on
+pre-treatment observables to select a control group that resembles the
+treated repos *before* adoption --- then run Borusyak DiD on this matched
+panel.
+
+The matching covariates are all computed from the pure pre-treatment window
+(before any repo adopts, months 1 through `r earliest_treat_idx - 1`).
+This avoids contaminating the propensity score with post-treatment outcomes.
+
+```{r psm_data}
+# Collapse to repo-level pre-treatment summary for matching
+match_data <- panel %>%
+  filter(month_idx < earliest_treat_idx) %>%
+  group_by(full_name, repo_id, ever_treated, is_org, queried_language,
+           repo_age_yr) %>%
+  summarise(
+    pre_mean_log_commits = mean(log_commits, na.rm = TRUE),
+    pre_sd_log_commits   = sd(log_commits, na.rm = TRUE),
+    pre_mean_contrib     = mean(log_contributors, na.rm = TRUE),
+    pre_mean_stars       = mean(log_stars, na.rm = TRUE),
+    pre_mean_issues      = mean(log_issues, na.rm = TRUE),
+    pre_mean_forks       = mean(log_forks, na.rm = TRUE),
+    pre_mean_releases    = mean(log_releases, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    # Replace NA sd (repos with constant commits) with 0
+    pre_sd_log_commits = ifelse(is.na(pre_sd_log_commits), 0,
+                                pre_sd_log_commits)
+  )
+
+cat(sprintf("Matching pool: %d treated, %d control\n",
+            sum(match_data$ever_treated == 1),
+            sum(match_data$ever_treated == 0)))
+```
+
+```{r psm_estimate}
+# Estimate propensity score via logistic regression
+ps_formula <- ever_treated ~ pre_mean_log_commits + pre_sd_log_commits +
+  pre_mean_contrib + pre_mean_stars + pre_mean_issues + pre_mean_forks +
+  pre_mean_releases + is_org + repo_age_yr
+
+ps_model <- glm(ps_formula, data = match_data, family = binomial)
+cat("=== Propensity Score Model ===\n")
+summary(ps_model)
+```
+
+```{r psm_overlap, fig.width=8, fig.height=3}
+match_data$pscore <- predict(ps_model, type = "response")
+
+ggplot(match_data, aes(x = pscore,
+                       fill = factor(ever_treated,
+                                     labels = c("Control", "Treated")))) +
+  geom_histogram(bins = 50, alpha = 0.6, position = "identity") +
+  labs(x = "Propensity Score", y = "Number of Repos", fill = NULL,
+       title = "Propensity Score Distribution: Overlap Check",
+       caption = "Good overlap is needed for matching. Regions without overlap are trimmed.") +
+  theme_panel()
+```
+
+```{r psm_match, fig.width=8, fig.height=5}
+# 1:3 nearest-neighbour matching on the propensity score
+m_match <- matchit(
+  ps_formula,
+  data = match_data,
+  method = "nearest",
+  distance = "glm",
+  ratio = 3,
+  replace = FALSE,
+  caliper = 0.2
+)
+
+summary(m_match)
+
+match_labels <- c(
+  "pre_mean_log_commits" = "Pre-treatment mean log(commits)",
+  "pre_sd_log_commits"   = "Pre-treatment SD log(commits)",
+  "pre_mean_contrib"     = "Pre-treatment mean log(contributors)",
+  "pre_mean_stars"       = "Pre-treatment mean log(stars)",
+  "pre_mean_issues"      = "Pre-treatment mean log(issues)",
+  "pre_mean_forks"       = "Pre-treatment mean log(forks)",
+  "pre_mean_releases"    = "Pre-treatment mean log(releases)",
+  "is_org"               = "Organization owner",
+  "repo_age_yr"          = "Repo age (years)"
+)
+
+love.plot(m_match, binary = "std", thresholds = c(m = 0.1),
+          var.names = match_labels,
+          colors = c("red", "steelblue"),
+          shapes = c(17, 16),
+          title = "Covariate Balance: Before vs After PSM") +
+  theme_panel()
+```
+
+```{r psm_matched_trajectory, fig.width=8, fig.height=3}
+# Matched sample: check pre-treatment trajectories
+matched_repo_data <- match.data(m_match)
+matched_ids <- as.integer(matched_repo_data$repo_id)
+panel_matched <- panel %>% filter(repo_id %in% matched_ids)
+
+cat(sprintf("Matched sample: %d treated + %d control = %d repos (%d panel obs)\n",
+            sum(matched_repo_data$ever_treated == 1),
+            sum(matched_repo_data$ever_treated == 0),
+            nrow(matched_repo_data),
+            nrow(panel_matched)))
+
+matched_traj <- panel_matched %>%
+  filter(month_idx < earliest_treat_idx) %>%
+  group_by(month, month_idx, ever_treated) %>%
+  summarise(mean_log = mean(log_commits, na.rm = TRUE),
+            .groups = "drop") %>%
+  mutate(group = ifelse(ever_treated == 1,
+                        "Ever-treated", "Matched control"))
+
+ggplot(matched_traj, aes(x = month_idx, y = mean_log,
+                         color = group, group = group)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.5) +
+  labs(x = "Month Index",
+       y = "Mean log(1 + Commits)",
+       color = NULL,
+       title = "Pre-Treatment Trajectories After PSM",
+       caption = paste0("Months 1-", earliest_treat_idx - 1,
+                        ". Matched 1:3 NN on propensity score.")) +
+  theme_panel()
+```
+
+## Borusyak DiD on PSM-Matched Panel
+
+```{r matched_borusyak}
+did_data_matched <- did_data %>% filter(repo_id %in% matched_ids)
+
+did_matched <- did_imputation(
+  data = did_data_matched,
+  yname = "log_commits",
+  gname = "treatment_cohort",
+  tname = "month_idx",
+  idname = "repo_id",
+  first_stage = ~ log_contributors + log_stars + log_issues +
+                  log_forks + log_releases,
+  cluster_var = "repo_id"
+)
+
+cat("=== Borusyak DiD on PSM-Matched Sample: Static ATT ===\n")
+print(did_matched)
+```
+
+```{r matched_borusyak_es}
+did_matched_es <- did_imputation(
+  data = did_data_matched,
+  yname = "log_commits",
+  gname = "treatment_cohort",
+  tname = "month_idx",
+  idname = "repo_id",
+  first_stage = ~ log_contributors + log_stars + log_issues +
+                  log_forks + log_releases,
+  horizon = TRUE,
+  pretrends = TRUE,
+  cluster_var = "repo_id"
+)
+
+cat("=== Borusyak Event Study on PSM-Matched Sample ===\n")
+print(did_matched_es)
+```
+
+```{r matched_esplot, fig.width=8, fig.height=4}
+es_matched_df <- as.data.frame(did_matched_es) %>%
+  mutate(
+    event_time = as.integer(as.character(term)),
+    is_pre = event_time < 0
+  ) %>%
+  filter(event_time >= -12, event_time <= 12)
+
+ggplot(es_matched_df, aes(x = event_time, y = estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = -0.5, linetype = "dashed", color = "grey70") +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.15, fill = "#59A14F") +
+  geom_point(aes(color = is_pre), size = 2) +
+  geom_line(color = "#59A14F", linewidth = 0.6) +
+  scale_color_manual(values = c("TRUE" = "grey50", "FALSE" = "#59A14F"),
+                     labels = c("TRUE" = "Pre-treatment",
+                                "FALSE" = "Post-treatment"),
+                     name = NULL) +
+  labs(x = "Months Since AI Tool Adoption",
+       y = "Estimated Effect on log(1 + Commits)",
+       title = "Borusyak DiD Event Study: PSM-Matched Sample",
+       caption = "95% CIs. Matched 1:3 NN on propensity score + time-varying covariates.") +
+  theme_panel()
+```
+
+The PSM-matched panel restricts the control group to the repos most
+comparable to the treated units on pre-treatment observables.  If the
+Borusyak ATT is similar across the full, trimmed, and PSM-matched samples,
+the control group composition does not drive the result.  If the estimates
+diverge, the parallel trends assumption may be sensitive to which controls
+are included --- and the matched estimate is more credible because it
+relies on a more comparable control group.
+
+# Summary Comparison
+
+```{r summary_table}
+# Collect all estimates into a comparison table
+results <- data.frame(
+  Design = character(),
+  Estimate = numeric(),
+  SE = numeric(),
+  CI_low = numeric(),
+  CI_high = numeric(),
+  N_obs = integer(),
+  stringsAsFactors = FALSE
+)
+
+# Stage 0: Naive before/after
+results <- rbind(results, data.frame(
+  Design = "Stage 0: Naive before/after",
+  Estimate = mean(ba$diff_log),
+  SE = sd(ba$diff_log) / sqrt(nrow(ba)),
+  CI_low = t_ba$conf.int[1],
+  CI_high = t_ba$conf.int[2],
+  N_obs = nrow(ba)
+))
+
+# Stage 1: ITS level shift
+its_ct <- summary(its_model)$coeftable
+its_idx <- which(rownames(its_ct) == "post")
+results <- rbind(results, data.frame(
+  Design = "Stage 1: ITS (level shift)",
+  Estimate = its_ct[its_idx, "Estimate"],
+  SE = its_ct[its_idx, "Std. Error"],
+  CI_low = its_ct[its_idx, "Estimate"] - 1.96 * its_ct[its_idx, "Std. Error"],
+  CI_high = its_ct[its_idx, "Estimate"] + 1.96 * its_ct[its_idx, "Std. Error"],
+  N_obs = nobs(its_model)
+))
+
+# Stage 2: TWFE (no covariates)
+tw_ct <- summary(twfe_base)$coeftable
+tw_idx <- which(rownames(tw_ct) == "treated")
+results <- rbind(results, data.frame(
+  Design = "Stage 2: TWFE (no covariates)",
+  Estimate = tw_ct[tw_idx, "Estimate"],
+  SE = tw_ct[tw_idx, "Std. Error"],
+  CI_low = tw_ct[tw_idx, "Estimate"] - 1.96 * tw_ct[tw_idx, "Std. Error"],
+  CI_high = tw_ct[tw_idx, "Estimate"] + 1.96 * tw_ct[tw_idx, "Std. Error"],
+  N_obs = nobs(twfe_base)
+))
+
+# Stage 3: TWFE (with covariates)
+twc_ct <- summary(twfe_cov)$coeftable
+twc_idx <- which(rownames(twc_ct) == "treated")
+results <- rbind(results, data.frame(
+  Design = "Stage 3: TWFE (with covariates)",
+  Estimate = twc_ct[twc_idx, "Estimate"],
+  SE = twc_ct[twc_idx, "Std. Error"],
+  CI_low = twc_ct[twc_idx, "Estimate"] - 1.96 * twc_ct[twc_idx, "Std. Error"],
+  CI_high = twc_ct[twc_idx, "Estimate"] + 1.96 * twc_ct[twc_idx, "Std. Error"],
+  N_obs = nobs(twfe_cov)
+))
+
+# Stage 4: Borusyak (full sample)
+bj <- as.data.frame(did_static)
+results <- rbind(results, data.frame(
+  Design = "Stage 4: Borusyak DiD (full)",
+  Estimate = bj$estimate[1],
+  SE = bj$std.error[1],
+  CI_low = bj$conf.low[1],
+  CI_high = bj$conf.high[1],
+  N_obs = nrow(did_data)
+))
+
+# Stage 4: Borusyak (trimmed)
+bt <- as.data.frame(did_trim)
+results <- rbind(results, data.frame(
+  Design = "Stage 4: Borusyak DiD (trimmed)",
+  Estimate = bt$estimate[1],
+  SE = bt$std.error[1],
+  CI_low = bt$conf.low[1],
+  CI_high = bt$conf.high[1],
+  N_obs = nrow(did_data_trim)
+))
+
+# Stage 4: Borusyak (matched)
+bm <- as.data.frame(did_matched)
+results <- rbind(results, data.frame(
+  Design = "Stage 4: Borusyak DiD (matched)",
+  Estimate = bm$estimate[1],
+  SE = bm$std.error[1],
+  CI_low = bm$conf.low[1],
+  CI_high = bm$conf.high[1],
+  N_obs = nrow(did_data_matched)
+))
+
+results %>%
+  mutate(
+    Estimate = sprintf("%.3f", Estimate),
+    SE       = sprintf("%.3f", SE),
+    `95% CI` = sprintf("[%.3f, %.3f]", CI_low, CI_high),
+    `N obs`  = format(N_obs, big.mark = ",")
+  ) %>%
+  select(Design, Estimate, SE, `95% CI`, `N obs`) %>%
+  kable(caption = "Summary: All Estimates of the ATT of AI Tool Adoption on log(1 + Monthly Commits)") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r summary_plot, fig.width=8, fig.height=4}
+results$Design <- factor(results$Design, levels = rev(results$Design))
+
+ggplot(results, aes(x = Estimate, y = Design)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_pointrange(aes(xmin = CI_low, xmax = CI_high),
+                  size = 0.6, color = "steelblue") +
+  labs(x = "Estimated ATT on log(1 + Monthly Commits)",
+       y = NULL,
+       title = "Comparison of All Estimates",
+       caption = "95% CIs. Progression from naive to credible designs.") +
+  theme_panel() +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank())
+```
+
+# Interpretation
+
+The progression from Stage 0 to Stage 4 illustrates the tutorial's core
+message: *the design matters more than the estimator*.
+
+- **Stages 0--1** (no control group) produce estimates that confound the
+  treatment effect with secular trends.  They are the longitudinal analogue
+  of the bivariate cross-sectional comparison.
+
+- **Stages 2--3** (TWFE DiD) absorb time-invariant confounders (repo FE) and
+  common shocks (month FE).  Adding time-varying covariates in Stage 3
+  addresses repo-specific shocks.  However, TWFE is biased under staggered
+  treatment with heterogeneous effects.
+
+- **Stage 4** (Borusyak et al.) resolves the staggered-treatment bias and
+  provides clean event-study estimates.  The robustness of the ATT across
+  the full, trimmed, and matched samples addresses concerns about control
+  group composition.
+
+The event-study plots across Stages 2--4 serve a dual purpose: they test the
+parallel trends assumption (pre-treatment coefficients near zero) *and*
+visualise the dynamic treatment effect (post-treatment coefficients).
+
+Compare the final Borusyak ATT with the cross-sectional coefficients from
+the companion notebook.  The cross-sectional M_pretreat coefficient reflects
+both the causal effect and selection bias (productive repos adopt AI tools).
+The longitudinal ATT, by absorbing within-repo variation, strips away the
+selection component --- the difference between the two estimates is an
+upper bound on the magnitude of selection bias in the cross-section.
