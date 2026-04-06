@@ -76,7 +76,7 @@
   \vspace{0.6cm}
   \hspace{2.4cm}%
   \begin{minipage}{0.73\textwidth}
-    {\small 17-803 Empirical Methods Guest Lecture}\\[0.8cm]
+    {\small 17-803 Empirical Methods Guest Lecture}\\[1.2cm]
     {\fontsize{22}{22}\selectfont An Introduction to Causal Inference}\\[0.3cm]
     {\fontsize{22}{22}\selectfont on Observational Data}\\[0.1cm]
     \rule{0.55\textwidth}{0.5pt}\\[0.3cm]
@@ -121,7 +121,7 @@
 
 % ---------- Slide 3 ----------------------------------------------------------
 \begin{frame}{The intervention-outcome problem}
-\begin{itemize}\setlength\itemsep{0.8em}
+\begin{itemize}\setlength\itemsep{1.2em}
   \item Will attending CMU lead to higher incomes \redt{for you} in the future?
   \item What is the \redt{marginal disadvantage of you being women} in the tech industry?
   \item Will using Rust or Haskell \redt{help you write less bugs} in a real software project?
@@ -130,29 +130,33 @@
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 5 ----------------------------------------------------------
+% ---------- Slide 4 ----------------------------------------------------------
 \begin{frame}{Why are intervention-outcome questions hard to answer?}
 \begin{itemize}\setlength\itemsep{0.3em}
   \item Will attending CMU lead to higher incomes \redt{for you} in the future?
     \begin{itemize}
       \item Need two ``you''s, \textbf{the only difference} is one attending CMU and one not
     \end{itemize}
+    \vspace{1em}
   \item What is the \redt{marginal disadvantage of you being women} in the tech industry?
     \begin{itemize}
       \item Need two ``you''s, \textbf{the only difference} is one being women and one being not
     \end{itemize}
+    \vspace{1em}
   \item Will using Rust or Haskell \redt{help you write less bugs} in a real software project?
     \begin{itemize}
       \item Need two ``you''s working on two projects, \textbf{the only difference} is one written in Rust and the other written in (maybe) C++
     \end{itemize}
+    \vspace{1em}
   \item Will using Claude Code \redt{help you or your project} write better code or worse code?
     \begin{itemize}
       \item Need two ``you''s working on two projects, \textbf{the only difference} is one uses Claude Code and the other does not use Claude Code
     \end{itemize}
+    \vspace{1em}
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 6 ----------------------------------------------------------
+% ---------- Slide 5 ----------------------------------------------------------
 \begin{frame}{The fundamental problem: \redt{No counterfactuals!}}
 \begin{itemize}\setlength\itemsep{0.3em}
   \item Mathematically speaking:
@@ -173,7 +177,7 @@
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 7 ----------------------------------------------------------
+% ---------- Slide 6 ----------------------------------------------------------
 \begin{frame}{Can you estimate counterfactuals through na\"ive comparisons?}
 \begin{itemize}
   \item \textbf{Example Question} (note the change into population framing):
@@ -199,47 +203,138 @@
 People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Really}?
 \end{frame}
 
-% ---------- Slide 8 ----------------------------------------------------------
+% ---------- Slide 7 ----------------------------------------------------------
 \begin{frame}{Decomposing \textbf{selection bias} --- And how to get rid of it?}
-% Board / live derivation slide
-\vfill
-\centering
-{\large\color{gray} [Board work: selection bias decomposition]}
-\vfill
+
+\vspace{-0.2em}
+\begin{itemize}\setlength\itemsep{0.25em}
+  \item \textbf{Selection bias}: CMU students would earn more \redt{even without CMU}
+    \begin{itemize}
+      \item Higher motivation, wealth, academic ability $\Rightarrow$ na\"ive 3$\times$ gap is inflated
+    \end{itemize}
+  \item \textbf{Mathematical decomposition}: Let $D_i\in\{0,1\}$ be whether unit $i$ is treated (e.g.\ attends CMU).
+  The \textbf{na\"ive comparison} we are tempted to make:
+  \[
+    \underbrace{E[Y_i\mid D_i{=}1] - E[Y_i\mid D_i{=}0]}_{\text{na\"ive estimator}}
+    \;=\; E[Y_i(1)\mid D_i{=}1] \;-\; E[Y_i(0)\mid D_i{=}0]
+  \]
+
+  \vspace{-0.2em}
+  \noindent Add and subtract $E[Y_i(0)\mid D_i{=}1]$ (the \emph{unobserved} baseline of treated units):
+  \[
+    =\;\underbrace{E[Y_i(1)-Y_i(0)\mid D_i{=}1]}_{\text{ATT (true causal effect)}}
+    \;+\;
+    \underbrace{E[Y_i(0)\mid D_i{=}1] - E[Y_i(0)\mid D_i{=}0]}_{\redt{\text{selection bias}}}
+  \]
+  \item \textbf{To eliminate selection bias}: We need $E[Y_i(0)\mid D_i{=}1] = E[Y_i(0)\mid D_i{=}0]$
+\end{itemize}
+
+\end{frame}
+
+% ---------- Slide 8 ----------------------------------------------------------
+\begin{frame}{\redt{Randomization} + \redt{big numbers} eliminates selection bias}
+
+\textbf{Randomization}: Assign treatment $D_i$ by a coin flip, \emph{independently} of everything in $i$:
+\[
+  D_i \;\perp\!\!\!\perp\; \bigl(Y_i(0),\, Y_i(1)\bigr)
+\]
+
+\vspace{-0.5em}
+\noindent This independence kills selection bias immediately:
+\[
+  E[Y_i(0)\mid D_i{=}1] \;=\; E[Y_i(0)\mid D_i{=}0] \;=\; E[Y_i(0)]
+\]
+
+\vspace{-0.5em}
+\noindent So the na\"ive estimator \emph{becomes} the ATE:
+\[
+  \underbrace{E[Y_i\mid D_i{=}1] - E[Y_i\mid D_i{=}0]}_{\text{na\"ive estimator}}
+  \;=\; \underbrace{E[Y_i(1)-Y_i(0)]}_{\text{ATE}} \;+\; \underbrace{0}_{\text{bias} = 0}
+\]
+
+\vspace{-0.5em}
+\begin{itemize}\setlength\itemsep{0.25em}
+  \item \textbf{Big numbers}: sample averages $\hat{E}[\cdot] \xrightarrow{n\to\infty} E[\cdot]$ by the law of large numbers
+  \item With enough units, $\bar{Y}_{\text{treated}} - \bar{Y}_{\text{control}}$ reliably estimates ATE (Fisher, Neyman, 1930s)
+\end{itemize}
+
 \end{frame}
 
 % ---------- Slide 9 ----------------------------------------------------------
-\begin{frame}{One way of eliminating selection bias: \redt{Randomization} + \redt{Big Numbers}}
-% Board / live derivation slide
-\vfill
-\centering
-{\large\color{gray} [Board work: randomization eliminates selection bias]}
-\vfill
-\end{frame}
-
-% ---------- Slide 10 ---------------------------------------------------------
-\begin{frame}{Well, can you run an experiment on attending vs.\ not attending CMU?}
+\begin{frame}{Well, can you really run a randomized controlled experiment on attending vs.\ not attending CMU?}
 
 % Experiment flow diagram
 \centering
-\includegraphics[width=0.85\linewidth]{figures/experiment-cmu.png}
+\includegraphics[width=\linewidth]{figures/experiment-cmu.png}
 
-\vspace{0.3cm}
 \begin{itemize}
-  \item For a broad class of questions, experiments are just \redt{infeasible/unethical/too expensive}; this motivates an entire field of causal inference on \textbf{observational data}!
+  \item For a broad range of questions, experiments are just \redt{infeasible/unethical/too expensive}; this motivates an entire field of causal inference on \textbf{observational data}!
+\end{itemize}
+\end{frame}
+
+% ---------- Slide 10 ---------------------------------------------------------
+\begin{frame}{What about regressions we have learned in this class?}
+
+% ---- Upper half: raw data table ----
+\begin{center}
+{\fontsize{10}{10}\selectfont
+\begin{tabular}{crrrcrr}
+  \toprule
+  $i$ & GPA & SAT & Parent inc.\ (\$k) & CMU ($D_i$) & Income $Y_i$ (\$k) \\
+  \midrule
+   1 & 3.9 & 1520 & 180 & 1 & 119 \\
+   2 & 3.7 & 1480 &  95 & 1 & 116 \\
+   \vdots & \vdots & \vdots & \vdots & \vdots & \vdots \\
+   998 & 2.9 & 1180 &  55 & 0 &  62 \\
+   999 & 2.7 & 1150 &  48 & 0 &  57 \\
+  1000 & 3.1 & 1290 &  72 & 0 &  73 \\
+  \bottomrule
+\end{tabular}
+}
+\end{center}
+
+\vspace{0.2em}
+\noindent\rule{\textwidth}{0.3pt}
+\vspace{-0.5em}
+
+% ---- Lower half: regression specification ----
+\begin{itemize}
+  \item \textbf{OLS regression} controlling for all observed confounders:
+  \vspace{-0.5em}
+  \[
+    Y_i \;=\; \alpha + \beta\, D_i + \gamma_1\,\mathrm{GPA}_i + \gamma_2\,\mathrm{SAT}_i + \gamma_3\,\mathrm{ParentInc}_i + \varepsilon_i
+  \]\vspace{-2em}
+  \item Without controls: $\hat\beta \approx \$80$k \redt{(selection bias!)}, With controls: $\hat\beta \approx \$20$k
 \end{itemize}
 \end{frame}
 
 % ---------- Slide 11 ---------------------------------------------------------
-\begin{frame}{What about regressions we have learned in this class?}
-\vfill
-\centering
-{\large\color{gray} [Board work]}
-\vfill
+\begin{frame}{The \textbf{conditional ignorability} assumption (CIA)}
+
+\textbf{CIA} (a.k.a.\ \emph{unconfoundedness}, \emph{selection on observables}):
+\[
+  \bigl\{Y_i(0),\,Y_i(1)\bigr\} \;\perp\!\!\!\perp\; D_i \;\Big|\; X_i
+\]
+\textit{Conditional on observed covariates $X_i$, treatment assignment is as good as random.}
+
+\vspace{0.3em}
+\textbf{Key consequence} (MHE Ch.\ 3, \S3.3): when CIA + \emph{common support} ($0 < P(D_i{=}1\mid X_i) < 1$) hold,
+\[
+  \underbrace{E\bigl[Y_i(1) - Y_i(0)\bigr]}_{\text{ATE}}
+  \;=\;
+  E\!\Bigl[\underbrace{E[Y_i \mid D_i{=}1,\, X_i] - E[Y_i \mid D_i{=}0,\, X_i]}_{\text{within-group comparison at each }X_i}\Bigr]
+\]
+
+\begin{itemize}\setlength\itemsep{0.25em}
+  \item \textbf{Intuition}: at every value $X_i = x$, CIA makes $D_i$ random $\Rightarrow$ within-cell comparison is unbiased $\Rightarrow$ average over $x$ gives ATE
+  \item \redt{CIA is the key identifying assumption} behind OLS, matching, IPW, and most observational estimators
+  \item \textbf{Reference}: Angrist \& Pischke, \textit{Mostly Harmless Econometrics} (2009), Ch.\ 3 (esp.\ \S3.2--3.3)
+\end{itemize}
+
 \end{frame}
 
 % ---------- Slide 12 ---------------------------------------------------------
-\begin{frame}{The \textbf{conditional ignorability} assumption for causal identification}
+\begin{frame}{How to justify the conditional ignorability assumption?}
 \vfill
 \centering
 {\large\color{gray} [Board work]}
@@ -247,28 +342,14 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \end{frame}
 
 % ---------- Slide 13 ---------------------------------------------------------
-{
-\renewcommand{\footertext}{An Introduction to Causal Inference for Empirical Studies in Computer Science}
-\begin{frame}{How to justify the conditional ignorability assumption?}
-\vfill
-\centering
-{\large\color{gray} [Board work]}
-\vfill
-\end{frame}
-}
-
-% ---------- Slide 14 ---------------------------------------------------------
-{
-\renewcommand{\footertext}{An Introduction to Causal Inference for Empirical Studies in Computer Science}
 \begin{frame}{Directed acyclic graphs (DAGs), confounders, colliders, and mediators}
 \vfill
 \centering
 {\large\color{gray} [Board work: DAG structures]}
 \vfill
 \end{frame}
-}
 
-% ---------- Slide 15 ---------------------------------------------------------
+% ---------- Slide 14 ---------------------------------------------------------
 \begin{frame}{Practical considerations and limitations of DAGs}
 \vfill
 \centering
@@ -276,7 +357,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 16 ---------------------------------------------------------
+% ---------- Slide 15 ---------------------------------------------------------
 \begin{frame}{\textbf{Alternative A:} Design-based identification}
 \vfill
 \centering
@@ -284,7 +365,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 17 ---------------------------------------------------------
+% ---------- Slide 16 ---------------------------------------------------------
 % This slide had no title visible, just the footer
 \begin{frame}{}
 \vfill
@@ -293,7 +374,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 18 ---------------------------------------------------------
+% ---------- Slide 17 ---------------------------------------------------------
 \begin{frame}{\textbf{Alternative B:} Machine-learning-powered causal discovery}
 \vfill
 \centering
@@ -301,7 +382,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 19 ---------------------------------------------------------
+% ---------- Slide 18 ---------------------------------------------------------
 \begin{frame}{\textbf{Summary:} The Modern Causal Inference Weaponry}
 \vfill
 \centering
@@ -309,7 +390,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 20 ---------------------------------------------------------
+% ---------- Slide 19 ---------------------------------------------------------
 \begin{frame}{Example A: RDD on College Education}
 \vfill
 \centering
@@ -317,7 +398,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 21 ---------------------------------------------------------
+% ---------- Slide 20 ---------------------------------------------------------
 \begin{frame}{Example B: The Impact of Gender in Tech}
 \vfill
 \centering
@@ -325,7 +406,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 22 ---------------------------------------------------------
+% ---------- Slide 21 ---------------------------------------------------------
 \begin{frame}{Example C: The impact of using Rust/Haskell}
 \vfill
 \centering
@@ -333,7 +414,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 23 ---------------------------------------------------------
+% ---------- Slide 22 ---------------------------------------------------------
 \begin{frame}{Example D: DiD on AI Coding Tool Adoption}
 \vfill
 \centering
@@ -341,7 +422,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Outline (recap) --------------------------------------------------
+% ---------- Slide 23 ----------------------------------------------------------
 \begin{frame}{Recap}
 \begin{enumerate}\setlength\itemsep{0.4em}
   \item Motivation: The intervention-outcome problem
@@ -362,7 +443,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \end{enumerate}
 \end{frame}
 
-% ---------- Further Readings -------------------------------------------------
+% ---------- Slide 24 ----------------------------------------------------------
 \begin{frame}{Further Readings and Recommendations}
 \begin{columns}[T]
   \column{0.3\textwidth}
@@ -387,6 +468,7 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
     \item \textbf{Claude Opus 4.6 and its friends}
       \begin{itemize}
         \item Tremendously good teacher and coworker
+        \item Great for brainstorming, learning, and planning
       \end{itemize}
   \end{itemize}
 \end{columns}
