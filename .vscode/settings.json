@@ -33,6 +33,10 @@
             "tools": ["pdflatex", "bibtex", "pdflatex", "pdflatex"]
         },
         {
+            "name": "pdflatex x2",
+            "tools": ["pdflatex", "pdflatex"]
+        },
+        {
             "name": "pdflatex only",
             "tools": ["pdflatex"]
         },
@@ -41,7 +45,7 @@
             "tools": ["tectonic"]
         }
     ],
-    "latex-workshop.latex.recipe.default": "first",
+    "latex-workshop.latex.recipe.default": "lastUsed",
     "latex-workshop.latex.autoBuild.run": "onSave",
     "latex-workshop.latex.autoClean.run": "onBuilt",
     "latex-workshop.latex.autoClean.cleanAndRetry.enabled": true,

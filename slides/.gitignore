@@ -1,0 +1,18 @@
+# LaTeX temporary/auxiliary files
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.bbl
+*.blg
+*.run.xml
+*.bcf
+
+# Compiled PDFs
+*.pdf
