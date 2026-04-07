@@ -109,7 +109,6 @@
 \end{frame}
 }
 
-% ---------- Slide 2 ----------------------------------------------------------
 \begin{frame}{What you have learned from this class so far}
 \begin{itemize}\setlength\itemsep{0.4em}
   \item Research Questions \& Theory Proposition
@@ -129,7 +128,6 @@
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 3 ----------------------------------------------------------
 \begin{frame}{The intervention-outcome problem}
 \begin{itemize}\setlength\itemsep{1.2em}
   \item Will attending CMU lead to higher incomes \redt{for you} in the future?
@@ -140,7 +138,6 @@
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 4 ----------------------------------------------------------
 \begin{frame}{Why are intervention-outcome questions hard to answer?}
 \begin{itemize}\setlength\itemsep{0.3em}
   \item Will attending CMU lead to higher incomes \redt{for you} in the future?
@@ -166,7 +163,6 @@
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 5 ----------------------------------------------------------
 \begin{frame}{The fundamental problem: \redt{No counterfactuals!}}
 \begin{itemize}\setlength\itemsep{0.3em}
   \item Mathematically speaking:
@@ -187,7 +183,6 @@
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 6 ----------------------------------------------------------
 \begin{frame}{Can you estimate counterfactuals through na\"ive comparisons?}
 \begin{itemize}
   \item \textbf{Example Question} (note the change into population framing):
@@ -213,7 +208,6 @@
 People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Really}?
 \end{frame}
 
-% ---------- Slide 7 ----------------------------------------------------------
 \begin{frame}{Decomposing \textbf{selection bias} --- And how to get rid of it?}
 
 \vspace{-0.2em}
@@ -241,7 +235,6 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 
 \end{frame}
 
-% ---------- Slide 8 ----------------------------------------------------------
 \begin{frame}{\redt{Randomization} + \redt{big numbers} eliminates selection bias}
 
 \textbf{Randomization}: Assign treatment $D_i$ by a coin flip, \emph{independently} of everything in $i$:
@@ -270,7 +263,6 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 
 \end{frame}
 
-% ---------- Slide 9 ----------------------------------------------------------
 \begin{frame}{Well, can you really run a randomized controlled experiment on attending vs.\ not attending CMU?}
 
 % Experiment flow diagram
@@ -282,7 +274,6 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 10 ---------------------------------------------------------
 \begin{frame}{What about regressions we have learned in this class?}
 
 % ---- Upper half: raw data table ----
@@ -318,7 +309,6 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 11 ---------------------------------------------------------
 \begin{frame}{Can I interpret the regression coefficient as the causal effect?}
 
 \textbf{Intuition}: OLS implicitly compares units \emph{with similar covariates}.\\[0.3em]
@@ -341,7 +331,6 @@ $\hat\beta$ \textbf{has a causal interpretation} when the following \redt{four c
 \end{frame}
 
 \begin{comment}
-% ---------- Slide 12 ---------------------------------------------------------
 \begin{frame}{The conditional ignorability assumption (CIA)}
 
 \textbf{CIA} (a.k.a.\ \emph{unconfoundedness}, \emph{selection on observables}):
@@ -367,7 +356,6 @@ $\hat\beta$ \textbf{has a causal interpretation} when the following \redt{four c
 \end{frame}
 \end{comment}
 
-% ---------- Slide 13 ---------------------------------------------------------
 \begin{frame}{How do I know that the above conditions hold?}
 
 \textbf{Key insight}: The four conditions \redt{cannot be verified from data alone}.
@@ -424,7 +412,6 @@ You need \textbf{theory} --- substantive knowledge about \emph{how} variables ar
 
 \end{frame}
 
-% ---------- Slide 13b: Example DAG -------------------------------------------
 \begin{frame}{Example DAG: Does attending CMU raise future income?}
 
 \begin{center}
@@ -471,7 +458,6 @@ You need \textbf{theory} --- substantive knowledge about \emph{how} variables ar
 
 \end{frame}
 
-% ---------- Slide 14 ---------------------------------------------------------
 \begin{frame}{Practical considerations and limitations}
 
 \textbf{DAGs are useful for\ldots}
@@ -496,7 +482,6 @@ Two researchers with different DAGs $\Rightarrow$ different conclusions from the
 \end{itemize}
 \end{frame}
 
-% ---------- Slide: Snow's Natural Experiment ----------------------------------
 \begin{frame}{The natural experiment idea: John Snow and cholera (1854)}
   \vspace{-0.3em}
   \begin{columns}[T]
@@ -535,7 +520,6 @@ Two researchers with different DAGs $\Rightarrow$ different conclusions from the
   \end{columns}
   \end{frame}
 
-% ---------- Slide 16 ---------------------------------------------------------
 \begin{frame}{Exploiting natural experiments: Design-based identification}
 
   \begin{center}
@@ -596,7 +580,6 @@ The \redt{credibility revolution} (Angrist \& Pischke, 2010): A shift from ``ass
 from observational data in economics, political science, and public health.
 \end{frame}
 
-% ---------- Slide 15 ---------------------------------------------------------
 \begin{frame}{Overview of design-based identification methods}
 
   \textbf{Core idea}: Instead of controlling for \emph{all} confounders (hard!), find a feature
@@ -615,7 +598,6 @@ from observational data in economics, political science, and public health.
   \end{itemize}
 \end{frame}
 
-% ---------- Slide 19 ---------------------------------------------------------
 \begin{frame}{Example: College eucation and earnings, Hoekstra, 2009}
   \vspace{-1em}
 \begin{columns}[T]
@@ -641,7 +623,7 @@ from observational data in economics, political science, and public health.
 \end{columns}
 \end{frame}
 
-% ---------- Slide 20 ---------------------------------------------------------
+\begin{comment}
 \begin{frame}{Example: Gender bias, Goldin \& Rouse, 2000}
 \vspace{-1em}
 \begin{columns}[T]
@@ -666,8 +648,8 @@ from observational data in economics, political science, and public health.
   \end{itemize}
 \end{columns}
 \end{frame}
+\end{comment}
 
-% ---------- Slide 20b ---------------------------------------------------------
 \begin{frame}{Example: Gender bias, Mengel, Sauermann \& Z\"olitz, 2019}
 \vspace{-1em}
 \begin{columns}[T]
@@ -693,7 +675,31 @@ from observational data in economics, political science, and public health.
 \end{columns}
 \end{frame}
 
-% ---------- Slide 21 ---------------------------------------------------------
+\begin{frame}{Example: Programming languages, Furia et al., 2023}
+\vspace{-1em}
+\begin{columns}[T]
+  \column{0.3\textwidth}
+  \centering
+  \paperthumb{figures/furia-2023.pdf}
+
+  \column{0.67\textwidth}
+  \textbf{Question}: Does the choice of programming language (C++, Java, Python) \emph{cause} better or worse performance in coding competitions?
+
+  \vspace{0.4em}
+  \textbf{Design}: \redt{DAG-based causal modeling}
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Uses Google Code Jam data across multiple years with repeated participants
+    \item Builds a causal DAG to distinguish confounders and select the \emph{causally consistent} statistical model
+  \end{itemize}
+
+  \vspace{0.4em}
+  \textbf{Finding}:
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Correlational and causal analyses give \redt{opposite conclusions}: correlational says Python $\to$ better; causal says C++ $\to$ better, Python $\to$ \textbf{worse}
+  \end{itemize}
+\end{columns}
+\end{frame}
+
 \begin{frame}{Example: The impact of AI coding tools, He et al., 2025}
 \vspace{-1em}
 \begin{columns}[T]
@@ -719,7 +725,6 @@ from observational data in economics, political science, and public health.
 \end{columns}
 \end{frame}
 
-% ---------- Slide 17 ---------------------------------------------------------
 \begin{frame}{What else is out there?}
 
 \textbf{A.\ ``I don't care about averages. Tell me \redt{for whom} the effect holds.''}
@@ -745,7 +750,6 @@ from observational data in economics, political science, and public health.
 You still need a credible design so that ML, causal discovery, and sensitivity analysis \redt{make sense}.
 \end{frame}
 
-% ---------- Slide 23 ----------------------------------------------------------
 \begin{frame}{Recap}
 \begin{enumerate}\setlength\itemsep{0.4em}
   \item Motivation: The intervention-outcome problem
@@ -763,7 +767,6 @@ You still need a credible design so that ML, causal discovery, and sensitivity a
 \end{enumerate}
 \end{frame}
 
-% ---------- Slide 24 ----------------------------------------------------------
 \begin{frame}{Further Readings and Recommendations}
 \begin{columns}[T]
   \column{0.3\textwidth}
