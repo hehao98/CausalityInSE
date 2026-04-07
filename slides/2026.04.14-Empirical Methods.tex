@@ -496,21 +496,123 @@ Two researchers with different DAGs $\Rightarrow$ different conclusions from the
 \end{itemize}
 \end{frame}
 
-% ---------- Slide 15 ---------------------------------------------------------
-\begin{frame}{\textbf{Alternative:} Design-based identification}
-\vfill
-\centering
-{\large\color{gray} [Board work]}
-\vfill
-\end{frame}
+% ---------- Slide: Snow's Natural Experiment ----------------------------------
+\begin{frame}{The natural experiment idea: John Snow and cholera (1854)}
+  \vspace{-0.3em}
+  \begin{columns}[T]
+    \column{0.32\textwidth}
+    \centering
+    \begin{tikzpicture}
+      % DAG for Snow's design
+      \node[draw, rounded corners=2pt, minimum width=1.6cm, minimum height=0.5cm, align=center, font=\small]
+        (W) at (0, 2) {Water\\[-2pt]company};
+      \node[draw, rounded corners=2pt, minimum width=1.6cm, minimum height=0.5cm, align=center, font=\small, fill=creambar]
+        (D) at (0, 0) {Contaminated\\[-2pt]water};
+      \node[draw, rounded corners=2pt, minimum width=1.6cm, minimum height=0.5cm, align=center, font=\small, fill=creambar]
+        (Y) at (0, -2) {Cholera\\[-2pt]deaths};
+      \draw[-{Stealth[length=4pt]}, thick] (W) -- (D);
+      \draw[-{Stealth[length=4pt]}, thick, emphred, line width=1.2pt] (D) -- (Y);
+    \end{tikzpicture}
+  
+    \vspace{0.5em}
+    {\scriptsize Water company assignment was \redt{quasi-random} --- households did not choose their supplier.}
+  
+    \column{0.67\textwidth}
+    \vspace{-0.3em}
+    \textbf{Context}: London, 1854. Cholera was believed to spread through bad air, not contaminated water.
+  
+    \vspace{0.3em}
+    \textbf{Snow's insight}: Two water companies served overlapping London districts --- one drew water upstream (clean), the other downstream (contaminated).
+  
+    \vspace{0.3em}  
+    \textbf{Key design feature}:
+    \begin{itemize}\setlength\itemsep{0.15em}
+      \item Households on the \emph{same street} received water from \emph{different} companies --- and assignment was determined by historical infrastructure, \redt{not by household choice}
+      \item \textbf{Natural experiment}: treatment (water) is as-if-random
+    \end{itemize}
+  
+    \textbf{Result}: Death rate was \textbf{8$\times$ higher} in households supplied with contaminated water
+  \end{columns}
+  \end{frame}
 
 % ---------- Slide 16 ---------------------------------------------------------
-% This slide had no title visible, just the footer
-\begin{frame}{}
-\vfill
-\centering
-{\large\color{gray} [Board work / continuation]}
-\vfill
+\begin{frame}{Exploiting natural experiments: Design-based identification}
+
+  \begin{center}
+    \begin{tikzpicture}[
+        x=1.4cm,  % compact: upper/lower labels overlap horizontally
+        every node/.style={font=\scriptsize, align=center},
+        milestone/.style={circle, fill=black, inner sep=1.5pt},
+        above label/.style={anchor=south, yshift=4pt},
+        below label/.style={anchor=north, yshift=-4pt},
+      ]
+
+      % --- Timeline axis ---
+      \draw[-{Stealth[length=4pt]}, thick]
+        (-0.5, 0) -- (7.8, 0);
+
+      % --- Milestones (evenly spaced, labels alternate above/below) ---
+
+      \node[milestone] (n1) at (0, 0) {};
+      \node[above label, text width=2.2cm] at (n1)
+        {Snow (1853)\\[-1pt]{\tiny Cholera \& water}\\[-1pt]{\tiny Natural experiment}};
+
+      \node[milestone] (n2) at (1, 0) {};
+      \node[below label, text width=2.2cm] at (n2)
+        {Wright (1928)\\[-1pt]{\tiny Instrumental}\\[-1pt]{\tiny variables}};
+
+      \node[milestone] (n3) at (2, 0) {};
+      \node[above label, text width=2.6cm] at (n3)
+        {Thistlethwaite \&\\[-1pt]Campbell (1960)\\[-1pt]{\tiny Regression}\\[-1pt]{\tiny discontinuity}};
+
+      \node[milestone] (n4) at (3, 0) {};
+      \node[below label, text width=2.2cm] at (n4)
+        {Mundlak (1961)\\[-1pt]{\tiny Panel fixed}\\[-1pt]{\tiny effects}};
+
+      \node[milestone] (n5) at (4, 0) {};
+      \node[above label, text width=2.2cm] at (n5)
+        {Ashenfelter \&\\[-1pt]Card (1985)\\[-1pt]{\tiny Difference-in-}\\[-1pt]{\tiny differences}};
+
+      \node[milestone] (n6) at (5, 0) {};
+      \node[below label, text width=2.2cm] at (n6)
+        {Angrist \&\\[-1pt]Imbens (1994)\\[-1pt]{\tiny LATE framework}};
+
+      \node[milestone] (n7) at (6, 0) {};
+      \node[above label, text width=2.6cm] at (n7)
+        {\textbf{Credibility}\\[-1pt]\textbf{Revolution}\\[-1pt]{\tiny Angrist \& Pischke, 2010}};
+
+      \node[milestone, fill=emphred, inner sep=2pt] (n8) at (7, 0) {};
+      \node[below label, text width=5cm, text=emphred] at (n8)
+        {\textbf{Nobel Prize}\\[-1pt]{\tiny Card, Angrist,}\\[-1pt]{\tiny Imbens (2021)}\\[-1pt]{\tiny ``for their methodological contributions}\\[-1pt]{\tiny to the analysis of causal relationships''}};
+
+    \end{tikzpicture}
+    \end{center}
+
+\vspace{0.5em}
+The \redt{credibility revolution} (Angrist \& Pischke, 2010): A shift from ``assume all confounders are controlled'' to ``let the research design do the identification''
+
+\vspace{0.5em}
+\textbf{Impact}: Design-based identification methods are now the \redt{gold standard} for causal claims
+from observational data in economics, political science, and public health.
+\end{frame}
+
+% ---------- Slide 15 ---------------------------------------------------------
+\begin{frame}{Overview of design-based identification methods}
+
+  \textbf{Core idea}: Instead of controlling for \emph{all} confounders (hard!), find a feature
+  of the real world that creates \redt{as-if-random} variation in treatment.
+  
+  \vspace{0.5em}
+  \begin{itemize}\setlength\itemsep{0.4em}
+    \item \textbf{Regression Discontinuity (RDD)} --- a sharp cutoff (e.g.\ admission score)
+      splits nearly identical units into treated vs.\ control
+    \item \textbf{Difference-in-Differences (DiD)} --- compare before/after a policy change,
+      relative to a similar group that was \emph{not} affected
+    \item \textbf{Instrumental Variables (IV)} --- find a variable that shifts treatment
+      but has \emph{no direct effect} on the outcome
+    \item \textbf{Panel / Fixed Effects} --- repeated observations on the same unit
+      eliminate \emph{time-invariant} unobserved confounders
+  \end{itemize}
 \end{frame}
 
 % ---------- Slide 19 ---------------------------------------------------------
@@ -622,20 +724,25 @@ Two researchers with different DAGs $\Rightarrow$ different conclusions from the
 
 \textbf{A.\ ``I don't care about averages. Tell me \redt{for whom} the effect holds.''}
 \begin{itemize}\setlength\itemsep{0.15em}
-  \item Use ML to estimate \textbf{heterogeneous treatment effects} across individuals or subgroups (i.e., find who benefits the most).
-  \item Examples: \textbf{causal forests} (Wager \& Athey, 2018), \textbf{double/debiased ML} (Chernozhukov et al., 2018)
+  \item Causal ML: \textbf{causal forests} (Wager \& Athey, 2018), \textbf{double/debiased ML} (Chernozhukov et al., 2018), to estimate \textbf{heterogeneous treatment effects}.
 \end{itemize}
 
 \vspace{0.3em}
-\textbf{B.\ ``\redt{How wrong} would the assumptions need to be to overturn the result?''}
+\textbf{B.\ ``You won't convince me with possible bias that may be negligible. Show me \redt{how strong} would the bias need to be to overturn the result.''}
 \begin{itemize}\setlength\itemsep{0.15em}
-  \item \textbf{Rosenbaum bounds}: quantify how large an unmeasured confounder must be to flip a significant finding --- a stress test for observational results
-  \item \textbf{Oster (2019)}: bounds selection on unobservables by how much $\hat\beta$ moves as you add controls and how $R^2$ changes
+  \item Sensitivity analysis: \textbf{Rosenbaum bounds}, \textbf{Oster (2019)}, etc.
 \end{itemize}
 
 \vspace{0.3em}
-\textbf{\redt{Important}}: these \textbf{supplement, not replace}, the identification strategies above.
-You still need a credible design so that ML and sensitivity analysis \redt{make sense}.
+\textbf{C.\ ``I have really a lot of data. Can the data itself suggest a causal structure \redt{without an a priori theory} (which may be biased in itself)?''}
+\begin{itemize}\setlength\itemsep{0.15em}
+  \item Causal discovery algorithms: \textbf{PC algorithm}, \textbf{FCI}, \textbf{GES}
+    (Spirtes et al., 2000; Chickering, 2002) learn DAG structure from conditional independencies in data.
+\end{itemize}
+
+\vspace{0.3em}
+\textbf{\redt{Important}}: these \textbf{supplement, not replace}, identification.
+You still need a credible design so that ML, causal discovery, and sensitivity analysis \redt{make sense}.
 \end{frame}
 
 % ---------- Slide 23 ----------------------------------------------------------
