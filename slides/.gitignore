@@ -14,5 +14,6 @@
 *.run.xml
 *.bcf
 
-# Compiled PDFs
+# Compiled PDFs (but not figure assets)
 *.pdf
+!figures/*.pdf
