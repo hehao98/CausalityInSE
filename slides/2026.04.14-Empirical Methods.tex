@@ -9,10 +9,11 @@
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, decorations.pathreplacing}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, decorations.pathreplacing, shadows}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage{comment}
 
 % --- Colors ------------------------------------------------------------------
 \definecolor{creambar}{HTML}{FFF2CC}
@@ -41,6 +42,15 @@
 % --- Convenience macros ------------------------------------------------------
 \newcommand{\redt}[1]{\textcolor{emphred}{#1}}
 \newcommand{\bluet}[1]{\textcolor{linkblue}{#1}}
+
+% Paper first-page thumbnail with border and drop shadow
+\newcommand{\paperthumb}[1]{%
+  \begin{tikzpicture}
+    \node[draw=black!80, line width=0.4pt, inner sep=0pt, fill=white,
+          drop shadow={shadow xshift=1.5pt, shadow yshift=-1.5pt, fill=black!40}]
+      {\includegraphics[width=\linewidth, page=1, clip]{#1}};
+  \end{tikzpicture}%
+}
 
 % Placeholder for images: gray box with caption
 \newcommand{\placeholderimg}[3]{%
@@ -76,7 +86,7 @@
   \vspace{0.6cm}
   \hspace{2.4cm}%
   \begin{minipage}{0.73\textwidth}
-    {\small 17-803 Empirical Methods Guest Lecture}\\[1.2cm]
+    {\small 17-803 Empirical Methods Guest Lecture}\\[1.6cm]
     {\fontsize{22}{22}\selectfont An Introduction to Causal Inference}\\[0.3cm]
     {\fontsize{22}{22}\selectfont on Observational Data}\\[0.1cm]
     \rule{0.55\textwidth}{0.5pt}\\[0.3cm]
@@ -123,7 +133,7 @@
 \begin{frame}{The intervention-outcome problem}
 \begin{itemize}\setlength\itemsep{1.2em}
   \item Will attending CMU lead to higher incomes \redt{for you} in the future?
-  \item What is the \redt{marginal disadvantage of you being women} in the tech industry?
+  \item What is the \redt{marginal disadvantage of being a woman} in high-skilled jobs?
   \item Will using Rust or Haskell \redt{help you write less bugs} in a real software project?
   \item Will using Claude Code \redt{help you or your project} write better code or worse code?
   \item \textbf{Why are these questions hard to answer?}
@@ -138,9 +148,9 @@
       \item Need two ``you''s, \textbf{the only difference} is one attending CMU and one not
     \end{itemize}
     \vspace{1em}
-  \item What is the \redt{marginal disadvantage of you being women} in the tech industry?
+  \item What is the \redt{marginal disadvantage of being a woman} in high-skilled jobs?
     \begin{itemize}
-      \item Need two ``you''s, \textbf{the only difference} is one being women and one being not
+      \item Need two ``person''s, \textbf{the only difference} is one being a woman and one not
     \end{itemize}
     \vspace{1em}
   \item Will using Rust or Haskell \redt{help you write less bugs} in a real software project?
@@ -309,7 +319,30 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \end{frame}
 
 % ---------- Slide 11 ---------------------------------------------------------
-\begin{frame}{The \textbf{conditional ignorability} assumption (CIA)}
+\begin{frame}{Can I interpret the regression coefficient as the causal effect?}
+
+\textbf{Intuition}: OLS implicitly compares units \emph{with similar covariates}.\\[0.3em]
+The coefficient $\hat\beta$ on $D_i$ is a \redt{weighted average of within-group comparisons}
+after ``partialing out'' the controls $X_i$ (Frisch--Waugh--Lovell theorem, 1933, 1963)
+
+\vspace{0.6em}
+$\hat\beta$ \textbf{has a causal interpretation} when the following \redt{four conditions} hold:
+\begin{enumerate}\setlength\itemsep{0.3em}
+  \item \textbf{No omitted confounders} --- every variable that affects \emph{both} $D_i$ and $Y_i$ is
+    included in $X_i$.  Otherwise, \redt{omitted-variable bias} (OVB) occurs.
+  \item \textbf{No bad controls} --- you have \emph{not} conditioned on colliders or post-treatment mediators, which can \redt{create or mask} associations.
+  \item \textbf{Correct functional form} --- $E[Y_i \mid D_i, X_i]$ is approximately linear; if the true relationship has strong nonlinearities or interactions, $\hat\beta$ may not recover the ATE.
+  \item \textbf{No reverse causality} --- The outcome $Y_i$ must not feed back into treatment $D_i$.
+\end{enumerate}
+
+\vspace{-0.2em}
+\begin{footnotesize}See Angrist \& Pischke, \textit{Mostly Harmless Econometrics} (2009), Ch.\ 3 for more details.\end{footnotesize}
+
+\end{frame}
+
+\begin{comment}
+% ---------- Slide 12 ---------------------------------------------------------
+\begin{frame}{The conditional ignorability assumption (CIA)}
 
 \textbf{CIA} (a.k.a.\ \emph{unconfoundedness}, \emph{selection on observables}):
 \[
@@ -332,33 +365,139 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \end{itemize}
 
 \end{frame}
-
-% ---------- Slide 12 ---------------------------------------------------------
-\begin{frame}{How to justify the conditional ignorability assumption?}
-\vfill
-\centering
-{\large\color{gray} [Board work]}
-\vfill
-\end{frame}
+\end{comment}
 
 % ---------- Slide 13 ---------------------------------------------------------
-\begin{frame}{Directed acyclic graphs (DAGs), confounders, colliders, and mediators}
-\vfill
-\centering
-{\large\color{gray} [Board work: DAG structures]}
-\vfill
+\begin{frame}{How do I know that the above conditions hold?}
+
+\textbf{Key insight}: The four conditions \redt{cannot be verified from data alone}.
+You need \textbf{theory} --- substantive knowledge about \emph{how} variables are causally related.
+
+\vspace{0.5em}
+\textbf{Directed Acyclic Graphs (DAGs)} are a formal language for encoding causal theory
+\hfill{\small (Pearl, \textit{Causality}, 2009; Spirtes et al., \textit{Causation, Prediction, and Search}, 2000)}
+
+\vspace{-0.3em}
+\begin{center}
+\begin{tikzpicture}[
+    node distance=0.8cm and 1.0cm,
+    every node/.style={font=\footnotesize},
+    dagnode/.style={draw, circle, minimum size=0.6cm, inner sep=1pt},
+    arr/.style={-{Stealth[length=4pt]}, semithick}
+  ]
+  % --- Confounder (fork) ---
+  \node[dagnode] (X1) {$X$};
+  \node[dagnode, below left=of X1] (D1) {$D$};
+  \node[dagnode, below right=of X1] (Y1) {$Y$};
+  \draw[arr] (X1) -- (D1);
+  \draw[arr] (X1) -- (Y1);
+  \draw[arr] (D1) -- (Y1);
+  \node[below=0.2cm of $(D1)!0.5!(Y1)$, font=\footnotesize\bfseries] {Confounder};
+  \node[below=0.55cm of $(D1)!0.5!(Y1)$, font=\scriptsize, text=emphred] {Must control for $X$};
+
+  % --- Mediator (chain) ---
+  \node[dagnode, right=2.8cm of X1] (D2) {$D$};
+  \node[dagnode, right=0.9cm of D2] (M2) {$M$};
+  \node[dagnode, right=0.9cm of M2] (Y2) {$Y$};
+  \draw[arr] (D2) -- (M2);
+  \draw[arr] (M2) -- (Y2);
+  \node[below=0.6cm of M2, font=\footnotesize\bfseries] {Mediator};
+  \node[below=0.95cm of M2, font=\scriptsize, text=emphred, align=center] {Do \emph{not} control for $M$\\[-1pt](blocks the causal path)};
+
+  % --- Collider ---
+  \node[dagnode, right=2.8cm of M2] (D3) {$D$};
+  \node[dagnode, right=1.2cm of D3] (Y3) {$Y$};
+  \node[dagnode, below=0.9cm of $(D3)!0.5!(Y3)$] (C3) {$C$};
+  \draw[arr] (D3) -- (Y3);
+  \draw[arr] (D3) -- (C3);
+  \draw[arr] (Y3) -- (C3);
+  \node[below=0.2cm of C3, font=\footnotesize\bfseries] {Collider};
+  \node[below=0.55cm of C3, font=\scriptsize, text=emphred, align=center] {Do \emph{not} control for $C$\\[-1pt](opens a spurious path)};
+\end{tikzpicture}
+\end{center}
+
+\vspace{-1em}
+\begin{itemize}
+  \item A DAG tells you \textbf{which variables to control for} and which to leave alone
+  \item The \textbf{backdoor criterion} (Pearl, 1995): block all non-causal paths from $D$ to $Y$
+\end{itemize}
+
+\end{frame}
+
+% ---------- Slide 13b: Example DAG -------------------------------------------
+\begin{frame}{Example DAG: Does attending CMU raise future income?}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\small},
+    dagnode/.style={draw, rounded corners=2pt, minimum width=1.4cm, minimum height=0.55cm, inner sep=2pt, align=center},
+    unobs/.style={dagnode, dashed, fill=gray!10},
+    arr/.style={-{Stealth[length=5pt]}, thick}
+  ]
+  % --- Nodes (absolute coordinates for clean separation) ---
+  \node[dagnode]            (PI)  at (-4.2, 1.0) {Parent\\[-2pt]Inc.};
+  \node[unobs]              (U)   at (3.8, 1.0)  {Ability\\[-2pt]{\scriptsize(unobserved)}};
+  \node[dagnode]            (GPA) at (-1.2, 0)    {GPA};
+  \node[dagnode]            (SAT) at (1.0, 0)     {SAT};
+  \node[dagnode,fill=creambar] (CMU) at (0, -1.0) {CMU ($D$)};
+  \node[dagnode,fill=creambar] (Y)   at (4.6, -1.0) {Income ($Y$)};
+
+  % --- Parent Income edges (left bundle) ---
+  \draw[arr] (PI) -- (GPA);
+  \draw[arr] (PI) -- (CMU);
+  \draw[arr] (PI) to[bend left=15] (Y);           % arcs to avoid overlap
+
+  % --- Ability edges (right bundle) ---
+  \draw[arr] (U) -- (SAT);
+  \draw[arr] (U) -- (GPA);                         % passes above SAT cleanly
+  \draw[arr] (U) -- (CMU);                         % unobserved path
+  \draw[arr] (U) -- (Y);
+
+  % --- Observed covariates to treatment ---
+  \draw[arr] (GPA) -- (CMU);
+  \draw[arr] (SAT) -- (CMU);
+
+  % --- Causal arrow of interest ---
+  \draw[arr, line width=1.5pt, emphred] (CMU) -- node[above, font=\footnotesize]{$\beta$ = ?} (Y);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3em}
+\begin{itemize}\setlength\itemsep{0.3em}
+  \item Controlling for GPA, SAT, Parent Income blocks \emph{observed} backdoor paths
+  \item \redt{But if unobserved Ability $\to$ CMU and Ability $\to$ Income}, there is an open backdoor path that OLS \textbf{cannot} block $\Rightarrow$ $\hat\beta$ is still biased
+  \item More discussions on the limitations of DAGs and regressions in the next slide
+\end{itemize}
+
 \end{frame}
 
 % ---------- Slide 14 ---------------------------------------------------------
-\begin{frame}{Practical considerations and limitations of DAGs}
-\vfill
-\centering
-{\large\color{gray} [Board work]}
-\vfill
+\begin{frame}{Practical considerations and limitations}
+
+\textbf{DAGs are useful for\ldots}
+\begin{itemize}\setlength\itemsep{0.15em}
+  \item \textbf{Theory proposition} --- force you to spell out \emph{every} causal pathway you believe
+  \item \textbf{Iterative refinement} --- collaborators can critique, extend, or prune edges
+  \item \textbf{Making assumptions transparent} --- reviewers can see exactly what you assumed
+\end{itemize}
+
+\vspace{0.5em}
+\textbf{But DAGs encode \redt{researcher beliefs}, which are fundamentally untestable.}\\[0.2em]
+Two researchers with different DAGs $\Rightarrow$ different conclusions from the same data.
+
+\vspace{0.5em}
+\textbf{Regression (and matching / IPW) share deeper limitations:}
+\begin{itemize}\setlength\itemsep{0.15em}
+  \item \textbf{Unobservable confounders} --- some variables are \emph{inherently} unmeasurable
+    (e.g.\ ``ability,'' ``motivation,'' ``organization culture'')
+  \item \textbf{Reverse causality} --- when future outcomes leak into treatment,
+    conditioning on observables does not help;
+    the causal direction itself is ambiguous
+\end{itemize}
 \end{frame}
 
 % ---------- Slide 15 ---------------------------------------------------------
-\begin{frame}{\textbf{Alternative A:} Design-based identification}
+\begin{frame}{\textbf{Alternative:} Design-based identification}
 \vfill
 \centering
 {\large\color{gray} [Board work]}
@@ -374,52 +513,129 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
 \vfill
 \end{frame}
 
-% ---------- Slide 17 ---------------------------------------------------------
-\begin{frame}{\textbf{Alternative B:} Machine-learning-powered causal discovery}
-\vfill
-\centering
-{\large\color{gray} [Board work]}
-\vfill
-\end{frame}
-
-% ---------- Slide 18 ---------------------------------------------------------
-\begin{frame}{\textbf{Summary:} The Modern Causal Inference Weaponry}
-\vfill
-\centering
-{\large\color{gray} [Board work: summary of methods]}
-\vfill
-\end{frame}
-
 % ---------- Slide 19 ---------------------------------------------------------
-\begin{frame}{Example A: RDD on College Education}
-\vfill
-\centering
-{\large\color{gray} [Board work / discussion]}
-\vfill
+\begin{frame}{Example: College eucation and earnings, Hoekstra, 2009}
+  \vspace{-1em}
+\begin{columns}[T]
+  \column{0.32\textwidth}
+  \centering
+  \paperthumb{figures/hoekstra-2009.pdf}
+
+  \column{0.65\textwidth}
+  \textbf{Question}: Does attending a flagship state university (anonymized in the study) raise earnings?
+
+  \vspace{0.4em}
+  \textbf{Design}: \redt{Regression discontinuity} (RDD)
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Students just above vs.\ just below the \textbf{admission SAT cutoff} are nearly identical in ability, motivation, background
+    \item The cutoff creates a \emph{local randomization}: admission jumps discontinuously, but all other characteristics vary smoothly
+  \end{itemize}
+
+  \vspace{0.4em}
+  \textbf{Finding}:
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Attending the flagship university increases earnings by only \textbf{$\sim$20\%} roughly 10 years after enrollment!
+  \end{itemize}
+\end{columns}
 \end{frame}
 
 % ---------- Slide 20 ---------------------------------------------------------
-\begin{frame}{Example B: The Impact of Gender in Tech}
-\vfill
-\centering
-{\large\color{gray} [Board work / discussion]}
-\vfill
+\begin{frame}{Example: Gender bias, Goldin \& Rouse, 2000}
+\vspace{-1em}
+\begin{columns}[T]
+  \column{0.32\textwidth}
+  \centering
+  \paperthumb{figures/goldin-rouse-2000.pdf}
+
+  \column{0.65\textwidth}
+  \textbf{Question}: Are women discriminated against in hiring for orchestra positions?
+
+  \vspace{0.4em}
+  \textbf{Design}: \redt{Difference-in-differences} (DiD)
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Major US orchestras adopted \textbf{blind auditions} (a physical screen hides the performer) at different times
+    \item Compares hiring of women \emph{before vs.\ after} the screen was introduced, relative to orchestras that did not yet adopt it
+  \end{itemize}
+
+  \vspace{0.4em}
+  \textbf{Finding}:
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Blind auditions increased the probability of women advancing by \textbf{$\sim$25--46\%}
+  \end{itemize}
+\end{columns}
+\end{frame}
+
+% ---------- Slide 20b ---------------------------------------------------------
+\begin{frame}{Example: Gender bias, Mengel, Sauermann \& Z\"olitz, 2019}
+\vspace{-1em}
+\begin{columns}[T]
+  \column{0.3\textwidth}
+  \centering
+  \paperthumb{figures/mengel-2019.pdf}
+
+  \column{0.63\textwidth}
+  \textbf{Question}: Are female instructors evaluated more harshly than male instructors?
+
+  \vspace{0.4em}
+  \textbf{Design}: \redt{Natural experiment} (random assignment)
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item At Maastricht University, students are \textbf{randomly assigned} to tutorial sections 
+    \item $\Rightarrow$ instructor gender is as-good-as-random so teaching outcomes are comparable
+  \end{itemize}
+
+  \vspace{0.4em}
+  \textbf{Finding}:
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Female instructors receive \textbf{systematically lower} teaching evaluation even with \textbf{no differences} in objective exam performance
+  \end{itemize}
+\end{columns}
 \end{frame}
 
 % ---------- Slide 21 ---------------------------------------------------------
-\begin{frame}{Example C: The impact of using Rust/Haskell}
-\vfill
-\centering
-{\large\color{gray} [Board work / discussion]}
-\vfill
+\begin{frame}{Example: The impact of AI coding tools, He et al., 2025}
+\vspace{-1em}
+\begin{columns}[T]
+  \column{0.32\textwidth}
+  \centering
+  \paperthumb{figures/cursor-study-2025.pdf}
+
+  \column{0.65\textwidth}
+  \textbf{Question}: Does adopting an LLM coding assistant (Cursor) improve development outcomes?
+
+  \vspace{0.4em}
+  \textbf{Design}: \redt{Difference-in-differences} (DiD)
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Compares GitHub projects that adopted Cursor against \textbf{matched control projects} that did not
+    \item Exploits the \emph{timing of adoption} as a natural experiment: before vs.\ after, relative to controls
+  \end{itemize}
+
+  \vspace{0.4em}
+  \textbf{Finding}:
+  \begin{itemize}\setlength\itemsep{0.2em}
+    \item Cursor generates a \textbf{large but transient} boost in development velocity and a \textbf{persistent increase} in code complexity and static analysis warnings
+  \end{itemize}
+\end{columns}
 \end{frame}
 
-% ---------- Slide 22 ---------------------------------------------------------
-\begin{frame}{Example D: DiD on AI Coding Tool Adoption}
-\vfill
-\centering
-{\large\color{gray} [Board work / discussion]}
-\vfill
+% ---------- Slide 17 ---------------------------------------------------------
+\begin{frame}{What else is out there?}
+
+\textbf{A.\ ``I don't care about averages. Tell me \redt{for whom} the effect holds.''}
+\begin{itemize}\setlength\itemsep{0.15em}
+  \item Use ML to estimate \textbf{heterogeneous treatment effects} across individuals or subgroups (i.e., find who benefits the most).
+  \item Examples: \textbf{causal forests} (Wager \& Athey, 2018), \textbf{double/debiased ML} (Chernozhukov et al., 2018)
+\end{itemize}
+
+\vspace{0.3em}
+\textbf{B.\ ``\redt{How wrong} would the assumptions need to be to overturn the result?''}
+\begin{itemize}\setlength\itemsep{0.15em}
+  \item \textbf{Rosenbaum bounds}: quantify how large an unmeasured confounder must be to flip a significant finding --- a stress test for observational results
+  \item \textbf{Oster (2019)}: bounds selection on unobservables by how much $\hat\beta$ moves as you add controls and how $R^2$ changes
+\end{itemize}
+
+\vspace{0.3em}
+\textbf{\redt{Important}}: these \textbf{supplement, not replace}, the identification strategies above.
+You still need a credible design so that ML and sensitivity analysis \redt{make sense}.
 \end{frame}
 
 % ---------- Slide 23 ----------------------------------------------------------
@@ -428,18 +644,15 @@ People can expect to \redt{earn 3x income} if they can get into CMU! \textbf{Rea
   \item Motivation: The intervention-outcome problem
   \item The fundamental problem of causal inference: No counterfactuals
   \item Selection bias \& why randomization helps (but isn't always feasible)
-  \item Causal identification from observational data
+  \item What takes for a regression on observational data to be causal
     \begin{itemize}
-      \item Regressions and conditional ignorability
+      \item Conditional ignorability: The formal assumption for causal interpretation
       \item DAGs: confounders, colliders, and mediators
     \end{itemize}
-  \item Alternative identification strategies
-    \begin{itemize}
-      \item Design-based identification
-      \item ML-powered causal discovery
-    \end{itemize}
-  \item Summary of the causal inference toolbox
-  \item Worked examples: RDD, gender in tech, Rust/Haskell, DiD on AI coding tools
+  \item Design-based identification (RDD, DiD, IV, panel, etc.)
+  \item Examples: College education on income, gender bias on high-skilled jobs, AI coding 
+  tools on development outcomes
+  \item What else is out there? ML-based discovery and sensitivity analysis
 \end{enumerate}
 \end{frame}
 
