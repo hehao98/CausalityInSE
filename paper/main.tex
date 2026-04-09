@@ -69,15 +69,14 @@
 \email{vasilescu@cmu.edu}
 
 \begin{abstract}
-Empirical software engineering (SE) research encompasses a diverse set of problems.
-Among them, \emph{intervention-outcome} questions---does adopting a practice, tool, or process improve a target outcome?---are particularly important because they have immediate implications for practice.
-Experiments are the gold standard for such questions, but they have important limitations: For some problems, they cannot overcome the lack of external validity; for others, experiments are simply infeasible.
-The alternative is observational data from software repositories, but the SE community's dominant approach---rigorously framing studies as presenting only descriptive and correlational evidence that is merely suggestive of the causal ambition motivating them---has important consequences: Despite cautious framing, downstream causal misinterpretation remains prevalent; and even when researchers employ ``causal inference'' methods, the field lacks a shared vocabulary for communicating what specifically makes one study's evidence stronger than another's.
-This state of affairs is unsurprising, as most empirical SE researchers do not enter the field with the training necessary to apply the modern causal inference toolkit.
-We envision that the field needs to adopt this toolkit as the new standard for causal inquiries involving observational SE data.
-The power of the toolkit lies in making identifying assumptions \emph{transparent and open to scrutiny}---ensuring that the strength of evidence is clearly communicated and that the field can iteratively develop stronger designs.
-Our analysis of 5,341 papers from ICSE, FSE, and ASE (2015--2025) reveals that 29\% of empirical SE papers ask causal questions, yet fewer than 4\% use any causal method---predominantly experiments and causal fault localization.
-This tutorial provides (1)~an education on the causal inference vocabulary and methods, covering the potential outcomes framework, graphical causal models, and design-based identification strategies; (2)~a pragmatic guide for conducting credible causal inquiry in empirical SE; and (3)~a worked example on the impact of AI coding tools in open-source software that demonstrates the full arc from na\"ive comparison through cross-sectional methods to design-based longitudinal identification.
+Empirical software engineering (SE) research frequently investigates \emph{intervention-outcome} questions---does adopting a practice, tool, or process improve a target outcome?---with immediate implications for practice.
+While randomized controlled experiments are the gold standard for intervention-outcome questions, they are often limited in external validity or simply infeasible for many SE problems.
+The alternative is observational data from software repositories.
+However, despite the SE community's delicate dance pursuing causal inference from observational data, there is no consensus in the field, and the field lacks a shared vocabulary and toolkit to convey the strength of causal evidence in each study.
+To improve this state of affairs, we envision that the field needs to move forward and adopt the modern causal inference toolkit as the new standard for intervention-outcome questions involving observational SE data.
+Importantly, the power of the toolkit lies in making identifying assumptions \emph{transparent and open to scrutiny}, ensuring that the strength of evidence is clearly communicated and that the field can iteratively develop stronger designs.
+In this tutorial, we provide (1)~an education on the causal inference vocabulary and methods, covering the potential outcomes framework, graphical causal models, and design-based identification strategies; (2)~a pragmatic guide for conducting credible causal inquiry in empirical SE; and (3)~a worked example on the impact of AI coding tools in open-source software that demonstrates the full arc from na\"ive comparison through cross-sectional methods to design-based longitudinal identification.
+We hope this paper will provide a methodological blueprint for future empirical SE research, illustrating how to balance rigor with practicality to generate actionable, trustworthy evidence.
 \end{abstract}
 
 \begin{CCSXML}
@@ -110,24 +109,24 @@ This tutorial provides (1)~an education on the causal inference vocabulary and m
 \label{sec:introduction}
 
 Empirical software engineering has built a rich research tradition: Descriptive studies characterize how developers work~\cite{DBLP:journals/queue/ForsgrenSMZHB21}, correlational analyses reveal associations in repository data, qualitative investigations surface practitioner beliefs~\cite{DBLP:conf/icse/Devanbu0B16}, and controlled experiments test hypotheses under laboratory conditions~\cite{DBLP:books/sp/WohlinRHORW24}.
-Among the diverse set of problems this community tackles, a particular type---the \emph{intervention-outcome} problem---is especially important because it has immediate implications for practice.
-When practitioners ask whether adopting code review reduces defects~\cite{DBLP:journals/ese/McIntoshKAH16}, whether CI/CD improves release quality~\cite{DBLP:conf/kbse/HiltonTHMD16}, or whether AI coding tools increase developer productivity, they are fundamentally asking a \emph{causal} question about \emph{interventions} and \emph{outcomes}.
+Among the diverse set of problems this community tackles, a particular type---the \emph{intervention-outcome} problem---is especially of researcher's interest because of its  immediate implications for practice.
+When practitioners ask whether adopting code review reduces defects~\cite{DBLP:journals/ese/McIntoshKAH16}, whether CI/CD improves release quality~\cite{DBLP:conf/kbse/HiltonTHMD16}, or whether AI coding tools increase developer productivity~\cite{DBLP:conf/msr/HeMAKV26}, they are fundamentally asking whether a certain \emph{intervention} really improves the desired target \emph{outcome} they care about, so that they can make informed decisions regarding their adoption.
 
-Experiments are the gold standard for such questions, but they have important limitations.
-For some problems, they cannot overcome the lack of external validity---a controlled lab experiment cannot capture the complexity of real-world software development at scale.
-For others, experiments are simply infeasible---one cannot randomly assign programming languages to production teams or force organizations to adopt new development processes.
+Randomized controlled experiments are usually recommended as the gold standard for intervention-outcome questions~\cite{shadish2002experimental}, but they have important limitations in empirical SE research.
+For some problems, it is challenging to address external validity concerns: A controlled lab experiment cannot capture the complexity and timeline of real-world software development at scale.
+For others, experiments are simply infeasible: For example, one cannot randomly assign programming languages to production teams or force organizations to adopt new development processes.
+
 The alternative is \emph{observational data}, such as data from software repositories.
 Over the past two decades, the SE community has been engaged in a delicate dance pursuing causal inference from observational data.
 It is extremely challenging.
 Arguably, there is no consensus in the field, but one popular approach is to rigorously frame the study as presenting only descriptive and correlational evidence---which is only \emph{suggestive} of the causal ambition that motivates it.
-
 However, this conservative approach---and the lack of an explicit vocabulary and toolkit to convey the strength of causal evidence in each study---has important consequences.
-First, despite cautious framing, \emph{downstream causal misinterpretation remains prevalent}.
-The programming language and code quality debate illustrates this pattern: \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} reported a ``modest but significant'' association between language class and defect proneness, framing their findings as correlational.
-Yet our citation analysis of 451 papers citing this study reveals that, among papers that engage with the finding substantively, causal interpretations outnumber hedged ones roughly 2:1---a striking ratio given the authors' explicit and appropriate hedging (Section~\ref{sec:bg-misinterpretation}).
-This is not an isolated incident but a systemic field-level pattern, consistent with \citeauthor{hernan2018cword}'s~\cite{hernan2018cword} observation that associational euphemisms do not prevent causal interpretation.\footnote{The psychology and epidemiology literature documents the same problem and provides a valuable reference for the SE community (see Appendix~\ref{sec:appendix-psych-reform}): \citet{haber2022causal} found that 52\% of abstracts imply causality despite ostensibly associational language.
+First, the cautious framing does not prevent downstream causal misinterpretations.\footnote{The programming language and code quality debate illustrates this pattern: \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} reported a ``modest but significant'' association between language class and defect proneness, framing their findings as correlational.
+Yet, our citation analysis of 451 papers citing this study reveals that, among papers that engage with the finding substantively, causal interpretations outnumber hedged ones roughly 2:1---a striking ratio given the authors' explicit and appropriate hedging (Appendix~\ref{sec:appendix-misinterpretation}).
+This is not an isolated incident but a systemic field-level pattern, consistent with \citeauthor{hernan2018cword}'s~\cite{hernan2018cword} observation that associational euphemisms do not prevent causal interpretation.
+The psychology and epidemiology literature documents the same problem and provides a valuable reference for the SE community (see Appendix~\ref{sec:appendix-psych-reform}): \citet{haber2022causal} found that 52\% of abstracts imply causality despite ostensibly associational language.
 The methodological reformers in these fields responded by shifting from associational euphemisms to explicit causal framing---requiring authors to state target estimands, construct DAGs to justify covariate selection, and openly argue for identification assumptions~\cite{grosz2020taboo, lundberg2021estimand, rohrer2018thinking, rohrer2024causal}.}
-Second, \emph{even when some researchers use ``causal inference'' methods, others may not understand the specific aspect in which ``causal inference'' is better}---the field lacks a shared vocabulary for communicating the strength of evidence provided by different methods and designs.
+Second, even when some researchers claim to use ``causal inference'' methods, others may not understand the specific aspect in which ``causal inference'' is better---the field lacks a shared vocabulary for communicating the strength of evidence provided by different methods and designs.
 
 This state of affairs is unsurprising, as most empirical SE researchers do not enter the field with the training necessary to apply the modern causal inference toolkit---such training is typically taught in statistics, economics, and public policy programs, not in computer science.
 Modern causal inference methods, developed primarily in econometrics and epidemiology over the past several decades, offer a principled path forward~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}.
@@ -297,36 +296,6 @@ These spillovers are difficult to bound and can bias standard causal estimators.
 Finally, SE outcomes are typically \emph{noisy proxies} for the constructs of interest: Bug-fix commits proxy for defect proneness, lines of code proxy for complexity, star counts proxy for popularity, and monthly commits proxy for productivity---each introducing measurement error that may attenuate effect estimates and complicate interpretation.
 Measurement and identification are orthogonal challenges: A perfectly identified design still produces misleading conclusions if the outcome proxy is invalid.
 This tutorial addresses identification; measurement validity requires its own careful attention that we acknowledge but do not attempt to resolve.
-
-\subsection{A Case Study on Downstream Misinterpretation}
-\label{sec:bg-misinterpretation}
-
-The consequences of the identification gap are not merely theoretical.
-We illustrate them through a case study of \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s~\cite{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} landmark study of programming languages and code quality---a study that carefully presented associational findings but was widely reinterpreted as establishing causal claims downstream.
-
-\paragraph{The Study and Its Reception.}
-\citet{DBLP:conf/sigsoft/RayPFD14} analyzed 729 GitHub projects across 17 languages, reporting a ``modest but significant'' relationship between language class and defect proneness.
-The authors appropriately framed their findings as associational, not causal.
-A subsequent reproduction by \citet{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, reducing the number of statistically significant associations from 11 to 4 with exceedingly small effect sizes.
-\citeauthor{DBLP:journals/tosem/FuriaTF24}~\cite{DBLP:journals/tosem/FuriaTF24} later applied structural causal models to coding competition data, finding ``considerable differences between a purely associational and a causal analysis of the very same data''---a direct demonstration that the identification problem matters in this domain.
-The debate's persistence reflects two orthogonal challenges---\emph{identification} (can the design distinguish causal effects from confounding?) and \emph{measurement} (are the proxies valid?)---neither of which cross-sectional correlational analysis can resolve.
-
-\paragraph{Citation Analysis.}
-We retrieved all 451 papers citing \citet{DBLP:conf/sigsoft/RayPFD14} or \citet{DBLP:journals/cacm/RayPDF17} from the Semantic Scholar API and used a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) to classify the citation context of each paper with available full-text snippets ($n = 339$) into four categories: \emph{causal} (the citing paper treats or implies the finding as causal), \emph{hedged} (accurately describes the finding as an association), \emph{neutral} (cites for context without interpreting the finding), and \emph{critical} (questions the methodology or findings).
-Among the 339 classified papers, 24\% use causal framing---language such as \emph{``the effect of programming languages on software quality''} or \emph{``statically-typed languages are less error-prone''}---while only 12\% use appropriately hedged language and 2\% engage critically with the identification strategy.
-The remaining 62\% cite the study for tangential reasons without interpreting the finding.
-Among papers that actually engage with the finding substantively, causal interpretations outnumber hedged ones by roughly 2:1.
-
-\paragraph{Practitioner Discourse.}
-The causal amplification extends into practitioner discourse, where hedging disappears entirely.
-\citeauthor{DBLP:journals/toplas/BergerHMVV19}, in describing the motivation for their reproduction study, observed that the findings were subject to a pattern where people ``misinterpreted [them] as a causal relationship''~\cite{claburn2019register}---notably, even the article reporting this observation uses causal language in its own headline.
-Blog posts rank languages by ``bug-proneness'' using causal verbs, and practitioners on discussion forums treat regression coefficients as switchable causal effects~\cite{huang2021bugprone, hn2014rayetal}.
-
-\paragraph{Implications.}
-This pattern---hedged correlational findings, causal downstream interpretation---is precisely the \emph{causal language problem} that \citet{hernan2018cword} diagnosed in epidemiology and \citet{grosz2020taboo} documented in psychology.
-Our citation analysis confirms \citeauthor{haber2022causal}'s~\cite{haber2022causal} finding that associational euphemisms do not prevent causal interpretation: 24\% of citing papers use causal framing despite the authors' explicit hedging.
-The problem is not imprecise language but the absence of \emph{identification infrastructure}---when a study provides no framework for evaluating whether a causal interpretation is warranted, readers fill the gap with their priors.
-The pragmatic stance we advocate (Section~\ref{sec:guide}) addresses this structural gap by requiring researchers to state their causal question, draw their DAG, and argue for identification, replacing vague ``correlation vs.\ causation'' disclaimers with transparent, evaluable assumptions.
 
 \section{A Primer on Causal Inference for Software Engineering Researchers}
 \label{sec:primer}

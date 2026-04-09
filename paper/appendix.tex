@@ -1,5 +1,39 @@
 \appendix
 
+\section{A Case Study on Downstream Misinterpretation: The Case of \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17}}
+\label{sec:appendix-misinterpretation}
+
+The consequences of the identification gap are not merely theoretical.
+We illustrate them through a case study of \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s~\cite{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} landmark study of programming languages and code quality---a study that carefully presented associational findings but was widely reinterpreted as establishing causal claims downstream.
+
+\paragraph{The Study and Its Reception.}
+\citet{DBLP:conf/sigsoft/RayPFD14} analyzed 729 GitHub projects across 17 languages, reporting a ``modest but significant'' relationship between language class and defect proneness.
+The authors appropriately framed their findings as associational, not causal.
+A subsequent reproduction by \citet{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, reducing the number of statistically significant associations from 11 to 4 with exceedingly small effect sizes.
+\citeauthor{DBLP:journals/tosem/FuriaTF24}~\cite{DBLP:journals/tosem/FuriaTF24} later applied structural causal models to coding competition data, finding ``considerable differences between a purely associational and a causal analysis of the very same data''---a direct demonstration that the identification problem matters in this domain.
+The debate's persistence reflects two orthogonal challenges---\emph{identification} (can the design distinguish causal effects from confounding?) and \emph{measurement} (are the proxies valid?)---neither of which have been fully resolved in the SE community on the programming language vs. code quality debate as of today.
+
+\paragraph{Citation Analysis.}
+We retrieved all 451 papers citing \citet{DBLP:conf/sigsoft/RayPFD14} or \citet{DBLP:journals/cacm/RayPDF17} from the Semantic Scholar API and use Claude Opus 4.6 to classify the citation context of each paper with available full-text snippets ($n = 339$) into four categories: \emph{causal} (the citing paper treats or implies the finding as causal), \emph{hedged} (accurately describes the finding as an association or correlation), \emph{neutral} (cites for context, dataset, or methodology without interpreting the PL--quality finding), and \emph{critical} (questions the methodology or findings).
+Among the 339 papers with citation contexts, 24\% use causal framing---language such as \emph{``the effect of programming languages on software quality,''} \emph{``statically-typed languages are less error-prone,''} or \emph{``the choice of programming language can significantly impact software quality''}---while only 12\% use appropriately hedged language and 2\% engage critically with the study's identification strategy.
+The remaining 62\% cite Ray et~al.\ for tangential reasons (dataset, methodology, or GitHub mining context) without interpreting the PL--quality finding.
+In other words, among papers that actually engage with the PL--quality finding, causal interpretations outnumber hedged ones by roughly 2:1.
+This ratio is striking given that neither the original study~\cite{DBLP:conf/sigsoft/RayPFD14} nor the CACM version~\cite{DBLP:journals/cacm/RayPDF17} claims to establish a causal relationship.
+The misinterpretation is not the result of a few careless citations, but the \emph{modal} interpretation among papers that engage with the finding substantively.
+
+\paragraph{Practitioner Discourse.}
+The causal amplification extends beyond academic papers into practitioner discourse, where hedging disappears entirely.
+\citeauthor{DBLP:journals/toplas/BergerHMVV19}, in describing the motivation for their reproduction study, directly observed that Ray~et~al.'s findings were subject to a pattern where \emph{``people misinterpreted [them] as a causal relationship''}~\cite{claburn2019register}---notably, even the article reporting this debunking uses causal language in its own headline (\emph{``lead to more buggy code''}~\cite{claburn2019register}).
+Blog posts cite the study to rank languages by ``bug-proneness'' as if it were an intrinsic language property, using causal verbs (\emph{``produce,''} \emph{``eliminate''}) while citing Ray~et~al.\ as empirical backing~\cite{huang2021bugprone}.
+Within days of the original publication, practitioners on Hacker News interpreted regression coefficients as switchable causal effects---e.g., \emph{``A Haskell project can expect to see 63\% of the bug fixes that a C++ project would see.
+I don't call a 36\% drop in bugs `small'\,''}---treating the coefficient as if switching from C++ to Haskell \emph{would} directly produce fewer bugs, holding all else constant~\cite{hn2014rayetal}.
+
+\paragraph{Implications.}
+This pattern---hedged correlational findings, causal downstream interpretation---is precisely the \emph{causal language problem} that \citet{hernan2018cword} diagnosed in epidemiology and \citet{grosz2020taboo} documented in psychology.
+Our citation analysis confirms \citeauthor{haber2022causal}'s~\cite{haber2022causal} finding that associational euphemisms do not prevent causal interpretation: 24\% of citing papers use causal framing despite the authors' explicit hedging.
+The problem is not imprecise language but the absence of \emph{identification infrastructure}---when a study provides no framework for evaluating whether a causal interpretation is warranted, readers fill the gap with their priors.
+We advocate to address this structural gap by requiring researchers to state their causal question, articulate their theory, and argue for valid identification (Section~\ref{sec:guide}), replacing vague ``correlation vs.\ causation'' disclaimers with transparent, evaluable assumptions.
+
 \section{The Causal Inference Toolkit: Historical Development and Parallels with Other Disciplines}
 \label{sec:appendix-history}
 
