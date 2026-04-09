@@ -47,13 +47,11 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
    - States contributions: (1) an education on causal inference vocabulary and methods, (2) a pragmatic guide for empirical SE, (3) a worked example on the impact of AI coding tools in OSS.
 
 2. **Background and Related Work** (Section 2)
-   - Coverage of existing tutorials and methodological guidelines in SE (positioning our contribution).
    - A brief coverage of the history of causal inference (potential outcomes, DAGs, credibility revolution).
+   - Coverage of existing tutorials and methodological guidelines in SE (positioning our contribution).
    - A review of recent SE studies with a causal ambition and a causal inference method (empirical analysis of ICSE/FSE/ASE papers, taxonomy and trend figures).
-   - **Why is this hard for SE studies?** SE-specific challenges: unmeasured confounders (skill, culture), compound treatments, SUTVA violations, noisy outcome proxies, inherent panel data structure.
-   - **A case study on Ray et al. on downstream misinterpretation:** Quantitative citation analysis documenting how appropriately hedged associational findings are reinterpreted as causal claims --- illustrating a systemic field-level pattern. Connects to Hernán (2018) causal language problem and the methodological reform literature.
 
-3. **The Tutorial** (Section 3) --- Taught in mix with the worked example throughout.
+4. **The Tutorial** (Section 3) --- Taught in mix with the worked example throughout.
 
    The tutorial uses a single running worked example --- **The Impact of AI Coding Tools in OSS** --- to make every concept concrete as it is introduced.
 
@@ -79,7 +77,7 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
      - Engage with alternative explanations.
      - When clean identification is unavailable, acknowledge honestly with known limitations.
 
-4. **The Worked Example: The Impact of AI Coding Tools in OSS** (Section 4)
+5. **The Worked Example: The Impact of AI Coding Tools in OSS** (Section 4)
 
    **Setting:** 1,000 popular GitHub repos across 10 programming languages. ~300 repos with AI config files (treatment) and ~600 repos without (control).
 
@@ -118,7 +116,7 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
      - **Findings:** TODO
      - **Takeaway:** TODO
 
-5. **Discussion and Conclusion** (Section 5)
+6. **Discussion and Conclusion** (Section 5)
    - **For reviewers:** If a clear intervention-outcome RQ is posed, we should stop accepting correlation analyses without an explicit discussion of the extent to which they may support a causal claim and the assumptions under which they do so.
    - **For researchers:** Clear directions and pointers for learning these methods. It is much more accessible nowadays for researchers with a CS background, with all the advances in AI and agents.
    - **Important limitation:** Even if we raise the empirical standard, we cannot prevent people from pretending to use better methods (analogous to the grounded theory adoption problem in SE).
