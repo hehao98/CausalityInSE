@@ -1,43 +1,32 @@
 ---
-title: "Cross-Sectional Diagnostic: AI Coding Tool Adoption and Development Productivity"
+title: "Cross-Sectional Analysis: AI Coding Tool Adoption and Development Productivity"
 output: html_document
 ---
 
-This notebook implements a cross-sectional diagnostic analysis of AI coding
-tool adoption across top GitHub repositories, following the four-stage
-structure from the Bogner & Merkel reanalysis.
+This notebook implements the cross-sectional analysis of AI coding tool
+adoption for Section 4.1 of the paper.  The analysis follows a three-stage
+arc that starts from what a typical SE researcher would do, diagnoses why
+it fails, and shows that switching estimators cannot help:
 
-The causal question is: "Does adopting AI coding tools increase development
-productivity (measured by monthly commits)?"  The diagnostic arc shows that
-cross-sectional data cannot credibly answer this question --- even though the
-raw association is enormous and survives conventional controls:
+- **Stage 1** starts from the typical approach: a naive comparison and a
+  kitchen-sink regression.  The raw gap is enormous and the kitchen-sink
+  coefficient is large and highly significant.  A naive analyst might stop
+  here.
+- **Stage 2** diagnoses why we should distrust the kitchen-sink result.
+  The key insight is **temporal collapse**: MSR snapshot data merges
+  pre-treatment and post-treatment states of time-varying covariates
+  (stars, PRs, issues, CI, size, releases) into a single node, destroying
+  the acyclicity that DAGs require and making covariate selection
+  incoherent.  Only *structurally pre-treatment* covariates (repo age,
+  language, org type) are defensible controls.  The pre-treatment-only
+  estimate is large but fragile under sensitivity analysis.
+- **Stage 3** shows that OLS, PSM, and IPW converge on the same estimate
+  under pre-treatment covariates --- the estimator is not the bottleneck;
+  the identifying assumption is.
 
-- **Stage 1** documents severe covariate imbalance between repos with AI
-  tool configuration files (L2+) and those without (L1).  L2+ repos average
-  5.8x more monthly commits, but they are also systematically larger
-  (SMD = 0.75), have far more PRs (0.91), more total commits (0.74), and
-  are more likely to have CI/CD (0.54) --- all observable proxies for the
-  unobservable confounders (developer skill, team culture) that drive both
-  adoption and productivity.  Critically, the DAG review reveals that
-  several covariates (CI, repo size, releases) have ambiguous causal
-  status: they may be confounders *or* mediators, and the cross-sectional
-  design cannot distinguish between the two.
-- **Stage 2** compares three nested OLS specifications: M_pretreat (only
-  the three unambiguously pre-treatment confounders), M_extended (adds
-  covariates with ambiguous mediator risk), and M_all (kitchen-sink).
-  The coefficient attenuates monotonically, but the drop from M_pretreat to
-  M_extended is uninterpretable (confounding removal or over-conditioning on
-  mediators?).  Oster bounds and sensemakr robustness values confirm the
-  estimate is fragile under plausible unobserved confounding.
-- **Stage 3** shows that PSM and IPW produce nearly identical estimates to
-  OLS --- the estimator is not the bottleneck.
-- **Stage 4** synthesises the cross-sectional ceiling argument: the
-  coefficient's apparent robustness to controls is *exactly* what we would
-  expect under selection bias (productive teams adopt AI tools), compounded
-  by the inability to distinguish confounders from mediators in the
-  cross-section.  Only longitudinal data --- comparing the same repo before
-  and after adoption --- can make progress, which is what Example C
-  (Cursor ITS/DiD) demonstrates.
+The takeaway: cross-sectional MSR data cannot credibly answer causal
+questions about AI tool adoption.  Only within-repo longitudinal variation
+can make progress (Section 4.2).
 
 # Setup
 
@@ -117,95 +106,21 @@ cat(sprintf("Treatment (L2+): %d  |  Control (L1): %d\n",
 cat(sprintf("Treatment prevalence: %.1f%%\n", mean(df$treated) * 100))
 ```
 
-# Stage 1: Descriptive Statistics and Covariate Balance
+# Stage 1: What Would a Typical SE Researcher Do?
 
-## 1.1 AI Maturity Distribution
+A typical MSR study would start by comparing treated and control groups,
+then run a regression with all available covariates.  We follow this
+approach first, then diagnose why it fails.
 
-```{r maturity_distribution}
-# By level
-table(df$ai_maturity_level) %>%
-  as.data.frame() %>%
-  setNames(c("AI Maturity Level", "N")) %>%
-  kable(caption = "AI Maturity Level Distribution") %>%
-  kable_styling(bootstrap_options = "striped", full_width = FALSE)
-```
+## 1.1 Descriptive Comparison (Table 1)
 
-```{r maturity_by_language}
-# By language x treatment
-crosstab <- df %>%
-  group_by(queried_language, treated) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  pivot_wider(names_from = treated, values_from = n, values_fill = 0) %>%
-  rename(Control = `0`, Treated = `1`) %>%
-  mutate(Total = Control + Treated,
-         `% Treated` = sprintf("%.0f%%", Treated / Total * 100)) %>%
-  arrange(desc(Treated))
+Table 1 presents the outcome and all covariates side by side for the
+control (L1: no AI config) and treated (L2+: AI config present) groups,
+with standardised mean differences (SMDs).  Covariates are grouped by
+their temporal status --- a distinction we will motivate in Stage 2.
 
-crosstab %>%
-  kable(caption = "Treatment (L2+) vs Control (L1) by Language") %>%
-  kable_styling(bootstrap_options = "striped", full_width = FALSE)
-```
-
-## 1.2 Outcome: Monthly Commits
-
-```{r outcome_comparison, fig.width=8, fig.height=3}
-group_labels <- c("0" = "L1 (no AI config)", "1" = "L2+ (AI config)")
-
-df %>%
-  mutate(group = factor(treated, labels = group_labels)) %>%
-  ggplot(aes(x = log_avg_monthly_commits, fill = group)) +
-  geom_density(alpha = 0.5) +
-  labs(x = "Log(1 + Avg Monthly Commits)", y = "Density",
-       fill = NULL,
-       title = "Distribution of Monthly Commits by AI Adoption Status") +
-  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
-  theme(legend.position = "bottom",
-        legend.margin = margin(t = -5, r = 0, b = -3, l = 0),
-        legend.box.margin = margin(t = -5, r = 0, b = -3, l = 0),
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank())
-```
-
-```{r outcome_summary}
-df %>%
-  mutate(group = ifelse(treated == 1, "L2+ (treated)", "L1 (control)")) %>%
-  group_by(group) %>%
-  summarise(
-    N = n(),
-    `Mean monthly commits` = sprintf("%.1f", mean(avg_monthly_commits)),
-    `Median monthly commits` = sprintf("%.1f", median(avg_monthly_commits)),
-    `Mean log monthly commits` = sprintf("%.2f", mean(log_avg_monthly_commits)),
-    .groups = "drop"
-  ) %>%
-  kable(caption = "Monthly Commits by Treatment Group") %>%
-  kable_styling(bootstrap_options = "striped", full_width = FALSE)
-```
-
-## 1.3 Covariate Balance (Standardised Mean Differences)
-
-```{r covariate_balance, fig.width=8, fig.height=5}
-# Compute SMD: (mean_treated - mean_control) / pooled_sd
-balance_vars <- c("repo_age_yr", "log_stars", "log_forks", "log_size",
-                  "log_total_commits", "log_total_prs", "log_total_issues",
-                  "log_releases", "log_open_issues", "is_org", "has_ci",
-                  "has_wiki", "has_discuss")
-
-balance_labels <- c(
-  "repo_age_yr"       = "Repo age (years)",
-  "log_stars"         = "log(Stars)",
-  "log_forks"         = "log(Forks)",
-  "log_size"          = "log(Size KB)",
-  "log_total_commits" = "log(Total commits)",
-  "log_total_prs"     = "log(Total PRs)",
-  "log_total_issues"  = "log(Total issues)",
-  "log_releases"      = "log(Releases)",
-  "log_open_issues"   = "log(Open issues)",
-  "is_org"            = "Organization owner",
-  "has_ci"            = "Has CI/CD",
-  "has_wiki"          = "Has wiki",
-  "has_discuss"       = "Has discussions"
-)
-
+```{r table1_descriptive}
+# Helper: compute SMD
 compute_smd <- function(data, var, treat_col = "treated") {
   t_vals <- data[[var]][data[[treat_col]] == 1]
   c_vals <- data[[var]][data[[treat_col]] == 0]
@@ -214,133 +129,107 @@ compute_smd <- function(data, var, treat_col = "treated") {
   (mean(t_vals, na.rm = TRUE) - mean(c_vals, na.rm = TRUE)) / pooled_sd
 }
 
-smd_df <- data.frame(
-  variable = balance_vars,
-  label = balance_labels[balance_vars],
-  smd = sapply(balance_vars, function(v) compute_smd(df, v))
+# Define variables, labels, and temporal status
+table1_vars <- c(
+  "avg_monthly_commits",
+  "repo_age_yr", "is_org",
+  "log_stars", "log_forks", "log_size",
+  "log_total_commits", "log_total_prs", "log_total_issues",
+  "log_releases", "log_open_issues",
+  "has_ci", "has_wiki", "has_discuss"
+)
+
+table1_labels <- c(
+  "avg_monthly_commits" = "Avg monthly commits",
+  "repo_age_yr"         = "Repo age (years)",
+  "is_org"              = "Organization owner",
+  "log_stars"           = "log(Stars)",
+  "log_forks"           = "log(Forks)",
+  "log_size"            = "log(Size KB)",
+  "log_total_commits"   = "log(Total commits)",
+  "log_total_prs"       = "log(Total PRs)",
+  "log_total_issues"    = "log(Total issues)",
+  "log_releases"        = "log(Releases)",
+  "log_open_issues"     = "log(Open issues)",
+  "has_ci"              = "Has CI/CD",
+  "has_wiki"            = "Has wiki",
+  "has_discuss"         = "Has discussions"
+)
+
+table1_temporal <- c(
+  "avg_monthly_commits" = "Outcome",
+  "repo_age_yr"         = "Pre-treatment",
+  "is_org"              = "Pre-treatment",
+  "log_stars"           = "Time-varying",
+  "log_forks"           = "Time-varying",
+  "log_size"            = "Time-varying",
+  "log_total_commits"   = "Time-varying",
+  "log_total_prs"       = "Time-varying",
+  "log_total_issues"    = "Time-varying",
+  "log_releases"        = "Time-varying",
+  "log_open_issues"     = "Time-varying",
+  "has_ci"              = "Time-varying",
+  "has_wiki"            = "Time-varying",
+  "has_discuss"         = "Time-varying"
+)
+
+table1_df <- data.frame(
+  variable = table1_vars,
+  label    = table1_labels[table1_vars],
+  temporal = table1_temporal[table1_vars],
+  stringsAsFactors = FALSE
 ) %>%
-  mutate(label = reorder(label, abs(smd)))
+  rowwise() %>%
+  mutate(
+    control_mean = mean(df[[variable]][df$treated == 0], na.rm = TRUE),
+    treated_mean = mean(df[[variable]][df$treated == 1], na.rm = TRUE),
+    smd          = compute_smd(df, variable)
+  ) %>%
+  ungroup()
 
-ggplot(smd_df, aes(x = smd, y = label)) +
-  geom_point(size = 3) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
-  geom_vline(xintercept = c(-0.1, 0.1), linetype = "dotted", color = "red", alpha = 0.5) +
-  labs(x = "Standardised Mean Difference (L2+ vs L1)",
-       y = NULL,
-       title = "Covariate Balance Before Adjustment",
-       caption = "Dotted red lines mark ±0.1 SMD threshold") +
-  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
-  theme(panel.grid.major.y = element_blank(),
-        panel.grid.minor.y = element_blank())
-```
-
-```{r smd_table}
-smd_df %>%
-  arrange(desc(abs(smd))) %>%
-  mutate(smd = sprintf("%.3f", smd)) %>%
-  select(Covariate = label, SMD = smd) %>%
-  kable(caption = "Standardised Mean Differences (L2+ minus L1)") %>%
+table1_df %>%
+  mutate(
+    control_mean = sprintf("%.2f", control_mean),
+    treated_mean = sprintf("%.2f", treated_mean),
+    smd          = sprintf("%.3f", smd)
+  ) %>%
+  select(
+    Variable = label,
+    `Temporal Status` = temporal,
+    `Control (L1)` = control_mean,
+    `Treated (L2+)` = treated_mean,
+    SMD = smd
+  ) %>%
+  kable(caption = "Table 1: Descriptive Comparison by AI Adoption Status") %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
-## 1.4 Interpretation
+The treated group (L2+) differs from the control group (L1) on *every*
+dimension.  Every covariate exceeds the conventional +/-0.1 SMD threshold.
+The raw gap in monthly commits is enormous.  These are not random
+differences --- they reflect a coherent selection mechanism:
+well-resourced, actively maintained, organization-backed projects are the
+ones that adopt AI tools.
 
-The balance diagnostics confirm the selection story.  Every covariate
-exceeds the conventional ±0.1 SMD threshold, with total PRs (SMD = 0.91),
-repo size (0.75), total commits (0.74), releases (0.61), and CI presence
-(0.54) showing the most severe imbalances.
+Note: the primary language is not shown in the table but is another
+important pre-treatment covariate.  TypeScript (53% treated) and Go (31%)
+have strong AI tooling ecosystems, while C (9%) and Swift (13%) barely
+participate.
 
-These are not random differences --- they reflect a coherent selection
-mechanism: well-resourced, actively maintained, organization-backed
-projects are the ones that adopt AI tools.  These same characteristics
-independently predict high commit velocity.  Language confounding amplifies
-the problem: TypeScript (53% treated) and Go (31%) have strong AI tooling
-ecosystems, while C (9%) and Swift (13%) barely participate.
+## 1.2 Kitchen-Sink Regression
 
-The proposed causal DAG encodes this structure --- though, crucially, the
-cross-sectional design introduces ambiguity in classifying several
-covariates:
+A typical SE researcher might now run a regression controlling for
+everything available.
 
-- **Clean confounders** (unambiguously pre-treatment common causes of
-  adoption and productivity): repo age, primary language, and organization
-  type.  These are structural features determined at repo creation that
-  plausibly affect both AI tool adoption and commit velocity.
-- **Ambiguous covariates** (confounder proxy, or mediator?): CI/CD
-  presence, repo size, and number of releases.  Each has a plausible
-  confounder story --- e.g., CI presence proxies for engineering culture,
-  which drives both adoption and productivity --- *and* a plausible mediator
-  story --- e.g., AI adoption may be part of a modernization wave that
-  includes CI; current repo size partly reflects post-treatment code growth;
-  total releases includes releases made after adoption.  Since all variables
-  are measured at the same snapshot, we cannot separate pre-treatment from
-  post-treatment variation.  Conditioning on mediators blocks causal paths
-  and biases the estimate *toward* zero, creating a false impression of
-  confounding removal.
-- **Likely confounder proxies** (misclassifiable as colliders): stars and
-  forks are primarily driven by project popularity --- a latent variable
-  that also drives both adoption (popular repos attract AI-savvy
-  contributors) and productivity (popular repos have larger, more active
-  contributor bases).  A collider story exists (AI adoption → hype → stars;
-  high activity → visibility → stars) but is weaker than the
-  confounder-proxy story.  Moreover, the sample is already conditioned on
-  stars (top repos by stars per language), so any collider-induced bias is
-  baked in regardless of the regression specification.
-- **Unobserved**: developer skill, team culture, organizational investment
-  in tooling.  These are the confounders that matter most and that no
-  amount of GitHub API data can capture.
+```{r kitchen_sink}
+# Kitchen-sink: all available covariates
+m_kitchen <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
+                  queried_language + is_org + has_ci + log_size +
+                  log_releases + log_stars + log_forks + log_total_prs +
+                  log_total_issues,
+                data = df)
 
-This ambiguity --- where we cannot even confidently classify observed
-variables as confounders vs. mediators --- is itself evidence of the
-cross-sectional design's limitations.  Stage 2 formalises this by
-comparing a model with only the three clean confounders against one that
-adds the ambiguous covariates: the coefficient drop between them is
-uninterpretable.
-
-The 5.8x raw gap in monthly commits (15x at the median) is strikingly
-large but causally uninterpretable.  The question is how much survives
-after controlling for observable confounders --- and whether the residual
-is credible.
-
-# Stage 2: OLS and Omitted Variable Bias Diagnostics
-
-## 2.1 Three OLS Specifications
-
-The DAG review in Section 1.4 motivates three nested specifications that
-make the confounder-vs-mediator ambiguity explicit:
-
-- **M_pretreat**: only the three unambiguously pre-treatment confounders
-  (repo age, language, org type).
-- **M_extended**: adds covariates whose causal status is ambiguous (CI/CD
-  presence, repo size, total releases).  These may proxy for unobserved
-  engineering culture (useful) or may partly mediate the causal effect
-  (harmful).
-- **M_all**: further adds stars, forks, PRs, and issues --- variables that
-  are plausibly confounder proxies (popularity) but also include
-  post-treatment variation.
-
-The coefficient drop from M_pretreat to M_extended is *uninterpretable*:
-it could reflect confounding removal (good) or causal-path blocking (bad).
-This ambiguity is the heart of the cross-sectional ceiling.
-
-```{r ols_models}
-# M_pretreat: only unambiguously pre-treatment confounders
-m_pretreat <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
-                   queried_language + is_org,
-                 data = df)
-
-# M_extended: adds covariates with ambiguous causal status (proxy or mediator?)
-m_ext <- lm(log_avg_monthly_commits ~ treated + repo_age_yr + queried_language +
-              is_org + has_ci + log_size + log_releases,
-            data = df)
-
-# M_all: adds stars, forks, PRs, issues (likely confounder proxies but also
-# include post-treatment variation)
-m_all <- lm(log_avg_monthly_commits ~ treated + repo_age_yr + queried_language +
-              is_org + has_ci + log_size + log_releases +
-              log_stars + log_forks + log_total_prs + log_total_issues,
-            data = df)
-
-# Extract treatment coefficients with HC1 robust SEs
+# Extract treatment coefficient with HC1 robust SEs
 extract_treated <- function(model, label) {
   ct <- coeftest(model, vcov = vcovHC(model, type = "HC1"))
   idx <- which(rownames(ct) == "treated")
@@ -356,10 +245,128 @@ extract_treated <- function(model, label) {
   )
 }
 
+kitchen_result <- extract_treated(m_kitchen, "Kitchen-sink (all covariates)")
+
+kitchen_result %>%
+  mutate(
+    coef  = sprintf("%.3f", coef),
+    se    = sprintf("%.3f", se),
+    p_val = ifelse(as.numeric(p_val) < 0.001, "<0.001", sprintf("%.3f", p_val)),
+    r2    = sprintf("%.3f", r2)
+  ) %>%
+  select(Model = model, Coefficient = coef, `Robust SE` = se,
+         `p-value` = p_val, `R²` = r2, N = n) %>%
+  kable(caption = "Kitchen-Sink OLS: AI Adoption Effect on log(Monthly Commits)") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+The coefficient is positive and highly significant (p < 0.001), surviving
+a battery of controls.  A naive analyst might conclude that AI adoption
+*causes* higher productivity and stop here.  But should we trust this?
+
+# Stage 2: Why Should We Distrust This?
+
+## 2.1 The Temporal Collapse Problem
+
+To reason about which covariates to include in a regression, we need a
+causal DAG.  But the cross-sectional design introduces a fundamental
+problem that is pervasive in MSR studies.
+
+Consider a variable like "stars."  In the true data-generating process,
+stars accumulate over time.  The actual causal DAG has time-indexed nodes:
+
+- **stars\_{t-1}** (before AI adoption) is a **confounder**: popular repos
+  attract AI-savvy contributors (stars\_{t-1} -> adoption\_t) *and* have
+  more active contributor bases (stars\_{t-1} -> commits\_t).
+- **stars\_{t+1}** (after AI adoption) is a **collider**: both AI adoption
+  and high commit activity increase visibility and attract stars
+  (adoption\_t -> stars\_{t+1} <- commits\_t).
+
+In this true temporal DAG, the adjustment set is unambiguous: condition on
+stars\_{t-1}, never on stars\_{t+1}.
+
+But a typical MSR study queries the GitHub API once at the time of the
+study.  This **collapses** both time-indexed nodes into a single "stars"
+variable that contains both pre-treatment and post-treatment variation.
+The resulting graph has both incoming and outgoing arrows between "stars"
+and both treatment and outcome --- it is **cyclic**, not a DAG.  No
+adjustment formula applies.
+
+This temporal collapse is not specific to stars.  Every time-varying
+covariate in our dataset (PRs, issues, CI presence, repo size, releases)
+suffers from the same problem.  The true temporal DAG is well-defined;
+the cross-sectional snapshot destroys it.
+
+(See the paper's Figures X and Y for the true temporal DAG and the
+collapsed cross-sectional graph.)
+
+This connects to a recognized problem in the causal inference literature:
+Hernan & Robins (2020, Ch. 20) describe this as "treatment-confounder
+feedback," and Richardson & Robins have critiqued the use of
+cross-sectional DAGs precisely because the nodes must be well-defined
+temporal events, not time-collapsed summaries.
+
+## 2.2 Covariate Classification
+
+The temporal collapse argument divides our covariates into two groups:
+
+```{r covariate_classification}
+classif <- data.frame(
+  Covariate = c("Repo age", "Primary language", "Organization owner",
+                "Stars", "Forks", "Repo size (KB)", "Total commits",
+                "Total PRs", "Total issues", "Releases", "Open issues",
+                "CI/CD presence", "Wiki", "Discussions"),
+  `Temporal Status` = c(rep("Pre-treatment", 3), rep("Temporally ambiguous", 11)),
+  Justification = c(
+    "Determined at creation; cannot be affected by AI adoption",
+    "Determined at creation; cannot be affected by AI adoption",
+    "Determined at creation; cannot be affected by AI adoption",
+    "Accumulates before and after adoption",
+    "Accumulates before and after adoption",
+    "Includes post-adoption code growth",
+    "Includes post-adoption commits",
+    "Includes post-adoption PRs",
+    "Includes post-adoption issues",
+    "Includes post-adoption releases",
+    "Snapshot mixes pre- and post-adoption state",
+    "May be adopted as part of same modernization wave",
+    "Snapshot mixes pre- and post-adoption state",
+    "Snapshot mixes pre- and post-adoption state"
+  ),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+classif %>%
+  kable(caption = "Covariate Classification by Temporal Status") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+**Consequence:** Only the three structurally pre-treatment covariates
+(repo age, language, organization type) are defensible controls.
+Restricting to pre-treatment covariates eliminates mediator bias entirely
+(pre-treatment variables cannot be caused by treatment) and reduces
+collider risk to the minor M-bias scenario.
+
+## 2.3 Pre-Treatment vs. Kitchen-Sink OLS (Table 2)
+
+We now compare three specifications: the bivariate regression (no
+controls), the pre-treatment-only model (the only defensible
+specification), and the kitchen-sink model from Stage 1.
+
+```{r ols_comparison}
+# Bivariate
+m_bivariate <- lm(log_avg_monthly_commits ~ treated, data = df)
+
+# Pre-treatment only: the only defensible specification
+m_pretreat <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
+                   queried_language + is_org,
+                 data = df)
+
 ols_results <- bind_rows(
-  extract_treated(m_pretreat, "M_pretreat (clean confounders)"),
-  extract_treated(m_ext,      "M_extended (+ ambiguous covariates)"),
-  extract_treated(m_all,      "M_all (+ stars, forks, ...)")
+  extract_treated(m_bivariate, "Bivariate (no controls)"),
+  extract_treated(m_pretreat,  "Pre-treatment covariates only"),
+  extract_treated(m_kitchen,   "Kitchen-sink (all covariates)")
 )
 
 ols_results %>%
@@ -371,36 +378,31 @@ ols_results %>%
   ) %>%
   select(Model = model, Coefficient = coef, `Robust SE` = se,
          `p-value` = p_val, `R²` = r2, N = n) %>%
-  kable(caption = "OLS Estimates of AI Adoption Effect on log(Monthly Commits)") %>%
+  kable(caption = "Table 2: OLS Estimates of AI Adoption Effect on log(Monthly Commits)") %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
-The three clean confounders (age, language, org type) already absorb a
-substantial share of the raw gap.  Adding the ambiguous covariates (CI,
-size, releases) attenuates the coefficient further --- but this additional
-drop is uninterpretable: if CI or size partly mediate the causal effect,
-the attenuation reflects over-conditioning, not confounding removal.
-M_all pushes the coefficient down still further, yet all three controlled
-estimates remain highly significant (p < 0.001).
+The coefficient attenuates monotonically as controls are added.  The
+drop from bivariate to pre-treatment is defensibly attributed to
+confounding removal (these are unambiguously pre-treatment variables).
+The further drop from pre-treatment to kitchen-sink is
+**uninterpretable**: the collapsed graph is not a DAG, so no adjustment
+formula tells us whether we are removing confounding or blocking causal
+paths through temporally ambiguous variables.
 
-A naive analyst might take this persistence as evidence that the effect is
-"robust to controls."  The OVB diagnostics below show why that conclusion
-is premature.
-
-## 2.2 Coefficient Stability Across Specifications
+## 2.4 Coefficient Stability Across Specifications
 
 ```{r coefficient_stability, fig.width=8, fig.height=3}
-# Build a sequence of progressively richer models
 formulas <- list(
   "Bivariate"                          = log_avg_monthly_commits ~ treated,
   "+ Age + Language"                    = log_avg_monthly_commits ~ treated +
                                            repo_age_yr + queried_language,
-  "M_pretreat (+ Org)"                 = log_avg_monthly_commits ~ treated +
+  "Pre-treatment (+ Org)"              = log_avg_monthly_commits ~ treated +
                                            repo_age_yr + queried_language + is_org,
-  "M_extended (+ CI, Size, Releases)"  = log_avg_monthly_commits ~ treated +
+  "+ CI, Size, Releases"               = log_avg_monthly_commits ~ treated +
                                            repo_age_yr + queried_language + is_org +
                                            has_ci + log_size + log_releases,
-  "M_all (+ Stars, Forks, ...)"        = log_avg_monthly_commits ~ treated +
+  "Kitchen-sink (+ Stars, ...)"        = log_avg_monthly_commits ~ treated +
                                            repo_age_yr + queried_language + is_org +
                                            has_ci + log_size + log_releases +
                                            log_stars + log_forks + log_total_prs +
@@ -417,9 +419,8 @@ stability <- lapply(names(formulas), function(label) {
   bind_rows() %>%
   mutate(spec = factor(spec, levels = names(formulas)))
 
-# Highlight M_pretreat (defensible) in blue, M_extended (ambiguous) in orange
-pre_idx <- which(levels(stability$spec) == "M_pretreat (+ Org)")
-ext_idx <- which(levels(stability$spec) == "M_extended (+ CI, Size, Releases)")
+pre_idx     <- which(levels(stability$spec) == "Pre-treatment (+ Org)")
+kitchen_idx <- which(levels(stability$spec) == "Kitchen-sink (+ Stars, ...)")
 
 ggplot(stability, aes(x = spec, y = coef)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
@@ -428,14 +429,14 @@ ggplot(stability, aes(x = spec, y = coef)) +
            ymin = -Inf, ymax = Inf,
            fill = "steelblue", alpha = 0.12) +
   annotate("rect",
-           xmin = ext_idx - 0.4, xmax = ext_idx + 0.4,
+           xmin = kitchen_idx - 0.4, xmax = kitchen_idx + 0.4,
            ymin = -Inf, ymax = Inf,
            fill = "darkorange", alpha = 0.10) +
   geom_pointrange(aes(ymin = coef - 1.96 * se, ymax = coef + 1.96 * se), size = 0.5) +
   labs(x = NULL, y = "Coefficient on AI Adoption (treated)",
        title = "Coefficient Stability Across Specifications",
-       caption = paste("Blue: clean pre-treatment confounders.",
-                       "Orange: adds ambiguous covariates (mediator risk).",
+       caption = paste("Blue: pre-treatment covariates only (defensible).",
+                       "Orange: kitchen-sink (temporally ambiguous).",
                        "95% CI with HC1 SEs.")) +
   theme_minimal(base_size = 13, base_family = "Linux Libertine") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
@@ -443,36 +444,24 @@ ggplot(stability, aes(x = spec, y = coef)) +
         panel.grid.minor.x = element_blank())
 ```
 
-The coefficient stability plot shows steady attenuation as controls are
-added.  The trajectory is monotonically downward, and even the kitchen-sink
-estimate remains far from zero.
+The trajectory is monotonically downward.  The blue-shaded pre-treatment
+specification is the only defensible one; everything to its right adds
+temporally ambiguous covariates whose inclusion is unjustified by any
+valid DAG.  The coefficient *keeps falling*, and the question is whether
+the unobserved confounders (developer skill, team culture) --- which are
+plausibly *more* strongly associated with both treatment and outcome than
+any observed covariate --- would continue the downward trajectory to zero.
 
-The blue-shaded M_pretreat specification contains only unambiguously
-pre-treatment confounders; the coefficient drop from the bivariate to
-M_pretreat is defensibly attributed to confounding removal.  The
-orange-shaded M_extended step adds CI, repo size, and releases ---
-covariates whose causal status is ambiguous.  The further attenuation
-*could* be additional confounding removal (if these variables proxy for
-engineering culture) or over-conditioning on mediators (if AI adoption
-partly *causes* CI presence, code growth, or release frequency).  We
-cannot tell which from cross-sectional data.
+## 2.5 Sensitivity Analysis
 
-This *looks* robust --- but the attenuation pattern itself is the warning
-sign.  Each batch of controls explains away more of the association.  The
-question is whether the unobserved confounders (developer skill, team
-culture) --- which are plausibly *more* strongly associated with both
-treatment and outcome than any individual observed covariate --- would
-continue the downward trajectory to zero.
-
-## 2.3 Cinelli & Hazlett Sensitivity Analysis (sensemakr)
+### Cinelli & Hazlett (sensemakr) on Pre-Treatment Model
 
 ```{r sensemakr_pretreat}
-# sensemakr on M_pretreat (clean confounders only --- most defensible model)
 sense_pre <- sensemakr(m_pretreat, treatment = "treated",
                        benchmark_covariates = c("repo_age_yr", "is_org"),
                        kd = 1:3)
 
-cat("=== M_pretreat: Sensitivity analysis ===\n")
+cat("=== Pre-treatment model: Sensitivity analysis ===\n")
 summary(sense_pre)
 ```
 
@@ -480,43 +469,17 @@ summary(sense_pre)
 plot(sense_pre, sensitivity.of = "estimate")
 ```
 
-```{r sensemakr_extended}
-# sensemakr on M_extended (adds ambiguous covariates)
-sense_ext <- sensemakr(m_ext, treatment = "treated",
-                       benchmark_covariates = c("log_size", "repo_age_yr"),
-                       kd = 1:3)
+The robustness value (RV) tells us how strong a single unobserved
+confounder would need to be --- in terms of partial R-squared with both
+treatment and outcome --- to nullify the estimate.  Consider "developer
+skill" as a confounder: skilled developers are more likely to adopt AI
+tools (early adopters, careful tooling configuration) *and* more likely
+to commit frequently (more productive).  A confounder this strong is not
+only plausible --- it is expected.
 
-cat("=== M_extended: Sensitivity analysis ===\n")
-summary(sense_ext)
-```
-
-We run the sensitivity analysis on both M_pretreat (the defensible
-specification) and M_extended (the specification that includes ambiguous
-covariates).
-
-The RV for M_pretreat tells us how strong a single unobserved confounder
-would need to be --- in terms of partial R² with both treatment and
-outcome --- to nullify the estimate at the 5% level.  M_pretreat has the
-higher RV because its coefficient is larger (fewer controls → less
-attenuation).  The RV for M_extended is lower because the ambiguous
-covariates have already absorbed some of the association --- but whether
-they absorbed confounding or the causal effect itself is unclear.
-
-Consider "developer skill" as a confounder.  Skilled developers are more
-likely to adopt AI tools (they are early adopters, they configure their
-tooling carefully) *and* more likely to commit frequently (they are more
-productive).  A confounder this strong is not only plausible --- it is
-expected.  Even the higher M_pretreat RV is within the range that such
-an unobservable could plausibly achieve.
-
-## 2.4 Oster Proportional Selection Bounds
+### Oster Proportional Selection Bounds
 
 ```{r oster_bounds}
-# Oster (2019): δ* = how much selection on unobservables (relative to
-# observables) is needed to drive the treatment effect to zero.
-# δ* = (β_full * (R_max - R_full)) / ((β_restricted - β_full) * (R_full - R_restricted))
-# We use R_max = min(1, 1.3 * R_full) following Oster's recommendation.
-
 oster_delta <- function(model_restricted, model_full, r_max_multiplier = 1.3) {
   b_r <- coef(model_restricted)["treated"]
   b_f <- coef(model_full)["treated"]
@@ -535,58 +498,29 @@ oster_delta <- function(model_restricted, model_full, r_max_multiplier = 1.3) {
   ))
 }
 
-m_bivariate <- lm(log_avg_monthly_commits ~ treated, data = df)
-
 oster_pre <- oster_delta(m_bivariate, m_pretreat)
-oster_ext <- oster_delta(m_bivariate, m_ext)
-oster_ambig <- oster_delta(m_pretreat, m_ext)
 
-bind_rows(
-  oster_pre   %>% mutate(comparison = "Bivariate → M_pretreat"),
-  oster_ext   %>% mutate(comparison = "Bivariate → M_extended"),
-  oster_ambig %>% mutate(comparison = "M_pretreat → M_extended")
-) %>%
+oster_pre %>%
   mutate(across(where(is.numeric), ~sprintf("%.3f", .))) %>%
-  select(Comparison = comparison, `β restricted` = beta_restricted,
-         `β full` = beta_full, `R² restricted` = R2_restricted,
-         `R² full` = R2_full, `R² max` = R2_max, `δ*` = delta_star) %>%
+  mutate(comparison = "Bivariate -> Pre-treatment") %>%
+  select(Comparison = comparison, `beta restricted` = beta_restricted,
+         `beta full` = beta_full, `R2 restricted` = R2_restricted,
+         `R2 full` = R2_full, `R2 max` = R2_max, `delta*` = delta_star) %>%
   kable(caption = "Oster Proportional Selection Bounds") %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
-The three comparisons tell different stories:
+The delta\* for bivariate -> pre-treatment may appear large, suggesting
+robustness.  But this is misleading: the pre-treatment confounders (age,
+language, org type) absorb only a modest share of the raw gap (the R-squared
+increase is small), so the "ruler" against which delta\* is measured is
+short.  A large delta\* does not mean the estimate is safe --- it means the
+pre-treatment confounders are simply not very informative about the
+selection process.  The most important confounders (developer skill, team
+culture, organizational resources) are precisely the ones we cannot observe
+from GitHub API data.
 
-**Bivariate → M_pretreat** has a large δ\*, meaning that --- relative to
-the clean confounders (age, language, org type) --- unobservables would
-need to be *many times* stronger to explain the estimate away.  At face
-value this looks robust.  But the clean confounders absorb only a modest
-share of the raw gap (the R² increase is small), so the "ruler" against
-which δ\* is measured is short.  The large δ\* does not mean the estimate
-is safe; it means the clean confounders are simply not very informative
-about the selection process.
-
-**Bivariate → M_extended** has a much smaller δ\* (around 0.56).  This
-comparison is the one a standard analysis would report, but its
-interpretation is muddied: some of the R² gain from adding CI, size, and
-releases may come from blocking causal paths (mediator contamination)
-rather than removing confounding.
-
-**M_pretreat → M_extended** isolates the contribution of the ambiguous
-covariates.  Its δ\* tells us how much the unobservables would need to
-resemble the ambiguous covariates to drive the coefficient from the
-M_pretreat estimate to zero.  But this comparison is doubly hard to
-interpret: the "observables" in the denominator are themselves
-ambiguous --- they may be proxies (which would make δ\* meaningful) or
-mediators (which would make the comparison invalid).
-
-Regardless of which comparison we emphasise, the most important
-confounders (developer skill, team culture, organizational resources) are
-*precisely* the ones we cannot observe from GitHub API data.  The Oster
-framework cannot resolve the confounder-vs-mediator ambiguity for us ---
-it can only tell us how far we are from the knife-edge, conditional on
-the covariates actually *being* confounders.
-
-# Stage 3: Propensity Score Matching and IPW
+# Stage 3: Can a Better Estimator Help?
 
 Stage 3 asks whether alternative selection-on-observables methods
 (matching, IPW) yield different answers from OLS.  If the problem were
@@ -595,13 +529,13 @@ help.  If the problem is unobserved confounding, all three estimators will
 converge on the same biased answer --- because they share the same
 identifying assumption (conditional ignorability given observables).
 
-## 3.1 Propensity Score Estimation
+We use only the pre-treatment covariates, since they are the only
+defensible adjustment set.
+
+## 3.1 Propensity Score Matching
 
 ```{r psm_estimation}
-# Estimate propensity score using M_extended covariates (includes ambiguous
-# covariates --- the convergence argument holds regardless of which set we use)
-ps_formula <- treated ~ repo_age_yr + queried_language + is_org + has_ci +
-                log_size + log_releases
+ps_formula <- treated ~ repo_age_yr + queried_language + is_org
 
 m_ps <- matchit(ps_formula, data = df, method = "nearest",
                 distance = "glm", ratio = 1, replace = FALSE)
@@ -609,24 +543,11 @@ m_ps <- matchit(ps_formula, data = df, method = "nearest",
 summary(m_ps)
 ```
 
-## 3.2 Balance After Matching
-
-```{r psm_balance, fig.width=8, fig.height=5}
-love.plot(m_ps, binary = "std", thresholds = c(m = 0.1),
-          var.names = balance_labels,
-          colors = c("red", "steelblue"),
-          shapes = c(17, 16),
-          title = "Covariate Balance: Before vs After Matching") +
-  theme_minimal(base_size = 13, base_family = "Linux Libertine")
-```
-
-## 3.3 Matched Sample OLS
-
 ```{r psm_ols}
 matched_data <- match.data(m_ps)
 
-m_psm <- lm(log_avg_monthly_commits ~ treated + repo_age_yr + queried_language +
-               is_org + has_ci + log_size + log_releases,
+m_psm <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
+               queried_language + is_org,
              data = matched_data, weights = weights)
 
 psm_ct <- coeftest(m_psm, vcov = vcovHC(m_psm, type = "HC1"))
@@ -641,23 +562,21 @@ psm_result <- data.frame(
 )
 ```
 
-## 3.4 Inverse Probability Weighting
+## 3.2 Inverse Probability Weighting
 
 ```{r ipw}
-# Estimate propensity scores
 df$ps <- predict(glm(ps_formula, data = df, family = binomial), type = "response")
 
 # IPW weights for ATT: treated get weight 1, controls get PS/(1-PS)
 df$ipw_weight <- ifelse(df$treated == 1, 1, df$ps / (1 - df$ps))
 
-# Effective sample size for controls
 ess_control <- sum(df$ipw_weight[df$treated == 0])^2 /
                sum(df$ipw_weight[df$treated == 0]^2)
 cat(sprintf("IPW effective sample size (controls): %.0f of %d\n",
             ess_control, sum(df$treated == 0)))
 
-m_ipw <- lm(log_avg_monthly_commits ~ treated + repo_age_yr + queried_language +
-               is_org + has_ci + log_size + log_releases,
+m_ipw <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
+               queried_language + is_org,
              data = df, weights = ipw_weight)
 
 ipw_ct <- coeftest(m_ipw, vcov = vcovHC(m_ipw, type = "HC1"))
@@ -672,17 +591,18 @@ ipw_result <- data.frame(
 )
 ```
 
-## 3.5 Comparison: OLS, PSM, and IPW
+## 3.3 Three-Estimator Comparison (Table 3)
 
 ```{r three_estimator_comparison}
 all_results <- bind_rows(
   ols_results %>%
-    filter(model == "M_extended (+ ambiguous covariates)") %>%
-    transmute(method = "OLS (M_extended)", coef, se, p_val, n),
+    filter(model == "Pre-treatment covariates only") %>%
+    transmute(method = "OLS (pre-treatment)", coef, se, p_val, n),
   psm_result,
   ipw_result
 ) %>%
-  mutate(method = factor(method, levels = c("OLS (M_extended)", "PSM (1:1 NN)", "IPW (ATT)")))
+  mutate(method = factor(method, levels = c("OLS (pre-treatment)",
+                                            "PSM (1:1 NN)", "IPW (ATT)")))
 
 all_results %>%
   mutate(
@@ -692,7 +612,7 @@ all_results %>%
   ) %>%
   select(Method = method, Coefficient = coef, `Robust SE` = se,
          `p-value` = p_val, N = n) %>%
-  kable(caption = "Three Estimators, Same M_extended Covariates") %>%
+  kable(caption = "Table 3: Three Estimators, Same Pre-Treatment Covariates") %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
@@ -702,45 +622,61 @@ ggplot(all_results, aes(x = method, y = coef)) +
   geom_pointrange(aes(ymin = coef - 1.96 * se, ymax = coef + 1.96 * se,
                       color = method),
                   size = 0.8) +
-  scale_color_manual(values = c("OLS (M_extended)" = "#4E79A7",
-                                "PSM (1:1 NN)"     = "#59A14F",
-                                "IPW (ATT)"        = "#F28E2B")) +
+  scale_color_manual(values = c("OLS (pre-treatment)" = "#4E79A7",
+                                "PSM (1:1 NN)"        = "#59A14F",
+                                "IPW (ATT)"           = "#F28E2B")) +
   labs(x = NULL, y = "Coefficient on AI Adoption",
-       title = "Three Estimators Converge Under the Same Covariates",
-       caption = "All use M_extended covariates. 95% CI with HC1 robust SEs.") +
+       title = "Three Estimators Converge Under Pre-Treatment Covariates",
+       caption = "All use pre-treatment covariates only. 95% CI with HC1 robust SEs.") +
   theme_minimal(base_size = 13, base_family = "Linux Libertine") +
   theme(legend.position = "none",
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank())
 ```
 
-# Stage 4: The Cross-Sectional Ceiling
+The three estimators converge tightly.  Switching from regression to
+matching to weighting changes nothing because all three share the same
+identifying assumption --- conditional ignorability given pre-treatment
+covariates --- and that assumption is violated by the unobserved
+confounders that no GitHub API data can capture.  **Using PSM or IPW does
+not automatically make a study "causal inference."**
 
-## The diagnostic summary
+# Synthesis: The Cross-Sectional Ceiling
 
-The four stages build a cumulative case:
+```{r summary_table}
+b_biv  <- sprintf("%.2f", coef(m_bivariate)["treated"])
+b_pre  <- sprintf("%.2f", coef(m_pretreat)["treated"])
+b_kit  <- sprintf("%.2f", coef(m_kitchen)["treated"])
+drop_pct <- sprintf("%.0f", (1 - coef(m_pretreat)["treated"] /
+                                  coef(m_bivariate)["treated"]) * 100)
+d_pre  <- sprintf("%.2f", oster_pre$delta_star)
 
-1. **The raw gap is enormous** (5.8x in means, 15x at the median), but
-   covariate balance shows that L2+ repos differ from L1 on *every*
-   observable dimension.  The treated group is a systematically different
-   population, not a random subset.
+summary_stages <- data.frame(
+  Stage = c("Stage 1: Naive analysis",
+            "Stage 2: Temporal collapse diagnosis",
+            "Stage 3: Estimator convergence"),
+  Finding = c(
+    paste0("L2+ repos have dramatically more monthly commits than L1 repos, ",
+           "with massive imbalance on every covariate (all SMDs exceed +/-0.1). ",
+           "Kitchen-sink OLS yields a positive, significant coefficient (",
+           b_kit, "). A naive analyst might stop here."),
+    paste0("Temporal collapse makes DAG-based covariate selection incoherent: ",
+           "time-varying covariates (stars, PRs, CI, ...) are simultaneously ",
+           "confounders and colliders in the collapsed graph. Only pre-treatment ",
+           "covariates (age, language, org type) are defensible. Pre-treatment ",
+           "coefficient (", b_pre, ") is ", drop_pct, "% below bivariate (",
+           b_biv, ") but fragile: Oster delta* = ", d_pre,
+           " (large because the pre-treatment covariates are weak proxies, ",
+           "not because the estimate is robust)."),
+    paste0("OLS, PSM, and IPW converge tightly under pre-treatment covariates ",
+           "--- the estimator is not the bottleneck; the identifying assumption is.")
+  )
+)
 
-2. **Even clean confounders absorb a large share of the gap**, and the
-   coefficient *keeps falling* as more controls are added.  The downward
-   trajectory has not flattened.  The additional drop from M_pretreat to
-   M_extended is uninterpretable: it could reflect confounding removal
-   (if CI, size, and releases proxy for engineering culture) or
-   over-conditioning on mediators (if AI adoption partly *causes* those
-   variables).
-
-3. **OVB diagnostics say the residual is fragile**: Oster δ* values
-   indicate that unobservables need not be dramatically more important
-   than observables to explain the entire residual association.
-
-4. **The estimator is not the bottleneck**: OLS, PSM, and IPW converge
-   tightly.  Switching from regression to matching to weighting changes
-   nothing because all three share the same identifying assumption ---
-   and that assumption is violated.
+summary_stages %>%
+  kable(caption = "Cross-Sectional Diagnostic Summary") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
 
 ## Why the coefficient survives controls
 
@@ -760,11 +696,8 @@ what selection bias predicts:
   run from productivity to adoption rather than the reverse.
 
 The observables we control for are *proxies* for the true confounders, not
-the confounders themselves --- and some (CI, size, releases) may partly be
-mediators rather than confounders, making the coefficient drop from
-M_pretreat to M_extended unreliable as evidence of confounding removal.
-The proxies absorb some but not all of the selection, which is why
-the coefficient attenuates but does not vanish.
+the confounders themselves.  The proxies absorb some but not all of the
+selection, which is why the coefficient attenuates but does not vanish.
 
 ## The bridge to longitudinal data
 
@@ -773,52 +706,5 @@ from "productive teams adopt AI tools."  The identifying variation must
 come from *within-repo temporal changes* --- comparing the same project
 before and after AI adoption, so that all time-invariant confounders
 (developer skill, org culture, project domain) are absorbed by
-construction.
-
-This is precisely what Example C (Cursor ITS/DiD) provides.  There, the
-naive analysis (without repo fixed effects) produces qualitatively wrong
-conclusions about code quality --- the sign *flips* when within-repo
-variation is used.  The velocity finding (commits increase) *does* survive
-the longitudinal design, but the cross-sectional analysis we performed
-here cannot know that in advance.  The lesson is not that the causal effect
-is zero, but that the cross-sectional coefficient --- however large and
-significant --- is uninterpretable.
-
-# Summary Table
-
-```{r summary_table}
-# Pull key numbers from models for the summary table
-b_biv  <- sprintf("%.2f", coef(m_bivariate)["treated"])
-b_pre  <- sprintf("%.2f", coef(m_pretreat)["treated"])
-b_ext  <- sprintf("%.2f", coef(m_ext)["treated"])
-drop_pct <- sprintf("%.0f", (1 - coef(m_pretreat)["treated"] /
-                                  coef(m_bivariate)["treated"]) * 100)
-d_pre  <- sprintf("%.2f", oster_pre$delta_star)
-
-summary_stages <- data.frame(
-  Stage = c("Stage 1: Covariate balance",
-            "Stage 2: OLS + OVB diagnostics",
-            "Stage 3: PSM and IPW",
-            "Stage 4: Cross-sectional ceiling"),
-  Finding = c(
-    paste0("L2+ repos average 5.8x more monthly commits (15x at the median), ",
-           "but differ on every observable (total PRs SMD = 0.91, size = 0.75, ",
-           "commits = 0.74, CI = 0.54)"),
-    paste0("Clean confounders cut the coefficient by ", drop_pct, "% (",
-           b_biv, " → ", b_pre, "); adding ambiguous covariates drops it ",
-           "further (→ ", b_ext, ") but this additional drop is uninterpretable ",
-           "(confounding removal or mediator blocking?). Oster δ* = ", d_pre,
-           " (bivariate → M_pretreat)"),
-    paste0("OLS, PSM, and IPW converge tightly under the same covariates — ",
-           "the estimator is not the bottleneck; the identifying assumption is"),
-    paste0("The persistent coefficient is consistent with selection bias (skilled ",
-           "teams both adopt AI tools and commit more); the confounder-vs-mediator ",
-           "ambiguity compounds the problem; only within-repo longitudinal ",
-           "variation can make progress (→ Example C)")
-  )
-)
-
-summary_stages %>%
-  kable(caption = "Diagnostic Arc Summary") %>%
-  kable_styling(bootstrap_options = "striped", full_width = FALSE)
-```
+construction.  This is precisely what the longitudinal analysis in
+Section 4.2 provides.

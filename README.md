@@ -167,14 +167,17 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 
 - [ ] Construct the dataset: 1,000 popular GitHub repos across 10 languages; identify ~300 with AI config files and ~600 without; construct two-period panel structure for longitudinal analysis
 - [ ] Cross-sectional analysis (Section 4.1):
-  - [ ] Naive comparison (document raw difference and covariate imbalance)
-  - [ ] Temporal collapse illustration: draw true temporal DAG, then show collapsed cross-sectional graph is cyclic
-  - [ ] Classify covariates: structurally pre-treatment (age, language, org type) vs. temporally ambiguous (stars, PRs, CI, size, releases)
-  - [ ] OLS with pre-treatment-only covariates (M_pretreat) as the only defensible specification
-  - [ ] OLS with temporally ambiguous covariates (M_extended, M_all) to show uninterpretable attenuation
-  - [ ] Sensitivity analysis (Oster bounds, sensemakr) to show M_pretreat is fragile
-  - [ ] PSM and IPW estimation; demonstrate convergence with OLS (estimator is not the bottleneck)
-  - [ ] Write up cross-sectional findings and takeaway centered on temporal collapse
+  - [ ] Stage 1: Naive comparison and kitchen-sink regression
+    - [ ] Table 1 (Descriptive comparison): side-by-side means/medians for outcome and all covariates (pre-treatment and time-varying), documenting imbalance
+    - [ ] Kitchen-sink OLS as baseline
+  - [ ] Stage 2: Diagnose selection bias and temporal collapse
+    - [ ] Draw true temporal DAG, then show collapsed cross-sectional graph is cyclic
+    - [ ] Classify covariates: structurally pre-treatment (age, language, org type) vs. temporally ambiguous (stars, PRs, CI, size, releases)
+    - [ ] Table 2 (OLS comparison): kitchen-sink vs. pre-treatment-only regression, showing uninterpretable attenuation
+    - [ ] Sensitivity analysis (Oster bounds, sensemakr) to show pre-treatment-only estimate is fragile
+  - [ ] Stage 3: Estimator convergence
+    - [ ] Table 3 (Estimator comparison): OLS vs. PSM vs. IPW with pre-treatment covariates converge
+  - [ ] Write up cross-sectional findings and takeaway
 - [ ] Longitudinal analysis (Section 4.2):
   - [ ] Basic before/after comparison
   - [ ] TWFE without time-varying covariates
