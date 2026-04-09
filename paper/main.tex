@@ -119,7 +119,7 @@ For others, experiments are simply infeasible: For example, one cannot randomly 
 The alternative is \emph{observational data}, such as data from software repositories.
 Over the past two decades, the SE community has been engaged in a delicate dance pursuing causal inference from observational data.
 It is extremely challenging.
-Arguably, there is no consensus in the field, but one popular approach is to rigorously frame the study as presenting only descriptive and correlational evidence---which is only \emph{suggestive} of the causal ambition that motivates it.
+Arguably, there is no consensus in the field, but one popular approach is to rigorously frame the study as presenting descriptive and correlational evidence---which is only \emph{suggestive} of the causal ambition that motivates it.
 However, this conservative approach---and the lack of an explicit vocabulary and toolkit to convey the strength of causal evidence in each study---has important consequences.
 First, the cautious framing does not prevent downstream causal misinterpretations.\footnote{The programming language and code quality debate illustrates this pattern: \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} reported a ``modest but significant'' association between language class and defect proneness, framing their findings as correlational.
 Yet, our citation analysis of 451 papers citing this study reveals that, among papers that engage with the finding substantively, causal interpretations outnumber hedged ones roughly 2:1---a striking ratio given the authors' explicit and appropriate hedging (Appendix~\ref{sec:appendix-misinterpretation}).
@@ -127,20 +127,15 @@ This is not an isolated incident but a systemic field-level pattern, consistent 
 The psychology and epidemiology literature documents the same problem and provides a valuable reference for the SE community (see Appendix~\ref{sec:appendix-psych-reform}): \citet{haber2022causal} found that 52\% of abstracts imply causality despite ostensibly associational language.
 The methodological reformers in these fields responded by shifting from associational euphemisms to explicit causal framing---requiring authors to state target estimands, construct DAGs to justify covariate selection, and openly argue for identification assumptions~\cite{grosz2020taboo, lundberg2021estimand, rohrer2018thinking, rohrer2024causal}.}
 Second, even when some researchers claim to use ``causal inference'' methods, others may not understand the specific aspect in which ``causal inference'' is better---the field lacks a shared vocabulary for communicating the strength of evidence provided by different methods and designs.
+This state of affairs is unsurprising, as most empirical SE researchers do not enter the field with the training necessary for causal inference, which is typically taught in statistics, economics, and public policy programs, not in computer science.
 
-This state of affairs is unsurprising, as most empirical SE researchers do not enter the field with the training necessary to apply the modern causal inference toolkit---such training is typically taught in statistics, economics, and public policy programs, not in computer science.
-Modern causal inference methods, developed primarily in econometrics and epidemiology over the past several decades, offer a principled path forward~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}.
-The value of these methods lies not in any claim to methodological perfection but in their insistence on \emph{transparency}: Every causal design rests on assumptions that must be explicitly stated, examined, and debated.
-When a difference-in-differences study claims a causal effect, it does so under the assumption of parallel trends---an assumption that can be partially tested and openly scrutinized~\cite{roth2023whats}.
-When an instrumental variables analysis identifies an effect, it does so under exclusion restrictions that critics can directly challenge~\cite{deaton2010instruments}.
-This transparency is not merely an exercise in intellectual honesty; it is \emph{generative}.
-Each stated assumption that cannot be fully defended becomes a concrete direction for future work: A DAG with acknowledged unmeasured confounders tells the next researcher exactly what to measure; a parallel trends assumption that can only be partially tested tells the next team to seek staggered adoption data; an exclusion restriction that critics challenge points toward a more convincing instrument.
+In this paper, we argue that the entire empirical SE field needs to move forward by adopting the modern causal inference toolkit, developed primarily in econometrics and epidemiology over the past several decades~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}, as the new standard for all causal inquiries on observational SE data.
+The value of this toolkit lies not in any claim to methodological perfection but in its insistence on \emph{transparency}: Every causal design rests on assumptions that must be explicitly stated, examined, and debated.
+This transparency is not merely an exercise in intellectual honesty; it is \emph{generative}: Each stated assumption that cannot be fully defended becomes a concrete direction for future work (see the worked example in Section~\ref{sec:worked-example} for a concrete illustration).
 The causal framework thus converts methodological limitations into a structured research agenda, making each study a stepping stone rather than a dead end.
-This transparent disclosure ensures not only that the strength of causal evidence is clearly communicated to an audience unfamiliar with related methods, but also that the field can iteratively develop research questions, data, and methods with less demanding assumptions.
 
-We envision that the entire empirical SE field needs to move forward by adopting the modern causal inference toolkit as the new standard for all causal inquiries involving observational software engineering data.
 The room for improvement is substantial.
-Our analysis of 5,341 papers from ICSE, FSE, and ASE (2015--2025) reveals that 29\% of empirical SE papers investigate causal questions, yet fewer than 4\% employ any recognized causal inference method---and those that do rely overwhelmingly on controlled experiments or causal fault localization rather than the design-based identification strategies suited to the field's observational data (Section~\ref{sec:bg-adoption}).
+Our analysis of 5,341 papers from ICSE, FSE, and ASE (2015--2025) reveals that 29\% of empirical SE papers investigate or implies to investigate intervention-outcome questions, yet fewer than 4\% employ any recognized causal inference method---and those that do rely overwhelmingly on controlled experiments or causal fault localization rather than the design-based identification strategies suited to the field's observational data (Section~\ref{sec:bg-adoption}).
 Recent methodological contributions have begun addressing specific gaps---instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}, matching for MSR studies~\cite{DBLP:conf/msr/NoceraSLTV26}---but no existing work spans the potential outcomes framework, graphical causal models, and design-based identification strategies, nor offers a systematic protocol for assessing causal credibility.
 This tutorial fills that gap.
 
@@ -159,6 +154,19 @@ Section~\ref{sec:discussion} discusses implications and concludes.
 \section{Background and Related Work}
 \label{sec:background}
 
+\subsection{The Causal Inference Toolkit: Origins and Scope}
+\label{sec:bg-causal-history}
+
+The modern causal inference toolkit emerged over a century through contributions from three intellectual traditions, each addressing a distinct aspect of the problem.
+Statisticians developed the \emph{potential outcomes} framework~\cite{neyman1923application, rubin1974estimating}, which defines \emph{what} causal quantities to estimate---formalizing the counterfactual contrast between treatment and control worlds.
+Econometricians drove the \emph{credibility revolution}~\cite{angrist2010credibility}, shifting the basis of causal claims from statistical modeling to research design---exploiting quasi-random variation through difference-in-differences, instrumental variables, regression discontinuity, and panel fixed effects to provide credible identification without requiring all confounders to be measured.
+The 2021 Nobel Memorial Prize in Economic Sciences, awarded to Card, Angrist, and Imbens~\cite{nobelprize2021economics}, recognized these contributions as among the most consequential methodological advances in modern social science.
+From computer science, \citet{pearl2009causality} developed the \emph{graphical causal model} framework, representing causal relationships as directed acyclic graphs (DAGs) and providing a visual language for arguing \emph{why} identification assumptions hold.
+Where potential outcomes define the target estimand and design-based methods provide credible identification, DAGs encode the causal structure that justifies the researcher's analytic choices~\cite{morgan2015counterfactuals, imbens2020potential}.
+A new generation of accessible textbooks has made these methods available to non-specialist audiences: \citet{angrist2009mostly} and \citet{cunningham2021causal} cover design-based identification, \citet{hernan2020causal} introduce the \emph{target trial} framework---which asks researchers to describe the hypothetical randomized experiment their observational analysis attempts to emulate---and \citet{huntingtonklein2021effect} bridge econometric and graphical approaches.
+Our tutorial treats all three traditions as essential for SE research: The potential outcome framework builds theoretical foundations, design-based identification help provide robust effect estimates for SE interventions, and graphical causal models help decompose the mechanisms through which the intervention affects the outcome (Section~\ref{sec:primer}).
+For a detailed historical account of these intellectual traditions and the recent methodological reforms in psychology and epidemiology, see Appendix~\ref{sec:appendix-history}.
+
 \subsection{Existing Tutorials and Methodological Guides in Software Engineering}
 \label{sec:bg-tutorials}
 
@@ -174,61 +182,46 @@ On the prescriptive side, individual tutorials have introduced specific methods 
 Outside SE, \citeauthor{rohrer2024causal}'s~\cite{rohrer2024causal} recent tutorial for psychologists is the closest existing analog to our work, but it does not cover design-based identification strategies or SE-specific confounding structures.
 Our tutorial fills this gap with an integrative treatment, covering multiple intellectual traditions of causal inference (potential outcomes, graphical causal models, design-based identification) and a pragmatic stance for conducting credible causal inquiry in SE (Section~\ref{sec:primer}).
 
-\subsection{The Causal Inference Toolkit: Origins and Scope}
-\label{sec:bg-causal-history}
-
-The modern causal inference toolkit emerged over a century through contributions from three intellectual traditions, each addressing a distinct aspect of the problem.
-Statisticians developed the \emph{potential outcomes} framework~\cite{neyman1923application, rubin1974estimating}, which defines \emph{what} causal quantities to estimate---formalizing the counterfactual contrast between treatment and control worlds.
-Econometricians drove the \emph{credibility revolution}~\cite{angrist2010credibility}, shifting the basis of causal claims from statistical modeling to research design---exploiting quasi-random variation through difference-in-differences, instrumental variables, regression discontinuity, and panel fixed effects to provide credible identification without requiring all confounders to be measured.
-The 2021 Nobel Memorial Prize in Economic Sciences, awarded to Card, Angrist, and Imbens~\cite{nobelprize2021economics}, recognized these contributions as among the most consequential methodological advances in modern social science.
-From computer science, \citet{pearl2009causality} developed the \emph{graphical causal model} framework, representing causal relationships as directed acyclic graphs (DAGs) and providing a visual language for arguing \emph{why} identification assumptions hold.
-Where potential outcomes define the target estimand and design-based methods provide credible identification, DAGs encode the causal structure that justifies the researcher's analytic choices~\cite{morgan2015counterfactuals, imbens2020potential}.
-A new generation of accessible textbooks has made these methods available to non-specialist audiences: \citet{angrist2009mostly} and \citet{cunningham2021causal} cover design-based identification, \citet{hernan2020causal} introduce the \emph{target trial} framework---which asks researchers to describe the hypothetical randomized experiment their observational analysis attempts to emulate---and \citet{huntingtonklein2021effect} bridge econometric and graphical approaches.
-Our tutorial treats all three traditions as essential for SE research: The potential outcome framework builds theoretical foundations, design-based identification help provide robust effect estimates for SE interventions, and graphical causal models help decompose the mechanisms through which the intervention affects the outcome (Section~\ref{sec:primer}).
-For a detailed historical account of these intellectual traditions and the methodological reforms in psychology and epidemiology, see Appendix~\ref{sec:appendix-history}.
-
 \subsection{Causal Inference Adoption in Software Engineering to Date}
 \label{sec:bg-adoption}
 
 The preceding sections document a growing awareness of causal reasoning in SE, but how widespread is its actual use?
 To quantify the gap between causal ambition and methodological practice, we conducted a classification of all main-research-track papers published at three premier SE venues---ICSE, FSE, and ASE---from 2015 to 2025.
-We do not aim to achieve methodological perfection in this analysis, but even a simple exploration reveals a substantial gap between the causal questions SE researchers ask and the methods they employ to answer them.
+We do not aim to achieve methodological perfection in this analysis, but even a simple exploration reveals a substantial gap between the interevention-outcome questions SE researchers ask and the methods they employ to answer them.
 
 \paragraph{Corpus and Classification.}
 For each venue (ICSE, FSE, ASE), we obtained a list of papers, paper titles, and DOIs from DBLP, and retrieved the paper abstracts via the Semantic Scholar batch API, using OpenAlex as a backfill source.
 This produced a corpus of 5,341 papers.
-Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, (2)~whether it is a mining software repositories (MSR) study, and (3)~whether it investigates a causal research question, employs a causal inference method, or both.
-For papers tagged as using causal methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
-Deterministic decoding and an explicit classification schema were chosen to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package.
+Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, %(2)~whether it is a mining software repositories (MSR) study, and 
+(2)~whether it investigates (or implies to be motivated by) an intervention-outcome research question, and (3) whether it claims to employ a causal inference method.
+For papers tagged as claiming to use causal inference methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
+The first author manually audited a sample of 100 papers and all papers classified as using causal inference methods, finding a 95\% accuracy in paper classification and 81\% accuracy in method classification; the method classification errors are manually corrected before they are summarized in Table~\ref{tab:taxonomy}.
+We adopt deterministic decoding and an explicit classification schema to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package.
 
 \paragraph{The Causal Ambition--Methodology Gap.}
-Of the 5,341 papers, 2,136 (40\%) are empirical SE studies.
-Among these empirical papers, 621 (29\%) ask or investigate causal research questions (RQs)---those about how an SE intervention, tool, or practice impacts certain outcomes---yet only 81 (3.8\%) employ any recognizable causal inference method.
-The remaining 545 papers investigate the causal RQs only through interpreting correlational or descriptive evidence.
-Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers asking causal RQs has grown steadily---from 23 in 2015 to 131 in 2025---the number claiming to employ causal inference methods has grown far more slowly, from 3 to 14 over the same period.
-The ratio of causal RQs to causal inference methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
-
-The gap is particularly pronounced among MSR papers.
-Of the 961 MSR papers in our corpus, 249 (26\%) make causal claims, but only 30 (3.1\%) employ causal methods---consistent with the reliance on large-scale observational data that cannot distinguish causal effects from confounding without an identification strategy.
+Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by intervention-outcome research questions (RQs); but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
+The vast majority of the 621 papers investigate their proposed RQs through interpreting correlational, descriptive, or qualitative evidence.
+Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers asking intervention-outcome RQs has grown steadily---from 23 in 2015 to 131 in 2025---the number claiming to employ causal inference methods has grown far more slowly, from 3 to 14 over the same period.
+The ratio of ntervention-outcome RQs to causal inference methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{causal_trends.pdf}
 \caption{Publication trends at ICSE, FSE, and ASE (2015--2025).
-The top two lines show total publications and empirical SE papers; the bottom two show papers asking causal research questions (RQs) versus papers employing causal inference methods.
-The persistent gap between causal RQs and causal methods quantifies the disconnect between causal ambition and methodological practice.}
+The top two lines show total publications and empirical SE papers; the bottom two show papers asking intervention-outcome research questions (RQs) versus papers employing causal inference methods.
+The persistent gap between RQs and methods quantifies the disconnect between causal ambition and methodological practice.}
 \label{fig:causal-trends}
 \end{figure}
 
 \paragraph{Which Causal Methods Are Used?}
 Among the papers with causal methods, the distribution is highly concentrated (Table~\ref{tab:taxonomy}).
 Randomized controlled experiments dominate (37 papers), reflecting the SE community's established tradition of controlled developer studies~\cite{DBLP:books/sp/WohlinRHORW24}.
-Causal fault localization---applying causal testing, causal contribution scores, or causal debugging to identify root causes of failures---accounts for 17 papers, representing a growing research thread that applies causal reasoning to software analysis rather than to empirical research methodology.
-Regression-based causal inference (10 papers) includes studies that use regression or observational analysis with explicit causal intent, such as controlling for confounders or using causal-adjacent language, but without formal identification strategies.
+Causal fault localization---applying causal testing, causal contribution scores, or causal debugging to identify root causes of failures---accounts for 13 papers, representing a growing research thread that applies causal reasoning to software analysis rather than to empirical research methodology.
+Regression-based causal inference (14 papers) includes studies that use regression or observational analysis with explicit causal intent, such as controlling for confounders or using causal-adjacent language, but without formal identification strategies.
 
 \begin{table}[t]
 \centering
-\caption{Taxonomy of causal methods in 100 SE papers (ICSE + FSE + ASE, 2015--2025) classified as employing a causal inference method.
+\caption{Taxonomy of causal methods in 99 SE papers (ICSE + FSE + ASE, 2015--2025) classified as employing a causal inference method.
 Each paper is assigned a primary category; multi-label assignments are stored separately in the replication package.}
 \label{tab:taxonomy}
 \footnotesize
@@ -240,7 +233,7 @@ Each paper is assigned a primary category; multi-label assignments are stored se
 Randomized Controlled Experiment  & 37 & Random assignment to treatment/control groups \\
 \addlinespace
 \multicolumn{3}{l}{\emph{Observational --- Design-Based}} \\
-Quasi-/Natural Experiment         &  8 & Exploits naturally occurring variation (e.g., case-control, before-after, panel data) \\
+Quasi-/Natural Experiment         &  6 & Exploits naturally occurring variation (e.g., case-control, before-after, panel data) \\
 Propensity Score Methods          &  1 & Matching or weighting on observed covariates to reduce selection bias \\
 \addlinespace
 \multicolumn{3}{l}{\emph{Observational --- Graphical / Structural}} \\
@@ -250,20 +243,20 @@ Interventional / do-Calculus      &  4 & Estimates effects via Pearl's do-operat
 Structural Equation Modeling      &  2 & System of equations with observed/latent variables for direct and indirect effects \\
 \addlinespace
 \multicolumn{3}{l}{\emph{Observational --- Other}} \\
-Counterfactual Analysis           &  6 & Reasons about outcomes under hypothetical alternative conditions \\
+Counterfactual Analysis           &  7 & Reasons about outcomes under hypothetical alternative conditions \\
 Granger Causality                 &  2 & Tests whether past values of one time series predict another \\
 Causal Impact Analysis            &  1 & Bayesian structural time-series model for event effects \\
 Survival / Hazard Modeling        &  2 & Time-to-event models with causal interpretation \\
-Regression-based Causal Inference & 10 & Regression with explicit causal intent but no formal identification strategy \\
+Regression-based Causal Inference & 14 & Regression with explicit causal intent but no formal identification strategy \\
 \addlinespace
 \multicolumn{3}{l}{\emph{Software Analysis (not Empirical Methodology)}} \\
-Causal Fault Localization         & 17 & Causal testing, contribution scores, or causal debugging for root-cause analysis \\
+Causal Fault Localization         & 13 & Causal testing, contribution scores, or causal debugging for root-cause analysis \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The methods central to the credibility revolution in economics and political science are nearly absent.
-Only 8 papers employ quasi-experimental or natural experiment designs; propensity score methods and difference-in-differences are used at most one or two times; and no paper in our corpus uses instrumental variables or regression discontinuity as a primary identification strategy.\footnote{A small number of SE studies outside our corpus label their design as ``regression discontinuity''---e.g., \citet{DBLP:conf/icsme/ZimmermannC19} on bug tracker switching and \citet{DBLP:journals/ese/WesselSWSG22} on code review bot adoption---but these use \emph{time} as the running variable, with all units experiencing the treatment simultaneously at a calendar cutoff.
+Only 6 papers employ quasi-experimental or natural experiment designs; propensity score methods and difference-in-differences are used at most one or two times; and no paper in our corpus uses instrumental variables or regression discontinuity as a primary identification strategy.\footnote{A small number of SE studies outside our corpus label their design as ``regression discontinuity''---e.g., \citet{DBLP:conf/icsme/ZimmermannC19} on bug tracker switching and \citet{DBLP:journals/ese/WesselSWSG22} on code review bot adoption---but these use \emph{time} as the running variable, with all units experiencing the treatment simultaneously at a calendar cutoff.
 As \citet{hausman2018regression} discuss, such temporal designs are more accurately characterized as \emph{interrupted time series} (ITS) analyses: True regression discontinuity exploits quasi-random variation near a threshold of a continuous assignment variable, whereas ITS designs face confounding from concurrent events and lack the cross-sectional variation that gives RDD its identification power.}
 The graphical causal model tradition is better represented (7 papers using causal DAGs, 3 using causal discovery algorithms, 4 using interventional or do-calculus reasoning), consistent with \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} observation that Pearl's framework has gained some traction in SE\@.
 Structural equation modeling (2 papers), Granger causality (2 papers), and causal impact analysis (1 paper) round out the remaining categories.

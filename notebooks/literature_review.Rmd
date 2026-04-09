@@ -6,6 +6,10 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
+library(showtext)
+
+font_add("Linux Libertine", regular = "LinLibertine_Rah.ttf")
+showtext_auto()
 
 plots_dir <- file.path(dirname(getwd()), "plots")
 if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
@@ -49,7 +53,7 @@ empirical <- papers |> filter(is_empirical == TRUE)
 n_causal_claims <- sum(empirical$causal_type %in% c("claim", "both"), na.rm = TRUE)
 pct_causal_claims <- round(100 * n_causal_claims / n_empirical, 1)
 
-n_causal_methods <- sum(empirical$causal_type %in% c("method", "both"), na.rm = TRUE)
+n_causal_methods <- sum(!is.na(empirical$causal_method_class_corrected) & empirical$causal_method_class_corrected != "")
 pct_causal_methods <- round(100 * n_causal_methods / n_empirical, 1)
 
 n_claims_no_method <- sum(empirical$causal_type == "claim", na.rm = TRUE)
@@ -61,10 +65,10 @@ pct_msr <- round(100 * n_msr / n_total, 1)
 msr <- papers |> filter(is_msr == TRUE)
 n_msr_claims <- sum(msr$causal_type %in% c("claim", "both"), na.rm = TRUE)
 pct_msr_claims <- round(100 * n_msr_claims / n_msr, 1)
-n_msr_methods <- sum(msr$causal_type %in% c("method", "both"), na.rm = TRUE)
+n_msr_methods <- sum(!is.na(msr$causal_method_class_corrected) & msr$causal_method_class_corrected != "")
 pct_msr_methods <- round(100 * n_msr_methods / n_msr, 1)
 
-n_method_total <- sum(papers$causal_type %in% c("method", "both"), na.rm = TRUE)
+n_method_total <- sum(!is.na(papers$causal_method_class_corrected) & papers$causal_method_class_corrected != "")
 ```
 
 The following statistics are cited in the paper (Section 2.5 and Introduction):
@@ -89,7 +93,7 @@ year_summary_wide <- papers |>
     total              = n(),
     empirical          = sum(is_empirical == TRUE, na.rm = TRUE),
     causal_claims      = sum(causal_type %in% c("claim", "both"), na.rm = TRUE),
-    causal_methods     = sum(causal_type %in% c("method", "both"), na.rm = TRUE),
+    causal_methods     = sum(!is.na(causal_method_class_corrected) & causal_method_class_corrected != ""),
   )
 
 knitr::kable(year_summary_wide,
@@ -122,9 +126,12 @@ definitions <- tribble(
   "Regression-based Causal Inference",  "Uses regression or observational analysis with explicit causal intent (e.g., controlling for confounders, causal-adjacent language).",
 )
 
-method_papers <- papers |> filter(causal_type %in% c("method", "both"))
+method_papers <- papers |>
+  filter(causal_type %in% c("method", "both"),
+         !is.na(causal_method_class_corrected),
+         causal_method_class_corrected != "")
 primary_counts <- method_papers |>
-  mutate(primary = str_trim(str_split_i(causal_method_class, ";", 1))) |>
+  mutate(primary = str_trim(str_split_i(causal_method_class_corrected, ";", 1))) |>
   count(primary, name = "N") |>
   rename(Category = primary) |>
   filter(!is.na(Category))
@@ -168,13 +175,13 @@ summary_by_year <- papers |>
     `All papers`             = n(),
     `Empirical SE`           = sum(is_empirical == TRUE, na.rm = TRUE),
 #    `MSR papers`             = sum(is_msr == TRUE, na.rm = TRUE),
-    `Asking causal RQs`      = sum(causal_type %in% c("claim", "both"), na.rm = TRUE),
-    `Using causal methods`   = sum(causal_type %in% c("method", "both"), na.rm = TRUE),
+    `Asking intervention-outcome RQs`      = sum(causal_type %in% c("claim", "both"), na.rm = TRUE),
+    `Using causal methods`   = sum(!is.na(causal_method_class_corrected) & causal_method_class_corrected != ""),
   ) |>
   pivot_longer(-year, names_to = "category", values_to = "count") |>
   mutate(category = factor(category,
     levels = c("All papers", "Empirical SE", "MSR papers",
-               "Asking causal RQs", "Using causal methods")))
+               "Asking intervention-outcome RQs", "Using causal methods")))
 
 labels_bottom <- summary_by_year |>
   filter(category %in% c("Using causal methods"))
@@ -190,7 +197,7 @@ p_trends <- ggplot(summary_by_year, aes(year, count, colour = category, shape = 
   scale_colour_manual(values = c("All papers" = "grey40",
                                  "Empirical SE" = "#0072B2",
                                  "MSR papers" = "#009E73",
-                                 "Asking causal RQs" = "#E69F00",
+                                 "Asking intervention-outcome RQs" = "#E69F00",
                                  "Using causal methods" = "#D55E00")) +
   labs(
     x = NULL, y = "Number of Papers", colour = NULL, shape = NULL
