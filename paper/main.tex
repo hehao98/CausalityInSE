@@ -69,21 +69,15 @@
 \email{vasilescu@cmu.edu}
 
 \begin{abstract}
-Empirical software engineering (SE) research frequently investigates questions about the causal effects of intervention: For example, does adopting a new language reduce defects? Does code review improve quality? Does CI/CD adoption increase release reliability?
-For this specific class of questions, the field's dominant approach---large-scale descriptive and/or correlational analysis of observational repository data---cannot distinguish genuine causal effects from selection biases, confounders, and other threats to causal validity.
-Yet, practitioners, managers, and downstream research routinely interpret the resulting findings as causal.
-This tutorial addresses the gap between the SE community's causal ambitions and its methodological practice.
-We provide a self-contained primer on causal inference for SE researchers, covering the potential outcomes framework, graphical causal models, and design-based identification strategies, %(difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects), 
-and concludes with a pragmatic stance for SE research that synthesizes these tools into actionable guidance. %---building on prior research and practitioner knowledge to construct causal theories, framing research designs as target trials, using DAGs to make assumptions explicit, exploiting quasi-experimental variation for identification, and honestly engaging with alternative explanations.
-We demonstrate the primer's diagnostic and constructive power through the programming-language and code-quality debate.
-%A citation analysis of 451 papers citing the landmark study by \citet{DBLP:conf/sigsoft/RayPFD14} reveals that causal interpretations outnumber hedged ones 2:1 among papers that engage with their findings.
-%We then apply the pragmatic stance to two worked examples from this debate.
-In the first example, we retrospectively apply the toolkit to \citet{DBLP:conf/sigsoft/RayPFD14}'s landmark GitHub study and show how panel fixed effects, applied to the same data, strengthen identification by absorbing common unobserved confounders in the SE context.
-In the second example, we apply the toolkit to Bogner and Merkel's cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the sharper ``type system adoption'' question, and redesign the study as a TypeScript migration difference-in-differences.
-Both examples illustrate how the primer's pragmatic stance systematically improves prior research designs.
-Persistent empirical controversies in SE reflect two orthogonal challenges: identification (can the design support a causal claim?) and measurement (are the proxies valid for the constructs of interest?).
-This tutorial addresses the identification dimension; measurement validity is an equally important concern that the causal toolkit surfaces but does not itself solve.
-We hope this paper will provide a methodological blueprint for future empirical SE research, illustrating how to balance rigor with practicality to generate actionable, trustworthy evidence for important empirical SE questions.
+Empirical software engineering (SE) research encompasses a diverse set of problems.
+Among them, \emph{intervention-outcome} questions---does adopting a practice, tool, or process improve a target outcome?---are particularly important because they have immediate implications for practice.
+Experiments are the gold standard for such questions, but they have important limitations: For some problems, they cannot overcome the lack of external validity; for others, experiments are simply infeasible.
+The alternative is observational data from software repositories, but the SE community's dominant approach---rigorously framing studies as presenting only descriptive and correlational evidence that is merely suggestive of the causal ambition motivating them---has important consequences: Despite cautious framing, downstream causal misinterpretation remains prevalent; and even when researchers employ ``causal inference'' methods, the field lacks a shared vocabulary for communicating what specifically makes one study's evidence stronger than another's.
+This state of affairs is unsurprising, as most empirical SE researchers do not enter the field with the training necessary to apply the modern causal inference toolkit.
+We envision that the field needs to adopt this toolkit as the new standard for causal inquiries involving observational SE data.
+The power of the toolkit lies in making identifying assumptions \emph{transparent and open to scrutiny}---ensuring that the strength of evidence is clearly communicated and that the field can iteratively develop stronger designs.
+Our analysis of 5,341 papers from ICSE, FSE, and ASE (2015--2025) reveals that 29\% of empirical SE papers ask causal questions, yet fewer than 4\% use any causal method---predominantly experiments and causal fault localization.
+This tutorial provides (1)~an education on the causal inference vocabulary and methods, covering the potential outcomes framework, graphical causal models, and design-based identification strategies; (2)~a pragmatic guide for conducting credible causal inquiry in empirical SE; and (3)~a worked example on the impact of AI coding tools in open-source software that demonstrates the full arc from na\"ive comparison through cross-sectional methods to design-based longitudinal identification.
 \end{abstract}
 
 \begin{CCSXML}
@@ -104,7 +98,7 @@ We hope this paper will provide a methodological blueprint for future empirical 
 \ccsdesc[500]{Software and its engineering}
 \ccsdesc[500]{Computing methodologies}
 
-\keywords{causal inference, empirical software engineering, mining software repositories, research methodology, quasi-experimental design, programming languages, code quality, defect proneness}
+\keywords{causal inference, empirical software engineering, mining software repositories, research methodology, quasi-experimental design, AI coding tools, observational studies}
 
 \received{18 March, 2026}
 %\received[revised]{12 March 2009}
@@ -116,51 +110,51 @@ We hope this paper will provide a methodological blueprint for future empirical 
 \label{sec:introduction}
 
 Empirical software engineering has built a rich research tradition: Descriptive studies characterize how developers work~\cite{DBLP:journals/queue/ForsgrenSMZHB21}, correlational analyses reveal associations in repository data, qualitative investigations surface practitioner beliefs~\cite{DBLP:conf/icse/Devanbu0B16}, and controlled experiments test hypotheses under laboratory conditions~\cite{DBLP:books/sp/WohlinRHORW24}.
-This body of work has advanced our understanding of software development processes, team dynamics, and tool ecosystems.
-However, a specific class of empirical questions---those about the \emph{causal effect} of interventions on outcomes---remains difficult to answer convincingly with the field's dominant methodological tools.
-When practitioners ask whether adopting code review reduces defects~\cite{DBLP:journals/ese/McIntoshKAH16}, whether CI/CD improves release quality~\cite{DBLP:conf/kbse/HiltonTHMD16}, or whether a typed language decreases bug rates~\cite{DBLP:conf/sigsoft/RayPFD14}, they are foundementally asking a \emph{causal} question between \emph{interventions} and \emph{outcomes}.
+Among the diverse set of problems this community tackles, a particular type---the \emph{intervention-outcome} problem---is especially important because it has immediate implications for practice.
+When practitioners ask whether adopting code review reduces defects~\cite{DBLP:journals/ese/McIntoshKAH16}, whether CI/CD improves release quality~\cite{DBLP:conf/kbse/HiltonTHMD16}, or whether AI coding tools increase developer productivity, they are fundamentally asking a \emph{causal} question about \emph{interventions} and \emph{outcomes}.
 
-Many empirical SE studies investigate questions of exactly this kind, using observational data from software repositories.
-The dominant approach---large-scale regression analysis with covariate controls---can reveal associations but cannot distinguish genuine causal effects from selection biases and confounding.
-The problem is compounded downstream: Even when authors carefully qualify findings as associational, practitioners, managers, and downstream papers often interpret them causally.\footnote{The psychology and epidemiology research shares this same problem and their diagnostic literature can be of valuable reference to the SE community (see Appendix~\ref{sec:appendix-psych-reform}): \citet{haber2022causal} found that 52\% of abstracts imply causality despite ostensibly associational language, and \citet{hernan2018cword} argued that avoiding causal language does not prevent causal interpretation but merely obscures the underlying assumptions.
+Experiments are the gold standard for such questions, but they have important limitations.
+For some problems, they cannot overcome the lack of external validity---a controlled lab experiment cannot capture the complexity of real-world software development at scale.
+For others, experiments are simply infeasible---one cannot randomly assign programming languages to production teams or force organizations to adopt new development processes.
+The alternative is \emph{observational data}, such as data from software repositories.
+Over the past two decades, the SE community has been engaged in a delicate dance pursuing causal inference from observational data.
+It is extremely challenging.
+Arguably, there is no consensus in the field, but one popular approach is to rigorously frame the study as presenting only descriptive and correlational evidence---which is only \emph{suggestive} of the causal ambition that motivates it.
+
+However, this conservative approach---and the lack of an explicit vocabulary and toolkit to convey the strength of causal evidence in each study---has important consequences.
+First, despite cautious framing, \emph{downstream causal misinterpretation remains prevalent}.
+The programming language and code quality debate illustrates this pattern: \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} reported a ``modest but significant'' association between language class and defect proneness, framing their findings as correlational.
+Yet our citation analysis of 451 papers citing this study reveals that, among papers that engage with the finding substantively, causal interpretations outnumber hedged ones roughly 2:1---a striking ratio given the authors' explicit and appropriate hedging (Section~\ref{sec:bg-misinterpretation}).
+This is not an isolated incident but a systemic field-level pattern, consistent with \citeauthor{hernan2018cword}'s~\cite{hernan2018cword} observation that associational euphemisms do not prevent causal interpretation.\footnote{The psychology and epidemiology literature documents the same problem and provides a valuable reference for the SE community (see Appendix~\ref{sec:appendix-psych-reform}): \citet{haber2022causal} found that 52\% of abstracts imply causality despite ostensibly associational language.
 The methodological reformers in these fields responded by shifting from associational euphemisms to explicit causal framing---requiring authors to state target estimands, construct DAGs to justify covariate selection, and openly argue for identification assumptions~\cite{grosz2020taboo, lundberg2021estimand, rohrer2018thinking, rohrer2024causal}.}
-The programming language and code quality debate illustrates this challenge in SE\@.
-\citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} analyzed millions of commits across thousands of GitHub projects, reporting a modest but significant association between language design and defect proneness; although the authors framed their findings as correlational, many downstream works cited the study as evidence that certain languages \emph{cause} fewer bugs~\cite{DBLP:journals/corr/abs-1911-11894}.
-A subsequent reproduction~\cite{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, prompting the observation that \emph{``an analysis of GitHub is necessarily measuring correlation and not establishing causation, as it does not constitute an experiment''}~\cite{DBLP:journals/corr/abs-1911-11894}---though the two groups continue to disagree on specific measurement choices.
-This exchange exposes two orthogonal methodological challenges.
-The first is \emph{measurement}: Whether the outcomes being measured---bug-fix commits, code smells, defect counts---are valid proxies for the constructs of interest, and whether ``programming language'' is a well-defined treatment.
-The second is \emph{identification}: Whether the research design can distinguish a genuine causal effect from confounding, even assuming the measurements are valid.
-Both challenges must be addressed for empirical controversies to be resolved; this tutorial focuses on identification---the conditions under which observational data can bear a causal interpretation---while acknowledging that measurement validity is an equally important concern that the causal toolkit does not itself solve.
+Second, \emph{even when some researchers use ``causal inference'' methods, others may not understand the specific aspect in which ``causal inference'' is better}---the field lacks a shared vocabulary for communicating the strength of evidence provided by different methods and designs.
 
-Modern causal inference methods, developed primarily in econometrics and epidemiology over the past several decades, offer a principled path forward for exactly this class of problems~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}.
+This state of affairs is unsurprising, as most empirical SE researchers do not enter the field with the training necessary to apply the modern causal inference toolkit---such training is typically taught in statistics, economics, and public policy programs, not in computer science.
+Modern causal inference methods, developed primarily in econometrics and epidemiology over the past several decades, offer a principled path forward~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}.
 The value of these methods lies not in any claim to methodological perfection but in their insistence on \emph{transparency}: Every causal design rests on assumptions that must be explicitly stated, examined, and debated.
 When a difference-in-differences study claims a causal effect, it does so under the assumption of parallel trends---an assumption that can be partially tested and openly scrutinized~\cite{roth2023whats}.
 When an instrumental variables analysis identifies an effect, it does so under exclusion restrictions that critics can directly challenge~\cite{deaton2010instruments}.
-These methods do not eliminate the need for judgment, but they insist on making assumptions visible so the research community can evaluate their plausibility---transforming debates from ``correlation vs.\ causation'' into productive discussions about specific identification assumptions.
 This transparency is not merely an exercise in intellectual honesty; it is \emph{generative}.
 Each stated assumption that cannot be fully defended becomes a concrete direction for future work: A DAG with acknowledged unmeasured confounders tells the next researcher exactly what to measure; a parallel trends assumption that can only be partially tested tells the next team to seek staggered adoption data; an exclusion restriction that critics challenge points toward a more convincing instrument.
 The causal framework thus converts methodological limitations into a structured research agenda, making each study a stepping stone rather than a dead end.
+This transparent disclosure ensures not only that the strength of causal evidence is clearly communicated to an audience unfamiliar with related methods, but also that the field can iteratively develop research questions, data, and methods with less demanding assumptions.
 
-The SE community, however, lacks an accessible, unified introduction to this toolkit.
+We envision that the entire empirical SE field needs to move forward by adopting the modern causal inference toolkit as the new standard for all causal inquiries involving observational software engineering data.
+The room for improvement is substantial.
 Our analysis of 5,341 papers from ICSE, FSE, and ASE (2015--2025) reveals that 29\% of empirical SE papers investigate causal questions, yet fewer than 4\% employ any recognized causal inference method---and those that do rely overwhelmingly on controlled experiments or causal fault localization rather than the design-based identification strategies suited to the field's observational data (Section~\ref{sec:bg-adoption}).
 Recent methodological contributions have begun addressing specific gaps---instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}, matching for MSR studies~\cite{DBLP:conf/msr/NoceraSLTV26}---but no existing work spans the potential outcomes framework, graphical causal models, and design-based identification strategies, nor offers a systematic protocol for assessing causal credibility.
 This tutorial fills that gap.
 
 We make three contributions.
-First, we provide a self-contained primer on causal inference for SE researchers (Section~\ref{sec:primer}), covering the potential outcomes framework, graphical causal models, and design-based identification strategies using SE-specific examples.
-Second, the primer concludes with a pragmatic stance for conducting credible causal inquiry in SE (Section~\ref{sec:guide}), which synthesizes the toolkit into actionable guidance: building on prior SE research and practitioner knowledge to propose causal theories, framing research designs as target trials, using DAGs to make assumptions explicit, exploiting quasi-experimental variation for identification, and honestly engaging with alternative explanations.
-Third, we demonstrate the primer's diagnostic and constructive power through the programming language and code quality debate (Section~\ref{sec:pl-debate}): A literature synthesis traces the debate's three-decade trajectory (Section~\ref{sec:pl-lit-synthesis}), and a citation analysis of 451 papers citing \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s study quantifies how correlational findings are systematically reinterpreted as causal claims downstream (Section~\ref{sec:pl-misinterpretation}).
-We then apply the pragmatic stance to two worked examples.
-In Example~A (Section~\ref{sec:example-a}), we retrospectively apply the toolkit to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s study, showing how the cross-sectional design can be strengthened and how panel fixed effects on the same data yield more robust identification by absorbing time-invariant confounders.
-\TODO{Report the empirical results of the panel FE demonstration.}
-In Example~B (Section~\ref{sec:example-b}), we apply the toolkit to \citeauthor{DBLP:conf/msr/BognerM22}'s~\cite{DBLP:conf/msr/BognerM22} cross-sectional JavaScript vs.\ TypeScript comparison, decompose the compound ``language'' treatment into the specific ``type system adoption'' intervention, and redesign the study as a difference-in-differences analysis of TypeScript migration events.
-\TODO{Report the empirical results of the TypeScript DiD demonstration.}
+First, we provide an education on the causal inference vocabulary and methods for SE researchers (Section~\ref{sec:primer}), covering the potential outcomes framework, graphical causal models, and design-based identification strategies using SE-specific examples.
+Second, the primer concludes with a pragmatic guide for conducting credible causal inquiry in SE (Section~\ref{sec:guide}), which synthesizes the toolkit into actionable guidance: building on prior SE research and practitioner knowledge to propose causal theories, framing research designs as target trials, using DAGs to make assumptions explicit, exploiting quasi-experimental variation for identification, and honestly engaging with alternative explanations.
+Third, we demonstrate the primer's power through a worked example on the impact of AI coding tools in open-source software (Section~\ref{sec:worked-example}), progressively applying cross-sectional and longitudinal methods to the same dataset to illustrate why common approaches fail and how design-based identification can do better.
 
 The remainder of this paper is organized as follows.
-Section~\ref{sec:background} reviews the background and related work.
-Section~\ref{sec:primer} presents our causal inference primer, concluding with a pragmatic stance for conducting credible causal inquiry in SE (Section~\ref{sec:guide}).
-Section~\ref{sec:pl-debate} presents the programming language and code quality debate as a unifying case study: a literature synthesis (Section~\ref{sec:pl-lit-synthesis}), an analysis of downstream causal misinterpretation (Section~\ref{sec:pl-misinterpretation}), and the two worked examples (Sections~\ref{sec:example-a} and~\ref{sec:example-b}).
-Section~\ref{sec:discussion} discusses implications for SE research practices, and Section~\ref{sec:conclusion} concludes.
+Section~\ref{sec:background} reviews the background and related work, including a case study on downstream causal misinterpretation.
+Section~\ref{sec:primer} presents our causal inference primer, concluding with a pragmatic guide for conducting credible causal inquiry in SE (Section~\ref{sec:guide}).
+Section~\ref{sec:worked-example} presents the worked example on AI coding tools in open-source software, demonstrating the full arc from na\"ive comparison through cross-sectional methods to design-based longitudinal identification.
+Section~\ref{sec:discussion} discusses implications and concludes.
 
 
 \section{Background and Related Work}
@@ -282,6 +276,58 @@ Second, when SE researchers do employ causal methods, they overwhelmingly use ei
 Third, the design-based methods that powered the credibility revolution---difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects---remain virtually unexplored in SE, despite the field's abundance of panel data (repositories with temporal structure, developers contributing across projects, tools adopted in staggered fashion) that is well suited to these methods.
 This tutorial aims to bridge that gap.
 
+\subsection{Why Is Causal Inference Hard for SE Studies?}
+\label{sec:bg-challenges}
+
+The preceding analysis documents the gap between causal ambition and methodological practice in SE\@.
+Beyond the general challenges of observational causal inference, several features of SE research make causal identification particularly difficult, helping to explain why the gap has persisted.
+
+First, the most important confounders in SE---developer skill, team culture, organizational practices, code review discipline---are largely \emph{unmeasurable} from repository data.
+Unlike fields where administrative records capture rich individual-level data (e.g., census, tax, or medical records in economics and epidemiology), SE researchers typically observe only the digital traces that developers leave in version control systems, issue trackers, and communication platforms.
+This means that the conditional ignorability assumption required by selection-on-observables methods (Section~\ref{sec:primer-po}) is rarely plausible in SE, making design-based identification (Section~\ref{sec:primer-design}) essential.
+
+Second, SE treatments are often \emph{compound}.
+``Adopting TypeScript'' bundles a type system, a compiler toolchain, a migration effort, and a self-selected team; ``adopting AI coding tools'' bundles code generation, automated review, workflow changes, and a shift in development culture.
+The researcher must carefully define which component of the compound treatment is the object of inquiry and interpret the estimated effect accordingly.
+
+Third, interconnected software ecosystems create potential violations of the \emph{Stable Unit Treatment Value Assumption} (SUTVA)---the assumption that one unit's treatment does not affect another unit's outcome.
+Shared libraries propagate treatment effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
+These spillovers are difficult to bound and can bias standard causal estimators.
+
+Finally, SE outcomes are typically \emph{noisy proxies} for the constructs of interest: Bug-fix commits proxy for defect proneness, lines of code proxy for complexity, star counts proxy for popularity, and monthly commits proxy for productivity---each introducing measurement error that may attenuate effect estimates and complicate interpretation.
+Measurement and identification are orthogonal challenges: A perfectly identified design still produces misleading conclusions if the outcome proxy is invalid.
+This tutorial addresses identification; measurement validity requires its own careful attention that we acknowledge but do not attempt to resolve.
+
+\subsection{A Case Study on Downstream Misinterpretation}
+\label{sec:bg-misinterpretation}
+
+The consequences of the identification gap are not merely theoretical.
+We illustrate them through a case study of \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s~\cite{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} landmark study of programming languages and code quality---a study that carefully presented associational findings but was widely reinterpreted as establishing causal claims downstream.
+
+\paragraph{The Study and Its Reception.}
+\citet{DBLP:conf/sigsoft/RayPFD14} analyzed 729 GitHub projects across 17 languages, reporting a ``modest but significant'' relationship between language class and defect proneness.
+The authors appropriately framed their findings as associational, not causal.
+A subsequent reproduction by \citet{DBLP:journals/toplas/BergerHMVV19} raised data quality and modeling concerns, reducing the number of statistically significant associations from 11 to 4 with exceedingly small effect sizes.
+\citeauthor{DBLP:journals/tosem/FuriaTF24}~\cite{DBLP:journals/tosem/FuriaTF24} later applied structural causal models to coding competition data, finding ``considerable differences between a purely associational and a causal analysis of the very same data''---a direct demonstration that the identification problem matters in this domain.
+The debate's persistence reflects two orthogonal challenges---\emph{identification} (can the design distinguish causal effects from confounding?) and \emph{measurement} (are the proxies valid?)---neither of which cross-sectional correlational analysis can resolve.
+
+\paragraph{Citation Analysis.}
+We retrieved all 451 papers citing \citet{DBLP:conf/sigsoft/RayPFD14} or \citet{DBLP:journals/cacm/RayPDF17} from the Semantic Scholar API and used a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) to classify the citation context of each paper with available full-text snippets ($n = 339$) into four categories: \emph{causal} (the citing paper treats or implies the finding as causal), \emph{hedged} (accurately describes the finding as an association), \emph{neutral} (cites for context without interpreting the finding), and \emph{critical} (questions the methodology or findings).
+Among the 339 classified papers, 24\% use causal framing---language such as \emph{``the effect of programming languages on software quality''} or \emph{``statically-typed languages are less error-prone''}---while only 12\% use appropriately hedged language and 2\% engage critically with the identification strategy.
+The remaining 62\% cite the study for tangential reasons without interpreting the finding.
+Among papers that actually engage with the finding substantively, causal interpretations outnumber hedged ones by roughly 2:1.
+
+\paragraph{Practitioner Discourse.}
+The causal amplification extends into practitioner discourse, where hedging disappears entirely.
+\citeauthor{DBLP:journals/toplas/BergerHMVV19}, in describing the motivation for their reproduction study, observed that the findings were subject to a pattern where people ``misinterpreted [them] as a causal relationship''~\cite{claburn2019register}---notably, even the article reporting this observation uses causal language in its own headline.
+Blog posts rank languages by ``bug-proneness'' using causal verbs, and practitioners on discussion forums treat regression coefficients as switchable causal effects~\cite{huang2021bugprone, hn2014rayetal}.
+
+\paragraph{Implications.}
+This pattern---hedged correlational findings, causal downstream interpretation---is precisely the \emph{causal language problem} that \citet{hernan2018cword} diagnosed in epidemiology and \citet{grosz2020taboo} documented in psychology.
+Our citation analysis confirms \citeauthor{haber2022causal}'s~\cite{haber2022causal} finding that associational euphemisms do not prevent causal interpretation: 24\% of citing papers use causal framing despite the authors' explicit hedging.
+The problem is not imprecise language but the absence of \emph{identification infrastructure}---when a study provides no framework for evaluating whether a causal interpretation is warranted, readers fill the gap with their priors.
+The pragmatic stance we advocate (Section~\ref{sec:guide}) addresses this structural gap by requiring researchers to state their causal question, draw their DAG, and argue for identification, replacing vague ``correlation vs.\ causation'' disclaimers with transparent, evaluable assumptions.
+
 \section{A Primer on Causal Inference for Software Engineering Researchers}
 \label{sec:primer}
 
@@ -293,33 +339,33 @@ We do not cover causal discovery algorithms~\cite{journals/ese/HulseEM25}, machi
 \subsection{What Does It Mean Exactly for X to Cause Y?}
 \label{sec:primer-causality}
 
-Consider a question that is highly relevant to SE research: Does adopting TypeScript reduce defects in JavaScript projects?
-At its core, this is a question about a contrast between two worlds---one in which a team adopts TypeScript and one in which it does not---and whether the defect rate differs between them.
+Consider a question that is highly relevant to SE research: Does adopting AI coding tools increase a project's productivity?
+At its core, this is a question about a contrast between two worlds---one in which a project adopts AI coding tools and one in which it does not---and whether productivity differs between them.
 This deceptively simple framing conceals a deep conceptual question: What does it \emph{mean} for one thing to cause another?
 Four perspectives, developed across philosophy, statistics, and epidemiology, provide complementary answers.
 
 \begin{itemize}[leftmargin=15pt]
     \item \emph{Causation as Regular Association.} 
     The most intuitive notion, dating to \citet{hume1748enquiry}, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$.
-    In SE terms: If teams using TypeScript consistently have fewer bugs, we might say TypeScript ``causes'' fewer bugs.
-    This view fails almost immediately in an observational setting: Even when TypeScript projects consistently have fewer bugs, this association likely reflects the maturity and discipline of teams that adopt TypeScript---not a causal effect of TypeScript on code quality.
+    In SE terms: If projects using AI coding tools consistently produce more commits, we might say AI tools ``cause'' higher productivity.
+    This view fails almost immediately in an observational setting: Even when AI-adopting projects consistently show higher productivity, this association likely reflects the activity level and resources of teams that adopt AI tools---not a causal effect of the tools on productivity.
     Regular association cannot distinguish genuine causal effects from systematic differences between the groups being compared.  
     \item \emph{Causation as Counterfactual Dependence.} 
     A deeper account, formalized by \citet{rubin1974estimating} building on philosophical work by \citet{lewis1973causation}, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
-    Applied to our example: TypeScript \emph{caused} the reduction in defects for a given project if that project \emph{would have had more defects} had it not adopted TypeScript, all else being equal.
+    Applied to our example: AI tools \emph{caused} the productivity increase for a given project if that project \emph{would have had lower productivity} had it not adopted AI tools, all else being equal.
     This definition is precise but introduces what \citet{holland1986statistics} called the \emph{fundamental problem of causal inference}: We can never observe both worlds for the same unit.
-    We observe the project's defect rate after adopting TypeScript, or its defect rate without TypeScript, but never both.
+    We observe the project's productivity after adopting AI tools, or its productivity without AI tools, but never both.
     The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
     \item \emph{Causation as Intervention.} 
     A third perspective, developed by \citet{woodward2003making} in philosophy and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} \emph{do-calculus}, defines causation through \emph{intervention}: $X$ causes $Y$ if \emph{intervening} on $X$---holding everything else fixed---changes $Y$.
     The key insight is the difference between \emph{seeing} and \emph{doing}.
-    Observing that TypeScript projects have fewer bugs ($P(Y \mid X\!=\!1)$) is not the same as forcing a team to switch to TypeScript and measuring the result ($P(Y \mid do(X\!=\!1))$).
-    The former reflects both the causal effect of TypeScript and the systematic differences between teams that choose TypeScript and those that do not; the latter isolates the causal effect by holding the selection process fixed.
+    Observing that AI-adopting projects have more commits ($P(Y \mid X\!=\!1)$) is not the same as forcing a project to adopt AI tools and measuring the result ($P(Y \mid do(X\!=\!1))$).
+    The former reflects both the causal effect of AI tools and the systematic differences between projects that adopt AI tools and those that do not; the latter isolates the causal effect by holding the selection process fixed.
     All causal inference methods, in some sense, are trying to close the gap between passive observation (i.e., conditioning on $X$) and active intervention (i.e., intervening on $X$).
     \item \emph{Causation as a Target Trial.} For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers the most pragmatic formulation: Every causal question implicitly describes a hypothetical randomized experiment.
     The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
-    For the TypeScript question, the target trial would randomly assign half of a set of JavaScript teams to adopt TypeScript and compare defect rates after a fixed period.
-    Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign languages, teams willing to adopt TypeScript likely differ from those that resist, the ``treatment'' is ambiguous (full adoption or gradual migration?), and defect measurement may reflect bug-tracking practices rather than code quality.
+    For the AI tools question, the target trial would randomly assign half of a set of comparable software projects to adopt AI coding tools and compare monthly commits after a fixed period.
+    Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign tool adoption, teams willing to adopt AI tools likely differ from those that do not, the ``treatment'' is ambiguous (which tools? how deeply integrated?), and commit counts may reflect development practices rather than genuine productivity.
     Each of these concerns maps directly to a specific identification assumption that must be addressed.  
 \end{itemize}
 These four perspectives are not competing theories but complementary lenses that modern applied causal inference uses together.
@@ -334,34 +380,34 @@ Together, they form the conceptual backbone of the three technical pillars intro
 Before introducing the toolkit, we must understand why the approaches dominant in SE research fail to convincingly establish causation.
 Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery in Sections~\ref{sec:primer-toolkit}.
 
-Consider the TypeScript question again: Suppose a researcher compares defect rates in a group of TypeScript projects against another group of JavaScript projects and finds that TypeScript projects have fewer bugs.
-Can this comparison support the claim that TypeScript \emph{causes} fewer defects?
+Consider the AI tools question again: Suppose a researcher compares monthly commits in a group of projects that adopted AI coding tools against a group of projects that did not and finds that AI-adopting projects have more commits.
+Can this comparison support the claim that AI tools \emph{cause} higher productivity?
 Almost certainly not, because the two groups were never comparable to begin with.
-It is very likely that teams that choose to adopt TypeScript differ systematically from those that do not---they may be more experienced, more disciplined about code review, more invested in tooling, and more likely to work in organizations that value software quality.
-These characteristics are \emph{confounders}: They influence both the decision to adopt TypeScript (the treatment) and the defect rate (the outcome), creating an association between TypeScript and fewer defects even if TypeScript itself has zero causal effect.
-The observed difference in defect rates is a mixture of any genuine TypeScript effect and the \emph{selection bias} arising from systematic differences between the compared groups---and a simple group comparison cannot disentangle the two.
+It is very likely that projects that adopt AI coding tools differ systematically from those that do not---they may have more active maintainers, more resources, more disciplined development practices, and may belong to organizations that invest more in developer productivity.
+These characteristics are \emph{confounders}: They influence both the decision to adopt AI tools (the treatment) and productivity (the outcome), creating an association between AI tools and higher productivity even if the tools themselves have zero causal effect.
+The observed difference in commit rates is a mixture of any genuine AI tool effect and the \emph{selection bias} arising from systematic differences between the compared groups---and a simple group comparison cannot disentangle the two.
 
-The natural response is to ``control for'' these confounders using multivariate regression--e.g., one with developer experience, project size, team size, and other covariates---and interpret the remaining coefficient on TypeScript as the causal effect.
+The natural response is to ``control for'' these confounders using multivariate regression---e.g., one with project age, project size, number of contributors, and other covariates---and interpret the remaining coefficient on AI tool adoption as the causal effect.
 This strategy is by far the most common approach to causal questions in empirical SE research, yet it suffers from at least four distinct problems plaguing many observational studies:
 \begin{itemize}[leftmargin=15pt]
     \item \emph{Unobserved Confounders.}
-    Regression can only adjust for measured variables, yet many confounders that plausibly affect both language choice and defect rates---e.g., developer expertise, team culture, organizational practices, code review discipline---are largely unmeasurable from repository data.
+    Regression can only adjust for measured variables, yet many confounders that plausibly affect both AI tool adoption and productivity---e.g., developer expertise, team culture, organizational practices, project management quality---are largely unmeasurable from repository data.
     No amount of observed controls can compensate for these missing variables, and the resulting bias can be arbitrarily large in either direction.\footnote{Formally, if the true causal model includes an unobserved confounder $U$, the regression coefficient on the treatment converges to $\hat{\tau} \xrightarrow{p} \tau + \gamma \cdot \text{Cov}(D, U|X) / \text{Var}(D|X)$, where $\gamma$ is the effect of $U$ on the outcome and $\text{Cov}(D, U|X)/\text{Var}(D|X)$ captures the residual association between treatment and the omitted variable after partialling out the included controls (see~\citet[Ch.~3, \S3.2.2]{angrist2009mostly} for a formal derivation and \citet{cinelli2020making} for a modern sensitivity-analysis extension).
     The bias is large whenever $U$ strongly predicts both treatment $D$ and outcome $Y$.}
     \item \emph{Collider Bias.}
     When a variable is a common \emph{effect} of both treatment and outcome, conditioning on it in a regression creates spurious associations.
-    For example, if popularity (e.g., as measured by the number of stars on GitHub) is influenced by both language novelty and code quality, a regression with popularity as a control can manufacture an apparent relationship between language and defects even where none exists in the full population.\footnote{In a causal directed acyclic graph (DAG), a \emph{collider} is a variable with two or more incoming arrows (e.g., $X \to C \leftarrow Y$).
+    For example, if GitHub popularity (e.g., star count) is influenced by both AI tool adoption (early adopters attract attention) and productivity (active projects gain visibility), a regression with popularity as a control can manufacture an apparent relationship between AI tools and productivity even where none exists in the full population.\footnote{In a causal directed acyclic graph (DAG), a \emph{collider} is a variable with two or more incoming arrows (e.g., $X \to C \leftarrow Y$).
     Marginally, $X$ and $Y$ may be independent, but conditioning on $C$ ``opens'' the path between them, inducing a spurious association---an effect sometimes called Berkson's paradox~\cite{berkson1946limitations}.
-    Intuitively, once we know the value of a common effect, learning about one cause provides information about the other: Among popular projects, if a project did \emph{not} benefit from language novelty, it likely achieved popularity through high code quality, creating a negative association between novelty and quality that is purely an artifact of the conditioning.
+    Intuitively, once we know the value of a common effect, learning about one cause provides information about the other: Among popular projects, if a project did \emph{not} benefit from AI tool adoption (and its associated visibility), it likely achieved popularity through high productivity, creating a negative association between AI adoption and productivity that is purely an artifact of the conditioning.
     See Section~\ref{sec:primer-dags} for more details on DAGs, \citet[Ch.~1, \S1.2.3]{pearl2009causality} for the formal $d$-separation proof, and \citet{elwert2014endogenous} for an accessible treatment with social-science examples.}
     \item \emph{Mediator Bias.}
     When a variable lies \emph{on the causal pathway} from treatment to outcome, conditioning on it in a regression blocks part of the genuine effect.
-    For example, if TypeScript reduces defects partly by enabling the adoption of better quality assurance tools (e.g., due to static typing), then controlling for tooling quality attenuates or eliminates the very signal the researcher seeks to detect.\footnote{Formally, if the causal structure is $X \to M \to Y$ (treatment affects outcome through mediator $M$), conditioning on $M$ removes the indirect effect and leaves only the direct effect $X \to Y$.
-    When the entire effect operates through the mediator---as may be the case if TypeScript's benefit is entirely due to its type system---conditioning on $M$ makes the effect vanish entirely, even though the treatment genuinely causes the outcome.
+    For example, if AI coding tools increase productivity partly by automating code review and accelerating pull request throughput, then controlling for PR throughput attenuates or eliminates the very signal the researcher seeks to detect.\footnote{Formally, if the causal structure is $X \to M \to Y$ (treatment affects outcome through mediator $M$), conditioning on $M$ removes the indirect effect and leaves only the direct effect $X \to Y$.
+    When the entire effect operates through the mediator---as may be the case if AI tools' productivity benefit operates entirely through faster code generation---conditioning on $M$ makes the effect vanish entirely, even though the treatment genuinely causes the outcome.
     The researcher who targets the \emph{total} effect of $X$ on $Y$ should therefore not condition on any variable on the causal pathway.
     Similarly, see \citet[Ch.~3, \S3.3.1]{pearl2009causality} for the formal derivation via the back-door criterion and \citet{wysocki2022statistical} for a demonstration of this error in applied research.}
     \item \emph{Reverse Causality.}
-    Finally, regression on cross-sectional data (i.e., data collected at a single point in time) cannot determine whether TypeScript reduces defects or whether teams with persistent quality problems switch to ``safer'' languages to impose discipline; no set of cross-sectional controls can distinguish these two causal directions.
+    Finally, regression on cross-sectional data (i.e., data collected at a single point in time) cannot determine whether AI tools increase productivity or whether already-productive teams are the ones that adopt AI tools; no set of cross-sectional controls can distinguish these two causal directions.
  %   \item \emph{The Table~2 Fallacy.}
  %   \citet{westreich2013table2} identified a pervasive error in which researchers interpret \emph{all} coefficients in a regression table as though each has a valid causal interpretation.
  %   A regression may be properly specified to identify the effect of one variable (say, language choice), but the coefficients on the control variables are generally confounded by their own omitted causes; presenting them as ``effects'' of those covariates is unjustified without a separate identification argument for each.
@@ -396,8 +442,8 @@ The individual causal effect $\tau_i = Y_i(1) - Y_i(0)$ is unobservable because 
 
 \paragraph{Causal Estimands.}
 To get over this problem, researchers seek to estimate \emph{population-level summaries}.
-One option is the \emph{Average Treatment Effect} (ATE), $\text{ATE} = E[Y(1)] - E[Y(0)]$, which answers questions like: On average across \emph{all} projects, how much does adopting TypeScript change defect rates?
-Another option is the \emph{Average Treatment Effect on the Treated} (ATT), $\text{ATT} = E[Y(1) - Y(0) \mid D = 1]$, which answers questions like: Among projects that \emph{actually adopted} TypeScript, how much did adopting TypeScript change their defect rates?
+One option is the \emph{Average Treatment Effect} (ATE), $\text{ATE} = E[Y(1)] - E[Y(0)]$, which answers questions like: On average across \emph{all} projects, how much does adopting AI coding tools change productivity?
+Another option is the \emph{Average Treatment Effect on the Treated} (ATT), $\text{ATT} = E[Y(1) - Y(0) \mid D = 1]$, which answers questions like: Among projects that \emph{actually adopted} AI coding tools, how much did adoption change their productivity?
 ATE and ATT coincide only under homogeneous effects or independence of treatment assignment.
 Other estimands include the \emph{Local Average Treatment Effect} (LATE) for the subpopulation affected by an instrument, and \emph{conditional average treatment effects} (CATEs) for specific subgroups.\footnote{The LATE theorem, which shows that instrumental variables identify the causal effect for the subpopulation of \emph{compliers}, was introduced by \citet{angrist1996identification}; see \citet[Ch.~4, \S4.4--4.5]{angrist2009mostly} for a textbook treatment.
 For CATEs and heterogeneous treatment effects more broadly, see \citet[Ch.~10]{huntingtonklein2021effect} for an accessible introduction and \citet{athey2016recursive} for the causal forest methodology.}
@@ -428,68 +474,68 @@ A DAG encodes \emph{the researcher's beliefs about the true data-generating proc
 Every arrow is a substantive claim; every absent arrow asserts no direct effect.
 This transparency is the central value of DAGs for applied research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
 %In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
-As a pedagogical example (without aiming for completeness), Figure~\ref{fig:pl-dag} presents a plausible DAG for the causal question of whether adopting a programming language affects defect proneness.
-In this DAG, Language affects Defect Proneness through two \emph{mediators}---Type Safety and Tooling; Domain, Team Skill, Org Culture, and Codebase Age each influence both Language choice and Defect Proneness, making them \emph{confounders}; and both Language and Defect Proneness influence Popularity (e.g., GitHub stars), making Popularity a \emph{collider}.
-Since we care about the language--defect problem, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.
+As a pedagogical example (without aiming for completeness), Figure~\ref{fig:ai-dag} presents a plausible DAG for the causal question of whether adopting AI coding tools affects a project's productivity.
+In this DAG, AI Tool Adoption affects Productivity through two \emph{mediators}---Code Generation and Workflow Automation; Domain, Team Skill, Org Culture, and Project Maturity each influence both AI Tool Adoption and Productivity, making them \emph{confounders}; and both AI Tool Adoption and Productivity influence Stars, making Stars a \emph{collider}.
+Since we care about the AI tools--productivity question, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.
 
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-    var/.style={draw, rounded corners, minimum width=2.2cm, minimum height=0.55cm, font=\small, align=center},
+    var/.style={draw, rounded corners, minimum width=2.6cm, minimum height=0.55cm, font=\small, align=center},
     arr/.style={->, >=stealth, semithick},
 ]
 % Main causal chain (middle row)
-\node[var] (lang) at (0, 0) {Language};
-\node[var] (type) at (4.8, 0.45) {Type Safety};
-\node[var] (tool) at (4.8, -0.45) {Tooling};
-\node[var] (defect) at (9.6, 0) {Defect Proneness};
+\node[var] (treat) at (0, 0) {AI Tool Adoption};
+\node[var] (codegen) at (5.2, 0.45) {Code Generation};
+\node[var] (workflow) at (5.2, -0.45) {Workflow Autom.};
+\node[var] (outcome) at (10.4, 0) {Productivity};
 % Confounders (top row)
 \node[var] (org) at (0, 2) {Org Culture};
-\node[var] (skill) at (3.2, 2) {Team Skill};
-\node[var] (domain) at (6.4, 2) {Domain};
-\node[var] (age) at (9.6, 2) {Codebase Age};
+\node[var] (skill) at (3.5, 2) {Team Skill};
+\node[var] (domain) at (6.9, 2) {Domain};
+\node[var] (maturity) at (10.4, 2) {Project Maturity};
 % Collider (bottom)
-\node[var] (pop) at (4.8, -1.7) {Popularity};
+\node[var] (stars) at (5.2, -1.7) {Stars};
 % Causal paths through mediators
-\draw[arr] (lang) -- (type);
-\draw[arr] (lang) -- (tool);
-\draw[arr] (type) -- (defect);
-\draw[arr] (tool) -- (defect);
-% Confounders → Language
-\draw[arr] (org) -- (lang);
-\draw[arr] (skill) -- (lang);
-\draw[arr] (domain) -- (lang);
-\draw[arr] (age) -- (lang);
-% Confounders → Defect Proneness
-\draw[arr] (org) -- (defect);
-\draw[arr] (skill) -- (defect);
-\draw[arr] (domain) -- (defect);
-\draw[arr] (age) -- (defect);
+\draw[arr] (treat) -- (codegen);
+\draw[arr] (treat) -- (workflow);
+\draw[arr] (codegen) -- (outcome);
+\draw[arr] (workflow) -- (outcome);
+% Confounders → Treatment
+\draw[arr] (org) -- (treat);
+\draw[arr] (skill) -- (treat);
+\draw[arr] (domain) -- (treat);
+\draw[arr] (maturity) -- (treat);
+% Confounders → Outcome
+\draw[arr] (org) -- (outcome);
+\draw[arr] (skill) -- (outcome);
+\draw[arr] (domain) -- (outcome);
+\draw[arr] (maturity) -- (outcome);
 % Collider paths
-\draw[arr] (lang) -- (pop);
-\draw[arr] (defect) -- (pop);
+\draw[arr] (treat) -- (stars);
+\draw[arr] (outcome) -- (stars);
 \end{tikzpicture}
-\caption{A plausible causal DAG for the programming language and defect proneness problem.
+\caption{A plausible causal DAG for the AI coding tools and productivity problem.
 Arrows represent hypothesized direct causal effects.
-The causal paths of interest run through two mediators: Language $\to$ Type Safety/Tooling $\to$ Defect Proneness.
-Back-door paths through common causes (e.g., Language $\leftarrow$ Team Skill $\to$ Defect Proneness) must be blocked for causal identification.
-Popularity is a \emph{collider} (Language $\to$ Popularity $\leftarrow$ Defect Proneness): Conditioning on it opens a spurious path and must be avoided.}
-\label{fig:pl-dag}
+The causal paths of interest run through two mediators: AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Productivity.
+Back-door paths through common causes (e.g., AI Tool Adoption $\leftarrow$ Team Skill $\to$ Productivity) must be blocked for causal identification.
+Stars is a \emph{collider} (AI Tool Adoption $\to$ Stars $\leftarrow$ Productivity): Conditioning on it opens a spurious path and must be avoided.}
+\label{fig:ai-dag}
 \end{figure}
 
 \paragraph{Back-Door Paths and the Back-Door Criterion.}
-In a DAG, a \emph{causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:pl-dag}, the causal paths run Language $\to$ Type Safety/Tooling $\to$ Defect Proneness.
+In a DAG, \emph{causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:ai-dag}, the causal paths run AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Productivity.
 These paths transmit the genuine causal effect.
-A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, Language $\leftarrow$ Team Skill $\to$ Defect Proneness.
-These back-door paths transmit spurious associations: Even if Language had zero effect on Defect Proneness, the fact that skilled teams both choose certain languages and produce fewer defects creates an observed correlation between language choice and defect rates.
+A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, AI Tool Adoption $\leftarrow$ Team Skill $\to$ Productivity.
+These back-door paths transmit spurious associations: Even if AI tools had zero effect on Productivity, the fact that skilled teams both adopt AI tools earlier and are inherently more productive creates an observed correlation between AI adoption and productivity.
 A naive comparison conflates the genuine causal effect that flows through the causal paths with the spurious associations that flow through the back-door paths.
 
 The \emph{back-door criterion}~\cite{pearl2009causality} provides a principled rule for which variables to condition on in order to block all back-door paths without inadvertently blocking the causal paths.
 A set $Z$ satisfies the criterion if (1)~no variable in $Z$ is a descendant of the treatment, and (2)~conditioning on $Z$ blocks every back-door path.
-In Figure~\ref{fig:pl-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{Org Culture},\, \text{Codebase Age}\}$ satisfies this criterion: Each is a common cause of Language and Defect Proneness, and conditioning on all four blocks every spurious path.
+In Figure~\ref{fig:ai-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{Org Culture},\, \text{Project Maturity}\}$ satisfies this criterion: Each is a common cause of AI Tool Adoption and Productivity, and conditioning on all four blocks every spurious path.
 Two types of variables must \emph{not} be included in $Z$.
-Type Safety and Tooling are \emph{mediators} on the causal path: Conditioning on either blocks the very effect the researcher seeks to estimate.
-Popularity is a \emph{collider}: Conditioning on it \emph{opens} a spurious path rather than closing one.
+Code Generation and Workflow Automation are \emph{mediators} on the causal path: Conditioning on either blocks the very effect the researcher seeks to estimate.
+Stars is a \emph{collider}: Conditioning on it \emph{opens} a spurious path rather than closing one.
 When $Z$ satisfies the back-door criterion, it provides a justifiable basis that a selection-on-observables method satisfies the conditional ignorability assumption derived from the potential outcomes framework (Section~\ref{sec:primer-po}).
 
 %the potential outcomes are independent of treatment conditional on $Z$---the graphical counterpart to the conditional ignorability assumption from Section~\ref{sec:primer-po}.
@@ -566,8 +612,8 @@ In this section, we illustrate the high-level idea of each method with SE exampl
 
 \begin{itemize}[leftmargin=15pt]
     \item \emph{Difference-in-Differences (DiD).}
-    DiD compares changes in outcomes over time between a treated group and a control group, e.g., comparing defect trends before and after TypeScript migration in treatment projects versus comparable JavaScript projects that did not migrate.
-    The key assumption---\emph{parallel trends}---requires that, absent the migration, both groups would have followed the same outcome trajectory.
+    DiD compares changes in outcomes over time between a treated group and a control group, e.g., comparing productivity trends before and after AI tool adoption in treatment repositories versus comparable repositories that did not adopt.
+    The key assumption---\emph{parallel trends}---requires that, absent the adoption, both groups would have followed the same outcome trajectory.
     This assumption can be partially assessed using pre-treatment trend tests, and modern estimators leverage staggered adoption to construct natural experiments among treated units with different adoption timings~\cite {callaway2021difference, roth2023whats}.
     The DiD methodology has been successfully applied in SE settings to study the impact of social media promotion on open-source project popularity and contributor attraction~\cite{DBLP:conf/icse/FangLHV22}, the impact of core contributor disengagement on open-source project workflows~\cite{DBLP:conf/icse/ChenSSGT26}, and the impact of LLM coding agent adoption on development velocity and code quality~\cite{DBLP:conf/msr/HeMAKV26}.
 
@@ -584,7 +630,7 @@ In this section, we illustrate the high-level idea of each method with SE exampl
 
     \item \emph{Panel Fixed Effects.}
     Panel fixed effects models compare repeated observations of the same unit over time, absorbing all \emph{time-invariant} characteristics through unit-specific intercepts.
-    For example, observing the same developer writing code in multiple languages across different projects removes confounding from all stable developer traits---experience, cognitive style, training---that cross-sectional comparisons cannot address.
+    For example, observing the same repository before and after AI tool adoption removes confounding from all time-invariant repository characteristics---codebase domain, long-term team composition, organizational practices---that cross-sectional comparisons cannot address.
     The identifying assumption is \emph{strict exogeneity}: Conditional on unit fixed effects, the treatment is uncorrelated with time-varying unobservables (i.e., no time-varying confounders that are left unmeasured).\footnote{This assumption differs from the conditional ignorability assumption from selection-on-observables methods: Panel fixed effects automatically absorb all time-invariant confounders without requiring them to be measured, but the researcher must still argue---using domain knowledge or a DAG---that no unmeasured time-varying confounders remain and that past outcomes do not feed back into future treatment assignment.}
     Panel fixed effects models have been applied in SE settings to study the causal impact of code quality on developer productivity at Google~\cite{DBLP:conf/sigsoft/ChengMCJGKZ022}.
 
@@ -606,7 +652,7 @@ Drawing on the emerging consensus across econometrics~\cite{imbens2020potential,
 \label{sec:stance-prior-research}
 Every step of a causal inquiry---framing the question, proposing a DAG, choosing covariates---requires \emph{domain knowledge} that cannot be derived from the data alone.
 In SE, this knowledge comes from three sources.
-First, prior quantitative studies provide the raw material for proposing causal structures: An observed association between programming language adoption and defect rates does not itself establish causation, but it motivates a DAG edge that can then be subjected to rigorous identification.
+First, prior quantitative studies provide the raw material for proposing causal structures: An observed association between AI tool adoption and productivity does not itself establish causation, but it motivates a DAG edge that can then be subjected to rigorous identification.
 Second, gray literature---blog posts, postmortems, industry reports, conference talks---encodes rich practitioner causal beliefs (``we adopted X and Y improved'') that inform which mechanisms are plausible and which confounders are likely.
 Third, qualitative SE research---interviews, case studies, grounded theory---surfaces causal reasoning that developers and teams use in practice, providing mechanistic accounts that purely quantitative data cannot.
 These sources collectively generate the theories that causal methods then test, creating a virtuous cycle: Prior work proposes causal structures, rigorous methods evaluate them, and the findings refine theory for the next iteration.
@@ -615,7 +661,7 @@ These sources collectively generate the theories that causal methods then test, 
 \label{sec:guide-question}
 Before analyzing data, articulate the \emph{target trial}: What randomized experiment would you ideally run?
 What is the treatment, the population, the outcome, and the timing?
-This exercise forces clarity about aspects that SE studies often leave implicit---for example, whether ``language choice'' refers to the type system, the ecosystem, or the developer community.
+This exercise forces clarity about aspects that SE studies often leave implicit---for example, whether ``AI tool adoption'' refers to code generation, automated review, or the broader workflow changes that accompany the tools.
 The target trial framework is especially natural for SE researchers who are already familiar with controlled experiments~\cite{DBLP:books/sp/WohlinRHORW24}: It simply asks them to describe the experiment they wish they could run and then evaluate how far their observational design departs from this ideal.
 
 \paragraph{Use DAGs to Reason About Mechanisms and Covariate Selection.}
@@ -623,7 +669,7 @@ The target trial framework is especially natural for SE researchers who are alre
 Once the target trial is articulated, construct a DAG encoding the assumed causal structure.
 The DAG identifies which covariates must be controlled for (back-door criterion), which must \emph{not} be controlled for (mediators and colliders), and makes every assumption explicit so that reviewers can challenge specific edges rather than raising vague concerns.
 While the DAG is less central to identification for design-based methods, it remains valuable for reasoning about which confounders the design absorbs, what remaining threats exist, and more importantly, what is the actual \emph{mechanism} behind the observed cause and effect.
-A genuine and rigorous reasoning on causal mechanisms often reveals important design considerations and practical implications, as we will show in the second worked example on the effect of TypeScript (Section~\ref{sec:example-b}).
+A genuine and rigorous reasoning on causal mechanisms often reveals important design considerations and practical implications, as we will demonstrate in the worked example (Section~\ref{sec:worked-example}).
 
 \paragraph{Use Design-Based Identification When the Setting Permits.}
 \label{sec:guide-identification}
@@ -666,7 +712,7 @@ This iterative refinement is not a failure of planning but an integral part of r
 Many SE settings do not neatly fit either path: For example, the DAG may reveal unmeasured confounders, the quasi-experimental variation may not control important unobserved confounders, or the treatment and outcome are not well-defined.
 This is not a failure of empirical research but rather the norm; the pragmatic response is to use the best available strategy and be transparent about the limitations and the direction of likely bias.
 Conclusions should be framed as ``consistent with a causal interpretation under assumptions X, Y, Z'' rather than as definitive causal claims.
-The researcher should also consider whether the causal question can be \emph{reformulated} to exploit available variation---often the most creative and valuable act in a causal inquiry, transforming an intractable question into a tractable one (e.g., ``Does language affect quality?'' is intractable from cross-sectional data, but ``Does adopting a type system reduce defects?'' can be studied with DiD if migration events are observable).
+The researcher should also consider whether the causal question can be \emph{reformulated} to exploit available variation---often the most creative and valuable act in a causal inquiry, transforming an intractable question into a tractable one (e.g., ``Do AI tools improve software quality?'' is intractable from cross-sectional data, but ``Does adopting AI coding tools increase monthly commit throughput?'' can be studied with DiD if adoption events are observable).
 An honest, well-argued correlational analysis or an imperfect design-based identification strategy that explicitly states its limitations is more valuable than a spurious claim of causation pretending that certain methods ``automatically bring causality.''
 Indeed, the full disclosure of what a study \emph{cannot} identify is one of the causal framework's most powerful outputs: It converts each unfulfilled assumption into an explicit pointer toward a stronger future design---telling the next researcher precisely what data to collect, what variation to exploit, or what confounder to measure.
 
@@ -681,176 +727,54 @@ Three common patterns of alternative explanations arise in SE research.
 SE research faces distinctive measurement challenges that compound these threats: noisy proxies for latent constructs (e.g., bug-fix commits as a proxy for defect proneness), construct validity issues (e.g., lines of code as a measure of complexity), and potential SUTVA violations in interconnected software ecosystems where one project's treatment spills over to affect another's outcomes.
 The mark of a credible causal study is not the absence of limitations but the transparency and rigor with which they are addressed---and the degree to which honestly stated limitations chart a path for subsequent work to follow.
 
-\paragraph{Promises and Perils of Causal Inference in SE Research.}
+\paragraph{Promises of Causal Inference in SE Research.}
 Some features of the SE research landscape make this synthesis particularly promising.
 First, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
 Second, SE ecosystems generate rich quasi-experimental variation: Company policies mandate practices, projects adopt practices in staggered waves, and migrations create sharp treatment contrasts---all of which offer credible identification strategies that purely cross-sectional analysis cannot exploit.
 Finally, SE's rich body of quantitative studies, qualitative investigations, and gray literature provides fertile ground for theory proposition and DAG formulation---decades of empirical findings, practitioner postmortems, and case studies supply the domain knowledge needed to propose plausible causal structures before any identification strategy is chosen.
-
-On the other hand, several SE-specific challenges also temper these promises and require careful consideration by the SE researcher.
-First, SE's observational data is plagued by unmeasured confounders---developer skill, team culture, organizational practices---that are rarely captured in repository data, making design-based identification or sensitivity analysis of unmeasured confounders essential.
-Second, SE treatments are often \emph{compound}: For example, ``adopting TypeScript'' bundles a type system, a compiler toolchain, a migration effort, and a self-selected team; in this case, the researcher should properly interpret the effect as such rather than from a single oversimplified treatment (e.g., ``just use TypeScript to reduce defects'').
-Third, interconnected software ecosystems create \emph{SUTVA violations}: Shared libraries propagate treatment effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
-Careful unit definition and robustness checks can bound this threat, and recent advances in causal inference under network interference provide promising tools~\cite{savje2021average, forastiere2021identification}, but adapting these methods to SE's sociotechnical structures---where spillover propagates simultaneously through dependency graphs, developer networks, and ecosystem coupling---remains an open frontier.
-Finally, SE outcomes are typically \emph{noisy proxies} for the constructs of interest: Bug-fix commits proxy for defect proneness, lines of code proxy for complexity, and star counts proxy for popularity---each introducing measurement error that may attenuate effect estimates and complicate interpretation.
-One can strengthen the evidentiary basis by triangulating across multiple outcome measures that capture different facets of the same construct~\cite{lawlor2016triangulation} and conducting measurement error analysis to bound attenuation bias~\cite{hausman2001mismeasured}.
-More broadly, \emph{measurement} and \emph{identification} are orthogonal challenges: A perfectly identified design still produces misleading conclusions if the outcome proxy is invalid, and a perfectly measured outcome still conflates causal effects with confounding if the design lacks identification.
-The causal inference toolkit addresses identification; measurement validity requires its own careful attention---including construct definition, proxy validation, and sensitivity to measurement error---that this tutorial acknowledges but does not attempt to resolve.
-Importantly, each peril on the identification side has a principled response within the toolkit so that SE researchers can engage with the specific threats in their settings.
+The SE-specific challenges that temper these promises---unmeasured confounders, compound treatments, SUTVA violations, and noisy outcome proxies---are discussed in Section~\ref{sec:bg-challenges}; importantly, each has a principled response within the toolkit so that SE researchers can engage with the specific threats in their settings.
 To faciliate constructive evaluation of SE studies with causal claims, we provide an empirical standard for causal inquiries following the format of the ACM SIGSOFT Empirical Standards (Appendix~\ref{sec:appendix-standard}).
 
-\section{The Programming Language and Code Quality Debate}
-\label{sec:pl-debate}
-
-We choose the programming language and code quality debate as this tutorial's unifying case study because it illustrates, within a single research thread, the full arc of methodological challenges that causal inference addresses: contested observational findings, widespread downstream misinterpretation, and a persistent impasse.
-The debate's persistence reflects two orthogonal challenges: \emph{measurement} (whether bug-fix heuristics, code smells, or defect counts validly capture ``code quality,'' and whether ``programming language'' is a coherent treatment) and \emph{identification} (whether the research design can distinguish causal effects from confounding).
-We do not aim to resolve this debate---doing so would require progress on both fronts, which is far beyond the scope of this tutorial.
-Instead, we focus on the identification dimension, retrospectively illustrating how the causal inference toolkit can strengthen prior study designs while being transparent that measurement challenges remain.
-This section first synthesizes the debate's three-decade trajectory (Section~\ref{sec:pl-lit-synthesis}), then documents how correlational findings are systematically reinterpreted as causal claims (Section~\ref{sec:pl-misinterpretation}), and finally applies the pragmatic stance to two studies from this debate---retrospectively showing how the toolkit can strengthen their designs (Sections~\ref{sec:example-a}--\ref{sec:example-b}).
-
-\subsection{Does Language Choice Affect Code Quality? A Literature Synthesis}
-\label{sec:pl-lit-synthesis}
-
-The question of whether programming language choice affects software quality has generated a sustained research thread spanning three decades, progressing through three distinguishable phases---each more ambitious in scale but increasingly constrained by identification challenges.
-
-\paragraph{Controlled Experiments.}
-The first phase traded ecological validity for internal validity, producing the field's most credible causal evidence---albeit on narrow populations and tasks.
-\citet{DBLP:journals/computer/Prechelt00} had 80 programmers implement the same task in seven languages, finding that within-language individual differences typically exceeded between-language differences---a finding that would haunt subsequent observational studies by suggesting that developer skill confounds language comparisons.
-\citeauthor{DBLP:conf/oopsla/Hanenberg10}'s~\cite{DBLP:conf/oopsla/Hanenberg10, DBLP:conf/oopsla/MayerHRTS12, DBLP:journals/ese/HanenbergKRTS14} sustained research program then isolated the type system dimension using a custom language with randomized assignment, progressively revealing that static types benefit understanding unfamiliar code and fixing type-related errors but offer no advantage for semantic errors---the defect category most relevant to the PL--quality debate that subsequent observational studies would obscure.
-\citet{DBLP:conf/icse/EndrikatHRS14} extended this line by showing that static types and API documentation interact: Types help most when documentation is poor, suggesting that any ``language effect'' is contingent on the development context rather than intrinsic to the language.
-\citet{DBLP:conf/icse/NanzF15} bridged the experimental and observational traditions by exploiting Rosetta Code as a quasi-experimental setting where multiple languages implement the same specification, finding compiled strongly typed languages less prone to runtime failures---though the study could not control for developer experience or effort.
-Collectively, these experiments establish a consistent but bounded finding: Static type systems help with a specific class of errors under specific conditions, with effect sizes modest relative to individual developer differences.
-
-\paragraph{Large-Scale Observational Studies.}
-The second phase shifted from controlled laboratory tasks to large-scale mining of software repositories, gaining ecological validity but sacrificing the identification that randomization provides.
-\citet{DBLP:conf/icse/BhattacharyaN11} initiated this shift at ICSE~2011, analyzing four C and C++ projects to argue that language features influence software evolution and quality---but the comparison of different projects in different languages confounds language effects with project-specific characteristics.
-\citet{DBLP:conf/compsac/BissyandeTLJR13} expanded the scale to 100,000 open-source projects, finding that language popularity, interoperability, and community size correlate with project outcomes---but treated these correlations as informative without addressing the endogeneity of language adoption.
-The landmark study by \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} analyzed 729 GitHub projects across 17 languages and reporting a ``modest but significant'' relationship between language class and defect proneness.
-Despite the authors' hedged framing, the study was widely cited as evidence that certain languages \emph{cause} fewer bugs~\cite{DBLP:journals/corr/abs-1911-11894}---illustrating the downstream consequences of the causal language problem that \citet{hernan2018cword} diagnosed (Section~\ref{sec:pl-misinterpretation}).
-\citet{DBLP:conf/wcre/KochharWL16} conducted an independent large-scale study with a similar design, corroborating the modest associations---but independent replication of an association is not the same as causal identification, because the same confounding structure (language choice driven by team characteristics that also affect quality) operates identically across studies.
-The fundamental challenge facing all these studies is endogeneity: \citet{DBLP:conf/oopsla/MeyerovichR13} showed that language adoption is driven by library ecosystems, existing codebases, and developer experience rather than intrinsic language features, meaning language choice is confounded by factors that independently affect code quality, and cross-sectional regression cannot separate these effects.
-\citet{DBLP:conf/icse/GaoBB17} partially circumvented the identification problem by annotating pre-fix JavaScript code with TypeScript types, finding that type checkers detect approximately 15\% of public bugs---a tangible but bounded benefit consistent with the experimental evidence, and one that sidesteps the selection problem by holding the project constant and varying only the type-checking intervention.
-
-\paragraph{Reproduction and Toward Causal Identification.}
-The third phase shifted attention from ``what are the correlations?'' to ``can any correlational approach answer the causal question?''
-\citet{DBLP:journals/toplas/BergerHMVV19} conducted a meticulous reproduction of \citet{DBLP:conf/sigsoft/RayPFD14}, correcting data quality issues and model specification choices, and reduced the number of statistically significant language--defect associations from 11 to 4---with exceedingly small effect sizes.
-\citet{DBLP:journals/tosem/FuriaTF22} reinforced this finding through Bayesian analysis, showing that project-specific characteristics dominate language effects---demonstrating that better statistics alone cannot solve the identification problem when the research design does not address confounding.
-\citeauthor{DBLP:journals/tosem/FuriaTF24}~\cite{DBLP:journals/tosem/FuriaTF24} took the crucial next step by applying structural causal models to coding competition data, finding ``considerable differences between a purely associational and a causal analysis of the very same data.''
-This result is a smoking gun for the identification problem: On the same data, the same researchers obtained substantively different conclusions depending on whether they estimated an association or identified a causal effect---precisely the divergence that causal inference theory predicts when confounding is present.
-Their study represents the first formal causal identification in the PL--effects literature, though the use of competition rather than real-world project data limits its external validity.
-\citet{DBLP:conf/msr/BognerM22} compared JavaScript with TypeScript GitHub projects, finding better code quality but a 60\% higher bug-fix ratio for TypeScript---a result consistent with selection bias, as TypeScript-adopting teams likely differ systematically in code review culture, bug-tracking discipline, and project complexity.
-No existing study of real-world PL effects exploits within-repository panel variation or design-based identification from natural experiments such as TypeScript migrations.
-Our worked examples address this identification gap, while recognizing that measurement challenges---noisy bug-fix heuristics, ambiguous treatment definitions, construct validity concerns---persist as an orthogonal dimension that stronger identification alone cannot resolve.
-
-\subsection{The Misinterpretation Problem: When Correlations Become Causal Claims}
-\label{sec:pl-misinterpretation}
-
-The literature synthesis above deliberately used hedged language---``association,'' ``relationship,'' ``modest effect''---because that is what the evidence supports.
-However, \emph{the downstream reception of this literature tells a different story}.
-We provide two streams of evidence, a quantitative citation analysis and a few examples of practitioner discourse, to document a systematic pattern in which correlational findings are reinterpreted as causal claims.
-
-\paragraph{Citation Analysis.}
-We retrieved all 451 papers citing \citet{DBLP:conf/sigsoft/RayPFD14} or \citet{DBLP:journals/cacm/RayPDF17} from the Semantic Scholar API and use Claude Opus 4.6 to classify the citation context of each paper with available full-text snippets ($n = 339$) into four categories: \emph{causal} (the citing paper treats or implies the finding as causal), \emph{hedged} (accurately describes the finding as an association or correlation), \emph{neutral} (cites for context, dataset, or methodology without interpreting the PL--quality finding), and \emph{critical} (questions the methodology or findings).
-Among the 339 papers with citation contexts, 24\% use causal framing---language such as \emph{``the effect of programming languages on software quality,''} \emph{``statically-typed languages are less error-prone,''} or \emph{``the choice of programming language can significantly impact software quality''}---while only 12\% use appropriately hedged language and 2\% engage critically with the study's identification strategy.
-The remaining 62\% cite Ray et~al.\ for tangential reasons (dataset, methodology, or GitHub mining context) without interpreting the PL--quality finding.
-In other words, among papers that actually engage with the PL--quality finding, causal interpretations outnumber hedged ones by roughly 2:1.
-This ratio is striking given that neither the original study~\cite{DBLP:conf/sigsoft/RayPFD14} nor the CACM version~\cite{DBLP:journals/cacm/RayPDF17} claims to establish a causal relationship.
-The misinterpretation is not the result of a few careless citations, but the \emph{modal} interpretation among papers that engage with the finding substantively.
-
-\paragraph{Practitioner Discourse.}
-The causal amplification extends beyond academic papers into practitioner discourse, where hedging disappears entirely.
-\citeauthor{DBLP:journals/toplas/BergerHMVV19}, in describing the motivation for their reproduction study, directly observed that Ray~et~al.'s findings were subject to a pattern where \emph{``people misinterpreted [them] as a causal relationship''}~\cite{claburn2019register}---notably, even the article reporting this debunking uses causal language in its own headline (\emph{``lead to more buggy code''}~\cite{claburn2019register}).
-Blog posts cite the study to rank languages by ``bug-proneness'' as if it were an intrinsic language property, using causal verbs (\emph{``produce,''} \emph{``eliminate''}) while citing Ray~et~al.\ as empirical backing~\cite{huang2021bugprone}.
-Within days of the original publication, practitioners on Hacker News interpreted regression coefficients as switchable causal effects---e.g., \emph{``A Haskell project can expect to see 63\% of the bug fixes that a C++ project would see.
-I don't call a 36\% drop in bugs `small'\,''}---treating the coefficient as if switching from C++ to Haskell \emph{would} directly produce fewer bugs, holding all else constant~\cite{hn2014rayetal}.
-
-\paragraph{Implications.}
-This pattern---hedged correlational findings, causal downstream interpretation---is precisely the \emph{causal language problem} that \citet{hernan2018cword} diagnosed in epidemiology and \citet{grosz2020taboo} documented in psychology.
-The conventional response is to hedge more carefully: Replace ``effect'' with ``association,'' add caveats, and hope that readers respect the distinction.
-But our citation analysis demonstrates that this defense fails on its own terms---24\% of citing papers use causal framing despite the authors' explicit hedging, confirming \citeauthor{haber2022causal}'s~\cite{haber2022causal} large-scale finding that associational euphemisms do not prevent causal interpretation.
-The problem is not imprecise language alone but the absence of both a clear \emph{identification} strategy and an explicit discussion of \emph{measurement} validity.
-When a study reports that \emph{``language class has a modest but significant effect on defect proneness''} without specifying the causal estimand, the confounding structure, or the identification strategy, it provides no framework within which readers can evaluate \emph{whether} a causal interpretation is warranted.
-Readers fill the gap with their priors, and the result is the 2:1 causal-to-hedged ratio we observe.
-Resolving this pattern requires progress on two orthogonal fronts: identification (can the design support a causal claim?) and measurement (are the proxies valid for the constructs of interest?).
-The pragmatic stance we advocate (Section~\ref{sec:primer-stance}) addresses the identification dimension: By requiring researchers to state their causal question, draw their DAG, and argue for identification, it replaces the ``correlation vs.\ causation'' impasse with a transparent discussion of assumptions that readers can evaluate.
-Crucially, this transparency is not only diagnostic but \emph{constructive}: Each assumption that a study cannot fully defend---an unmeasured confounder in the DAG, a parallel trends assumption that lacks pre-treatment data, an exclusion restriction that remains debatable---becomes a concrete specification for the next study's design.
-A research community that accumulates explicit, falsifiable assumptions builds knowledge cumulatively; one that accumulates hedged correlations does not.
-The measurement dimension---whether bug-fix commits reliably proxy for defects, whether ``language'' is a well-defined treatment---is an equally important challenge that the causal toolkit does not itself solve but that the pragmatic stance surfaces by requiring researchers to specify their treatment and outcome precisely.
-The worked examples that follow demonstrate how this works in practice.
-
-\subsection{Example A: Applying the Toolkit to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s GitHub Study}
-\label{sec:example-a}
-
-% TODO: Walk through the pragmatic stance (Section~\ref{sec:primer-stance}) showing how the toolkit strengthens identification.
-% Target trial & DAG (Section~\ref{sec:guide-question}): Unmeasured confounders (developer skill, org culture);
-%         ill-defined estimand --- ``effect of language'' conflates
-%         type system, ecosystem, paradigm, community.
-% Design-based identification (Section~\ref{sec:guide-identification}): Cross-sectional design precludes
-%         design-based path; DAG-based path fragile due to unmeasured confounders.
-% Alternative explanations (Section~\ref{sec:guide-credibility}): Measurement challenges, SUTVA violations
-%         in polyglot projects; debate lacked explicit causal structures.
-% Constructive: How design-based identification (Section~\ref{sec:guide-path-b}) directs toward panel FE.
-% GitHub data already contains developer IDs, timestamps,
-% multi-language contributions -> panel structure.
-% Panel FE absorbs time-invariant confounders.
-% Limitations: Time-varying confounders, compound treatment.
-% Brief empirical demonstration on the Ray et al. dataset or a comparable GitHub sample.
-
-\subsection{Example B: Diagnosing and Improving \citeauthor{DBLP:conf/msr/BognerM22}'s TypeScript Comparison}
-\label{sec:example-b}
-
-% TODO: Walk through the pragmatic stance showing selection bias.
-% Target trial & DAG (Section~\ref{sec:guide-question}): TS adoption is endogenous (skill, quality culture, complexity);
-%         confounded estimand --- cross-sectional JS-vs-TS comparison.
-% Design-based identification (Section~\ref{sec:guide-identification}): Cross-sectional design precludes
-%         design-based path; DAG-based path fragile due to selection on TS adoption.
-% Alternative explanations (Section~\ref{sec:guide-credibility}): ``Surprising'' finding likely reflects better bug-tracking;
-%         selection explanation more plausible than literal interpretation.
-% Treatment decomposition: TypeScript adds a type system to the JS ecosystem while holding
-% runtime, packages, and tooling approximately constant -> well-defined
-% intervention. Connection to Hanenberg et al. and Gao et al.
-% Constructive: Treatment group: JS projects that adopt TS.
-% Control group: Comparable JS projects that remain in pure JS.
-% DiD identification, pre-trend tests, parallel trends assumption.
-% Connection to modern DiD methods (Roth et al. 2023).
-% Brief empirical demonstration on GitHub data.
-
-\subsection{Synthesis: How the Pragmatic Stance Upgrades Research Designs}
-\label{sec:pl-synthesis}
-
-% TODO: From cross-sectional to panel FE (Example A) and from
-% cross-sectional to DiD with a sharper treatment (Example B).
-% How the pragmatic stance generates different improved designs depending
-% on data structure and research question.
-
-
 % =============================================================================
-% DISCUSSION
+% WORKED EXAMPLE
 % =============================================================================
 
-\section{Discussion}
+\section{Worked Example: The Impact of AI Coding Tools in Open-Source Software}
+\label{sec:worked-example}
+
+\TODO{This section applies the causal inference toolkit from Section~\ref{sec:primer} to a concrete dataset of approximately 1,000 popular GitHub repositories across 10 programming languages, where roughly 300 contain AI configuration files (treatment) and 600 do not (control).
+The research question: How does adopting AI coding tools systematically (as signaled by AI config files in the repository) affect the repository's productivity, measured by monthly commits?
+The section progressively applies cross-sectional and longitudinal methods, illustrating how each method's assumptions and limitations become transparent through the toolkit.}
+
+\subsection{Cross-Sectional Methods}
+\label{sec:cross-sectional}
+
+\TODO{Na\"ive comparison (document the large raw difference driven by selection bias); DAG-justified OLS vs.\ kitchen-sink regression (demonstrate that many cross-sectional metrics become mediators due to future leakage); compare DAG-justified OLS, PSM, and IPW (demonstrate convergence---using PSM or IPW does not automatically make a study ``causal inference''); conclude that cross-sectional analysis provides informative but less convincing evidence and that the assumptions are hard to defend.}
+
+\subsection{Longitudinal Methods}
+\label{sec:longitudinal}
+
+\TODO{Basic before/after comparison; TWFE without time-varying covariates; TWFE with time-varying covariates; modern DiD estimators.
+Demonstrate how a longitudinal setting with design-based identification can address unobserved confounders through within-unit comparisons.}
+
+% =============================================================================
+% DISCUSSION AND CONCLUSION
+% =============================================================================
+
+\section{Discussion and Conclusion}
 \label{sec:discussion}
 
-% TODO: Write discussion.
-% - Implications for SE research practices
-% - When and how to apply the framework
-% - Relationship to other methodological reform efforts
-%   (pre-registration, registered reports, replication)
-% - Limitations of the tutorial and framework
-% - Future directions
-
-
-% =============================================================================
-% CONCLUSION
-% =============================================================================
-
-\section{Conclusion}
-\label{sec:conclusion}
-
-% TODO: Write conclusion.
-% - Summarize contributions
-% - Reiterate the pragmatic stance and empirical standard
-% - Call to action for the SE community
+% TODO: Write discussion and conclusion.
+% - For reviewers: If a clear intervention-outcome RQ is posed, we should stop
+%   accepting correlation analyses without an explicit discussion of the extent
+%   to which they may support a causal claim and the assumptions under which
+%   they do so.
+% - For researchers: Clear directions and pointers for learning these methods.
+%   It is much more accessible nowadays for researchers with a CS background,
+%   with all the advances in AI and agents.
+% - Important limitation: Even if we raise the empirical standard, we cannot
+%   prevent people from pretending to use better methods (analogous to the
+%   grounded theory adoption problem in SE).
 
 
 \begin{acks}

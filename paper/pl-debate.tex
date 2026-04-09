@@ -1,0 +1,123 @@
+\section{The Programming Language and Code Quality Debate}
+\label{sec:pl-debate}
+
+We choose the programming language and code quality debate as this tutorial's unifying case study because it illustrates, within a single research thread, the full arc of methodological challenges that causal inference addresses: contested observational findings, widespread downstream misinterpretation, and a persistent impasse.
+The debate's persistence reflects two orthogonal challenges: \emph{measurement} (whether bug-fix heuristics, code smells, or defect counts validly capture ``code quality,'' and whether ``programming language'' is a coherent treatment) and \emph{identification} (whether the research design can distinguish causal effects from confounding).
+We do not aim to resolve this debate---doing so would require progress on both fronts, which is far beyond the scope of this tutorial.
+Instead, we focus on the identification dimension, retrospectively illustrating how the causal inference toolkit can strengthen prior study designs while being transparent that measurement challenges remain.
+This section first synthesizes the debate's three-decade trajectory (Section~\ref{sec:pl-lit-synthesis}), then documents how correlational findings are systematically reinterpreted as causal claims (Section~\ref{sec:pl-misinterpretation}), and finally applies the pragmatic stance to two studies from this debate---retrospectively showing how the toolkit can strengthen their designs (Sections~\ref{sec:example-a}--\ref{sec:example-b}).
+
+\subsection{Does Language Choice Affect Code Quality? A Literature Synthesis}
+\label{sec:pl-lit-synthesis}
+
+The question of whether programming language choice affects software quality has generated a sustained research thread spanning three decades, progressing through three distinguishable phases---each more ambitious in scale but increasingly constrained by identification challenges.
+
+\paragraph{Controlled Experiments.}
+The first phase traded ecological validity for internal validity, producing the field's most credible causal evidence---albeit on narrow populations and tasks.
+\citet{DBLP:journals/computer/Prechelt00} had 80 programmers implement the same task in seven languages, finding that within-language individual differences typically exceeded between-language differences---a finding that would haunt subsequent observational studies by suggesting that developer skill confounds language comparisons.
+\citeauthor{DBLP:conf/oopsla/Hanenberg10}'s~\cite{DBLP:conf/oopsla/Hanenberg10, DBLP:conf/oopsla/MayerHRTS12, DBLP:journals/ese/HanenbergKRTS14} sustained research program then isolated the type system dimension using a custom language with randomized assignment, progressively revealing that static types benefit understanding unfamiliar code and fixing type-related errors but offer no advantage for semantic errors---the defect category most relevant to the PL--quality debate that subsequent observational studies would obscure.
+\citet{DBLP:conf/icse/EndrikatHRS14} extended this line by showing that static types and API documentation interact: Types help most when documentation is poor, suggesting that any ``language effect'' is contingent on the development context rather than intrinsic to the language.
+\citet{DBLP:conf/icse/NanzF15} bridged the experimental and observational traditions by exploiting Rosetta Code as a quasi-experimental setting where multiple languages implement the same specification, finding compiled strongly typed languages less prone to runtime failures---though the study could not control for developer experience or effort.
+Collectively, these experiments establish a consistent but bounded finding: Static type systems help with a specific class of errors under specific conditions, with effect sizes modest relative to individual developer differences.
+
+\paragraph{Large-Scale Observational Studies.}
+The second phase shifted from controlled laboratory tasks to large-scale mining of software repositories, gaining ecological validity but sacrificing the identification that randomization provides.
+\citet{DBLP:conf/icse/BhattacharyaN11} initiated this shift at ICSE~2011, analyzing four C and C++ projects to argue that language features influence software evolution and quality---but the comparison of different projects in different languages confounds language effects with project-specific characteristics.
+\citet{DBLP:conf/compsac/BissyandeTLJR13} expanded the scale to 100,000 open-source projects, finding that language popularity, interoperability, and community size correlate with project outcomes---but treated these correlations as informative without addressing the endogeneity of language adoption.
+The landmark study by \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} analyzed 729 GitHub projects across 17 languages and reporting a ``modest but significant'' relationship between language class and defect proneness.
+Despite the authors' hedged framing, the study was widely cited as evidence that certain languages \emph{cause} fewer bugs~\cite{DBLP:journals/corr/abs-1911-11894}---illustrating the downstream consequences of the causal language problem that \citet{hernan2018cword} diagnosed (Section~\ref{sec:pl-misinterpretation}).
+\citet{DBLP:conf/wcre/KochharWL16} conducted an independent large-scale study with a similar design, corroborating the modest associations---but independent replication of an association is not the same as causal identification, because the same confounding structure (language choice driven by team characteristics that also affect quality) operates identically across studies.
+The fundamental challenge facing all these studies is endogeneity: \citet{DBLP:conf/oopsla/MeyerovichR13} showed that language adoption is driven by library ecosystems, existing codebases, and developer experience rather than intrinsic language features, meaning language choice is confounded by factors that independently affect code quality, and cross-sectional regression cannot separate these effects.
+\citet{DBLP:conf/icse/GaoBB17} partially circumvented the identification problem by annotating pre-fix JavaScript code with TypeScript types, finding that type checkers detect approximately 15\% of public bugs---a tangible but bounded benefit consistent with the experimental evidence, and one that sidesteps the selection problem by holding the project constant and varying only the type-checking intervention.
+
+\paragraph{Reproduction and Toward Causal Identification.}
+The third phase shifted attention from ``what are the correlations?'' to ``can any correlational approach answer the causal question?''
+\citet{DBLP:journals/toplas/BergerHMVV19} conducted a meticulous reproduction of \citet{DBLP:conf/sigsoft/RayPFD14}, correcting data quality issues and model specification choices, and reduced the number of statistically significant language--defect associations from 11 to 4---with exceedingly small effect sizes.
+\citet{DBLP:journals/tosem/FuriaTF22} reinforced this finding through Bayesian analysis, showing that project-specific characteristics dominate language effects---demonstrating that better statistics alone cannot solve the identification problem when the research design does not address confounding.
+\citeauthor{DBLP:journals/tosem/FuriaTF24}~\cite{DBLP:journals/tosem/FuriaTF24} took the crucial next step by applying structural causal models to coding competition data, finding ``considerable differences between a purely associational and a causal analysis of the very same data.''
+This result is a smoking gun for the identification problem: On the same data, the same researchers obtained substantively different conclusions depending on whether they estimated an association or identified a causal effect---precisely the divergence that causal inference theory predicts when confounding is present.
+Their study represents the first formal causal identification in the PL--effects literature, though the use of competition rather than real-world project data limits its external validity.
+\citet{DBLP:conf/msr/BognerM22} compared JavaScript with TypeScript GitHub projects, finding better code quality but a 60\% higher bug-fix ratio for TypeScript---a result consistent with selection bias, as TypeScript-adopting teams likely differ systematically in code review culture, bug-tracking discipline, and project complexity.
+No existing study of real-world PL effects exploits within-repository panel variation or design-based identification from natural experiments such as TypeScript migrations.
+Our worked examples address this identification gap, while recognizing that measurement challenges---noisy bug-fix heuristics, ambiguous treatment definitions, construct validity concerns---persist as an orthogonal dimension that stronger identification alone cannot resolve.
+
+\subsection{The Misinterpretation Problem: When Correlations Become Causal Claims}
+\label{sec:pl-misinterpretation}
+
+The literature synthesis above deliberately used hedged language---``association,'' ``relationship,'' ``modest effect''---because that is what the evidence supports.
+However, \emph{the downstream reception of this literature tells a different story}.
+We provide two streams of evidence, a quantitative citation analysis and a few examples of practitioner discourse, to document a systematic pattern in which correlational findings are reinterpreted as causal claims.
+
+\paragraph{Citation Analysis.}
+We retrieved all 451 papers citing \citet{DBLP:conf/sigsoft/RayPFD14} or \citet{DBLP:journals/cacm/RayPDF17} from the Semantic Scholar API and use Claude Opus 4.6 to classify the citation context of each paper with available full-text snippets ($n = 339$) into four categories: \emph{causal} (the citing paper treats or implies the finding as causal), \emph{hedged} (accurately describes the finding as an association or correlation), \emph{neutral} (cites for context, dataset, or methodology without interpreting the PL--quality finding), and \emph{critical} (questions the methodology or findings).
+Among the 339 papers with citation contexts, 24\% use causal framing---language such as \emph{``the effect of programming languages on software quality,''} \emph{``statically-typed languages are less error-prone,''} or \emph{``the choice of programming language can significantly impact software quality''}---while only 12\% use appropriately hedged language and 2\% engage critically with the study's identification strategy.
+The remaining 62\% cite Ray et~al.\ for tangential reasons (dataset, methodology, or GitHub mining context) without interpreting the PL--quality finding.
+In other words, among papers that actually engage with the PL--quality finding, causal interpretations outnumber hedged ones by roughly 2:1.
+This ratio is striking given that neither the original study~\cite{DBLP:conf/sigsoft/RayPFD14} nor the CACM version~\cite{DBLP:journals/cacm/RayPDF17} claims to establish a causal relationship.
+The misinterpretation is not the result of a few careless citations, but the \emph{modal} interpretation among papers that engage with the finding substantively.
+
+\paragraph{Practitioner Discourse.}
+The causal amplification extends beyond academic papers into practitioner discourse, where hedging disappears entirely.
+\citeauthor{DBLP:journals/toplas/BergerHMVV19}, in describing the motivation for their reproduction study, directly observed that Ray~et~al.'s findings were subject to a pattern where \emph{``people misinterpreted [them] as a causal relationship''}~\cite{claburn2019register}---notably, even the article reporting this debunking uses causal language in its own headline (\emph{``lead to more buggy code''}~\cite{claburn2019register}).
+Blog posts cite the study to rank languages by ``bug-proneness'' as if it were an intrinsic language property, using causal verbs (\emph{``produce,''} \emph{``eliminate''}) while citing Ray~et~al.\ as empirical backing~\cite{huang2021bugprone}.
+Within days of the original publication, practitioners on Hacker News interpreted regression coefficients as switchable causal effects---e.g., \emph{``A Haskell project can expect to see 63\% of the bug fixes that a C++ project would see.
+I don't call a 36\% drop in bugs `small'\,''}---treating the coefficient as if switching from C++ to Haskell \emph{would} directly produce fewer bugs, holding all else constant~\cite{hn2014rayetal}.
+
+\paragraph{Implications.}
+This pattern---hedged correlational findings, causal downstream interpretation---is precisely the \emph{causal language problem} that \citet{hernan2018cword} diagnosed in epidemiology and \citet{grosz2020taboo} documented in psychology.
+The conventional response is to hedge more carefully: Replace ``effect'' with ``association,'' add caveats, and hope that readers respect the distinction.
+But our citation analysis demonstrates that this defense fails on its own terms---24\% of citing papers use causal framing despite the authors' explicit hedging, confirming \citeauthor{haber2022causal}'s~\cite{haber2022causal} large-scale finding that associational euphemisms do not prevent causal interpretation.
+The problem is not imprecise language alone but the absence of both a clear \emph{identification} strategy and an explicit discussion of \emph{measurement} validity.
+When a study reports that \emph{``language class has a modest but significant effect on defect proneness''} without specifying the causal estimand, the confounding structure, or the identification strategy, it provides no framework within which readers can evaluate \emph{whether} a causal interpretation is warranted.
+Readers fill the gap with their priors, and the result is the 2:1 causal-to-hedged ratio we observe.
+Resolving this pattern requires progress on two orthogonal fronts: identification (can the design support a causal claim?) and measurement (are the proxies valid for the constructs of interest?).
+The pragmatic stance we advocate (Section~\ref{sec:primer-stance}) addresses the identification dimension: By requiring researchers to state their causal question, draw their DAG, and argue for identification, it replaces the ``correlation vs.\ causation'' impasse with a transparent discussion of assumptions that readers can evaluate.
+Crucially, this transparency is not only diagnostic but \emph{constructive}: Each assumption that a study cannot fully defend---an unmeasured confounder in the DAG, a parallel trends assumption that lacks pre-treatment data, an exclusion restriction that remains debatable---becomes a concrete specification for the next study's design.
+A research community that accumulates explicit, falsifiable assumptions builds knowledge cumulatively; one that accumulates hedged correlations does not.
+The measurement dimension---whether bug-fix commits reliably proxy for defects, whether ``language'' is a well-defined treatment---is an equally important challenge that the causal toolkit does not itself solve but that the pragmatic stance surfaces by requiring researchers to specify their treatment and outcome precisely.
+The worked examples that follow demonstrate how this works in practice.
+
+\subsection{Example A: Applying the Toolkit to \citeauthor{DBLP:conf/sigsoft/RayPFD14}'s GitHub Study}
+\label{sec:example-a}
+
+% TODO: Walk through the pragmatic stance (Section~\ref{sec:primer-stance}) showing how the toolkit strengthens identification.
+% Target trial & DAG (Section~\ref{sec:guide-question}): Unmeasured confounders (developer skill, org culture);
+%         ill-defined estimand --- ``effect of language'' conflates
+%         type system, ecosystem, paradigm, community.
+% Design-based identification (Section~\ref{sec:guide-identification}): Cross-sectional design precludes
+%         design-based path; DAG-based path fragile due to unmeasured confounders.
+% Alternative explanations (Section~\ref{sec:guide-credibility}): Measurement challenges, SUTVA violations
+%         in polyglot projects; debate lacked explicit causal structures.
+% Constructive: How design-based identification (Section~\ref{sec:guide-path-b}) directs toward panel FE.
+% GitHub data already contains developer IDs, timestamps,
+% multi-language contributions -> panel structure.
+% Panel FE absorbs time-invariant confounders.
+% Limitations: Time-varying confounders, compound treatment.
+% Brief empirical demonstration on the Ray et al. dataset or a comparable GitHub sample.
+
+\subsection{Example B: Diagnosing and Improving \citeauthor{DBLP:conf/msr/BognerM22}'s TypeScript Comparison}
+\label{sec:example-b}
+
+% TODO: Walk through the pragmatic stance showing selection bias.
+% Target trial & DAG (Section~\ref{sec:guide-question}): TS adoption is endogenous (skill, quality culture, complexity);
+%         confounded estimand --- cross-sectional JS-vs-TS comparison.
+% Design-based identification (Section~\ref{sec:guide-identification}): Cross-sectional design precludes
+%         design-based path; DAG-based path fragile due to selection on TS adoption.
+% Alternative explanations (Section~\ref{sec:guide-credibility}): ``Surprising'' finding likely reflects better bug-tracking;
+%         selection explanation more plausible than literal interpretation.
+% Treatment decomposition: TypeScript adds a type system to the JS ecosystem while holding
+% runtime, packages, and tooling approximately constant -> well-defined
+% intervention. Connection to Hanenberg et al. and Gao et al.
+% Constructive: Treatment group: JS projects that adopt TS.
+% Control group: Comparable JS projects that remain in pure JS.
+% DiD identification, pre-trend tests, parallel trends assumption.
+% Connection to modern DiD methods (Roth et al. 2023).
+% Brief empirical demonstration on GitHub data.
+
+\subsection{Synthesis: How the Pragmatic Stance Upgrades Research Designs}
+\label{sec:pl-synthesis}
+
+% TODO: From cross-sectional to panel FE (Example A) and from
+% cross-sectional to DiD with a sharper treatment (Example B).
+% How the pragmatic stance generates different improved designs depending
+% on data structure and research question.

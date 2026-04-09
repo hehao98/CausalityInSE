@@ -2,7 +2,7 @@
 
 **Target Venue:** ACM Transactions on Software Engineering and Methodology (TOSEM)
 
-**Status:** Drafting phase --- Sections 1--3 drafted; revising structure to align with updated paper story.
+**Status:** Sections 1--3 revised to reflect new paper story (AI coding tools running example); Section 4 (worked example) and Section 5 (discussion) TODO.
 
 ## Repository Organization
 
@@ -87,20 +87,27 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 
    **Outcome:** Monthly commits as a measure of productivity.
 
-   **TODO:** Construct the data to have a collider and a mediator, and possibly two-period data.
-
    - **4.1 Cross-Sectional Methods**
-     - **Methods applied:**
-       - Naive comparison between treated and control repos.
-       - Use DAG to justify OLS covariate selection and compare with a kitchen-sink regression.
-       - Compare kitchen-sink regression vs. DAG-justified regression in terms of robustness.
-       - Compare DAG-justified OLS vs. PSM vs. IPW.
-     - **Findings:**
-       - 15x raw productivity difference between the two groups --- extremely strong selection bias.
-       - DAG is informative, but in a cross-sectional setting many metrics become mediators due to future leakage (e.g., # stars, # PRs, # issues).
-       - Nothing is robust because of plausible, strong unmeasured confounders (e.g., team member skill level).
-       - OLS, PSM, and IPW yield the same result. **Using PSM or IPW does not automatically make a study "causal inference"!**
-     - **Takeaway:** Cross-sectional analysis provides informative but less convincing evidence for causal inquiries. Need strong assumptions to support a causal claim, and the assumptions are hard to defend. A longitudinal setting with design-based identification can address unobserved confounders through before/after within-comparisons and provide cleaner tests of temporal dependence.
+
+     The cross-sectional analysis starts from the approach most SE researchers would take (naive comparison, kitchen-sink regression), then diagnoses why it fails, and shows that switching estimators (PSM, IPW) cannot fix a broken identification strategy.
+
+     - **Stage 1: Naive comparison and kitchen-sink regression.**
+       Start with what a typical SE researcher would do: compare treated vs. control repos, then throw all available covariates into a regression.
+       - **Table 1 (Descriptive comparison):** Side-by-side means/medians for outcome (monthly commits) and all covariates --- both structurally pre-treatment (repo age, language, org type) and time-varying (stars, forks, PRs, issues, CI, size, releases) --- showing massive imbalance on every dimension.
+       - Kitchen-sink OLS: highly significant coefficient that *looks* robust. A naive analyst might stop here.
+
+     - **Stage 2: Diagnose selection bias and draw the temporal DAG.**
+       Why should we distrust the kitchen-sink result? Introduce the causal DAG to reason about covariate selection --- and immediately reveal an MSR-specific challenge: **temporal collapse.**
+       - Present the true temporal DAG: stars_{t-1} → adoption_t, stars_{t-1} → commits_t, adoption_t → stars_{t+1}, commits_t → stars_{t+1}. In this DAG, covariate roles are unambiguous and the adjustment set is clear.
+       - Show that a cross-sectional snapshot collapses time-indexed nodes into a single "stars" node with both incoming and outgoing arrows --- a cyclic graph, not a DAG. This is pervasive in MSR studies that rely on snapshot data. Connects to Hernán & Robins (Ch. 20) treatment-confounder feedback and Richardson & Robins' critique of cross-sectional DAGs.
+       - **Consequence:** Only *structurally pre-treatment* covariates (repo age, language, org type --- determined at creation, cannot be affected by adoption under any timing) are defensible controls. All time-varying covariates are temporally ambiguous. Restricting to pre-treatment covariates eliminates mediator bias entirely (pre-treatment variables cannot be caused by treatment) and reduces collider risk to the minor M-bias scenario.
+       - **Table 2 (OLS comparison):** Kitchen-sink regression vs. regression with only pre-treatment covariates. Coefficient attenuates monotonically as controls are added, but the drop from pre-treatment to kitchen-sink is *uninterpretable* --- the collapsed graph is not a DAG, so no adjustment formula applies.
+       - Sensitivity analysis (Oster bounds, sensemakr) shows the pre-treatment-only estimate is fragile: structurally pre-treatment covariates are weak proxies for the real confounders (developer skill, team culture).
+
+     - **Stage 3: OLS vs. PSM vs. IPW converge.**
+       - **Table 3 (Estimator comparison):** OLS, PSM, and IPW using the same pre-treatment covariates yield nearly identical estimates. The estimator is not the bottleneck; the identifying assumption is. **Using PSM or IPW does not automatically make a study "causal inference"!**
+
+     - **Takeaway:** Cross-sectional MSR data suffers from temporal collapse: the measurement design destroys the temporal ordering that DAGs require, making principled covariate selection impossible for time-varying covariates. Even restricting to structurally pre-treatment covariates yields fragile estimates due to unobserved confounders. Only within-repo longitudinal variation --- comparing the same project before and after adoption --- can make progress.
 
    - **4.2 Longitudinal Methods**
      - **Methods applied:**
@@ -142,29 +149,32 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 - [x] Merge Section 4 (Guide) into Section 3.4 (Pragmatic Stance)
 - [x] Draft the ACM Empirical Standard for Causal Inquiry appendix
 
-### Phase 2: Restructure and Revise Existing Sections
+### Phase 2: Restructure and Revise Existing Sections (Completed)
 
-- [ ] Revise Introduction (Section 1) to reflect updated paper story: general intervention-outcome framing, experiments' limitations, observational data challenges, downstream misinterpretation, vision of transparent assumptions
-- [ ] Revise Background and Related Work (Section 2):
-  - [ ] Retain existing tutorials/guidelines coverage and causal inference history
-  - [ ] Add subsection: why is causal inference hard for SE studies?
-  - [ ] Move and expand the Ray et al. misinterpretation case study into Section 2 (previously Section 4.2)
-  - [ ] Connect to Hernán (2018) causal language problem and methodological reform literature
-- [ ] Revise the Tutorial (Section 3) to integrate worked example throughout:
-  - [ ] Update 3.1 (four perspectives on causation) to use AI coding tools running example
-  - [ ] Update 3.2 (failure modes) to demonstrate with the worked example
-  - [ ] Update 3.3 (toolkit: potential outcomes, DAGs, design-based identification)
-  - [ ] Update 3.4 (pragmatic stance) with worked example illustrations
+- [x] Revise Introduction (Section 1) to reflect updated paper story: general intervention-outcome framing, experiments' limitations, observational data challenges, downstream misinterpretation, vision of transparent assumptions
+- [x] Revise Background and Related Work (Section 2):
+  - [x] Retain existing tutorials/guidelines coverage and causal inference history
+  - [x] Add subsection: why is causal inference hard for SE studies?
+  - [x] Move and expand the Ray et al. misinterpretation case study into Section 2 (previously Section 4.2)
+  - [x] Connect to Hernán (2018) causal language problem and methodological reform literature
+- [x] Revise the Tutorial (Section 3) to integrate worked example throughout:
+  - [x] Update 3.1 (four perspectives on causation) to use AI coding tools running example
+  - [x] Update 3.2 (failure modes) to demonstrate with the worked example
+  - [x] Update 3.3 (toolkit: potential outcomes, DAGs, design-based identification)
+  - [x] Update 3.4 (pragmatic stance) with worked example illustrations
 
 ### Phase 3: Worked Example --- The Impact of AI Coding Tools in OSS
 
-- [ ] Construct the dataset: 1,000 popular GitHub repos across 10 languages; identify ~300 with AI config files and ~600 without; ensure data has a collider and a mediator; consider two-period structure
+- [ ] Construct the dataset: 1,000 popular GitHub repos across 10 languages; identify ~300 with AI config files and ~600 without; construct two-period panel structure for longitudinal analysis
 - [ ] Cross-sectional analysis (Section 4.1):
-  - [ ] Naive comparison (document 15x raw difference)
-  - [ ] DAG construction and DAG-justified OLS covariate selection
-  - [ ] Kitchen-sink regression vs. DAG-justified regression robustness comparison
-  - [ ] PSM and IPW estimation; demonstrate convergence with OLS
-  - [ ] Write up cross-sectional findings and takeaway
+  - [ ] Naive comparison (document raw difference and covariate imbalance)
+  - [ ] Temporal collapse illustration: draw true temporal DAG, then show collapsed cross-sectional graph is cyclic
+  - [ ] Classify covariates: structurally pre-treatment (age, language, org type) vs. temporally ambiguous (stars, PRs, CI, size, releases)
+  - [ ] OLS with pre-treatment-only covariates (M_pretreat) as the only defensible specification
+  - [ ] OLS with temporally ambiguous covariates (M_extended, M_all) to show uninterpretable attenuation
+  - [ ] Sensitivity analysis (Oster bounds, sensemakr) to show M_pretreat is fragile
+  - [ ] PSM and IPW estimation; demonstrate convergence with OLS (estimator is not the bottleneck)
+  - [ ] Write up cross-sectional findings and takeaway centered on temporal collapse
 - [ ] Longitudinal analysis (Section 4.2):
   - [ ] Basic before/after comparison
   - [ ] TWFE without time-varying covariates
@@ -184,9 +194,9 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 
 ## Key Risks and Open Questions
 
-1. **Dataset construction for the worked example:** Need to construct a compelling dataset of ~1,000 popular GitHub repos with AI config files as the treatment signal. The data must be designed to naturally exhibit a collider and a mediator for pedagogical purposes, and ideally support a two-period panel structure for the longitudinal analysis.
+1. **Dataset construction for the worked example:** Need to construct a compelling dataset of ~1,000 popular GitHub repos with AI config files as the treatment signal. The data must support a two-period panel structure for the longitudinal analysis. The temporal collapse argument means we do *not* need to artificially engineer colliders or mediators --- they arise naturally from the cross-sectional design's inability to distinguish pre-treatment from post-treatment variation in time-varying covariates.
 
-2. **Scope of the single worked example:** The new story threads one example throughout the entire tutorial. This provides pedagogical coherence but means the example must illustrate every concept (selection bias, collider bias, mediator bias, DAG reasoning, PSM/IPW, TWFE, DiD). The example needs to be rich enough to carry this load.
+2. **Scope of the single worked example:** The new story threads one example throughout the entire tutorial. The temporal collapse framing simplifies what the cross-sectional example must carry: instead of separately demonstrating collider bias, mediator bias, and DAG reasoning as independent failure modes, the cross-section demonstrates temporal collapse (which subsumes collider/mediator ambiguity) and estimator convergence. Collider and mediator bias are taught in Section 3.2 with the true temporal DAG; the worked example then shows what happens when the measurement design destroys that temporal structure.
 
 3. **Disposition of prior empirical work:** The Ray et al. panel FE analysis (Example A), Bogner & Merkel diagnostic (Example B), and Cursor ITS analysis (Example C) from previous notebooks are no longer the paper's main worked examples. The Ray et al. misinterpretation analysis moves to Section 2 as a case study. Decide whether to retain any prior analyses as supplementary material.
 
@@ -203,5 +213,7 @@ The paper should be self-contained and pedagogically oriented so that an SE rese
 - Berger, E. D., Hollenbeck, C., Maj, P., Vitek, O., & Vitek, J. (2019). On the Impact of Programming Languages on Code Quality. TOPLAS 2019.
 - Furia, C. A., Torchiano, M., & Tempero, E. (2024). Structural causal models analysis of PL and defects. TOSEM 2024.
 - Hernán, M. A. (2018). The C-Word: Scientific Euphemisms Do Not Improve Causal Inference From Observational Data. AJPH 2018.
+- Hernán, M. A. & Robins, J. M. (2020). Causal Inference: What If. Chapman & Hall/CRC. (Ch. 7: selection bias; Ch. 20: treatment-confounder feedback --- motivates temporal collapse argument.)
 - Pearl, J. (2009). Causality: Models, Reasoning, and Inference. Cambridge University Press.
+- Richardson, T. S. & Robins, J. M. (2013). Single World Intervention Graphs (SWIGs). (Critique of cross-sectional DAGs; nodes must be well-defined events, not time-collapsed summaries.)
 - Rubin, D. B. (1974). Estimating Causal Effects of Treatments in Randomized and Nonrandomized Studies. Journal of Educational Psychology.
