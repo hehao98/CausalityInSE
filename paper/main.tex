@@ -202,7 +202,7 @@ We adopt deterministic decoding and an explicit classification schema to maximiz
 Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by intervention-outcome research questions (RQs); but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
 The vast majority of the 621 papers investigate their proposed RQs through interpreting correlational, descriptive, or qualitative evidence.
 Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers asking intervention-outcome RQs has grown steadily---from 23 in 2015 to 131 in 2025---the number claiming to employ causal inference methods has grown far more slowly, from 3 to 14 over the same period.
-The ratio of ntervention-outcome RQs to causal inference methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
+The ratio of intervention-outcome RQs to causal inference methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
 
 \begin{figure}[t]
 \centering
@@ -262,17 +262,13 @@ The graphical causal model tradition is better represented (7 papers using causa
 Structural equation modeling (2 papers), Granger causality (2 papers), and causal impact analysis (1 paper) round out the remaining categories.
 
 \paragraph{Implications.}
-Three patterns emerge from this analysis.
-First, the SE community's dominant approach to causal questions---drawing causal conclusions from correlational evidence, often with regression controls but without formal identification---leaves a substantial gap between the conclusions that stakeholders draw and the evidence that the methods can support.
-Second, when SE researchers do employ causal methods, they overwhelmingly use either randomized experiments or causal fault localization---methods that are important but insufficient for the field's most pressing observational questions about tool adoption, process effects, and language design.
-Third, the design-based methods that powered the credibility revolution---difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects---remain virtually unexplored in SE, despite the field's abundance of panel data (repositories with temporal structure, developers contributing across projects, tools adopted in staggered fashion) that is well suited to these methods.
+Two patterns emerge from this analysis.
+First, when SE researchers employ causal methods, they overwhelmingly use randomized controlled experiments, regression-based causal inference, or causal fault localization---methods that are important but insufficient for a large family of intervention-outcome questions in the SE field.
+Second, the design-based methods that powered the credibility revolution---difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects---remain virtually unexplored in SE, despite the field's abundance of panel data (repositories with temporal structure, developers contributing across projects, tools adopted in staggered fashion) that is well suited to these methods.
 This tutorial aims to bridge that gap.
 
-\subsection{Why Is Causal Inference Hard for SE Studies?}
+\subsection{Why Is Causal Inference Hard for SE Studies? Challenges and Opportunities}
 \label{sec:bg-challenges}
-
-The preceding analysis documents the gap between causal ambition and methodological practice in SE\@.
-Beyond the general challenges of observational causal inference, several features of SE research make causal identification particularly difficult, helping to explain why the gap has persisted.
 
 First, the most important confounders in SE---developer skill, team culture, organizational practices, code review discipline---are largely \emph{unmeasurable} from repository data.
 Unlike fields where administrative records capture rich individual-level data (e.g., census, tax, or medical records in economics and epidemiology), SE researchers typically observe only the digital traces that developers leave in version control systems, issue trackers, and communication platforms.
