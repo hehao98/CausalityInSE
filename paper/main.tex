@@ -267,25 +267,6 @@ First, when SE researchers employ causal methods, they overwhelmingly use random
 Second, the design-based methods that powered the credibility revolution---difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects---remain virtually unexplored in SE, despite the field's abundance of panel data (repositories with temporal structure, developers contributing across projects, tools adopted in staggered fashion) that is well suited to these methods.
 This tutorial aims to bridge that gap.
 
-\subsection{Why Is Causal Inference Hard for SE Studies? Challenges and Opportunities}
-\label{sec:bg-challenges}
-
-First, the most important confounders in SE---developer skill, team culture, organizational practices, code review discipline---are largely \emph{unmeasurable} from repository data.
-Unlike fields where administrative records capture rich individual-level data (e.g., census, tax, or medical records in economics and epidemiology), SE researchers typically observe only the digital traces that developers leave in version control systems, issue trackers, and communication platforms.
-This means that the conditional ignorability assumption required by selection-on-observables methods (Section~\ref{sec:primer-po}) is rarely plausible in SE, making design-based identification (Section~\ref{sec:primer-design}) essential.
-
-Second, SE treatments are often \emph{compound}.
-``Adopting TypeScript'' bundles a type system, a compiler toolchain, a migration effort, and a self-selected team; ``adopting AI coding tools'' bundles code generation, automated review, workflow changes, and a shift in development culture.
-The researcher must carefully define which component of the compound treatment is the object of inquiry and interpret the estimated effect accordingly.
-
-Third, interconnected software ecosystems create potential violations of the \emph{Stable Unit Treatment Value Assumption} (SUTVA)---the assumption that one unit's treatment does not affect another unit's outcome.
-Shared libraries propagate treatment effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
-These spillovers are difficult to bound and can bias standard causal estimators.
-
-Finally, SE outcomes are typically \emph{noisy proxies} for the constructs of interest: Bug-fix commits proxy for defect proneness, lines of code proxy for complexity, star counts proxy for popularity, and monthly commits proxy for productivity---each introducing measurement error that may attenuate effect estimates and complicate interpretation.
-Measurement and identification are orthogonal challenges: A perfectly identified design still produces misleading conclusions if the outcome proxy is invalid.
-This tutorial addresses identification; measurement validity requires its own careful attention that we acknowledge but do not attempt to resolve.
-
 \section{A Primer on Causal Inference for Software Engineering Researchers}
 \label{sec:primer}
 
