@@ -142,9 +142,9 @@ Second, the \emph{directed acyclic graphs (DAGs)} from \citet{pearl2009causality
 Finally, \emph{design-based identification}~\cite{angrist2010credibility, cunningham2021causal} provides systematic frameworks to find \emph{natural experiment} settings~\cite{dunning2012natural} in which the causal quantity can be estimated without complete and accurate articulation of the underlying causal theory.
 We will introduce all three pillars at a level accessible to researchers without formal training in causal inference.
 
-We illustrate their use through a running example: \emph{estimating the impact of AI coding assistant adoption on development productivity}.
+We illustrate their use through a running example: \emph{estimating the impact of AI coding assistant adoption on development velocity}.
 We begin with the most direct approach, comparing measured outcomes between a sample of open-source projects that adopted AI tools and open-source projects that did not, and use a DAG-encoded causal theory to surface the assumptions this comparison requires. 
-We then show how plausible violations of those assumptions (i.e., AI-adopting projects differ in important ways that affect productivity) motivate progressively stronger designs: multivariate regressions, longitudinal comparisons, and staggered difference-in-differences that builds a natural experiment setting from variations in adoption timing. 
+We then show how plausible violations of those assumptions (i.e., AI-adopting projects differ in important ways that affect development velocity) motivate progressively stronger designs: multivariate regressions, longitudinal comparisons, and staggered difference-in-differences that builds a natural experiment setting from variations in adoption timing. 
 At each stage, the theory makes visible which sources of confounding are addressed by the design, which remain, and what the researcher must assume for the analysis to yield a credible causal estimate. 
 \emph{Each design involves a different constellation of assumptions and trade-offs, and reasoning about these explicitly is more productive than retreating to the blanket disclaimer that correlation does not imply causation.}
 
@@ -297,8 +297,8 @@ We do not cover causal discovery algorithms~\cite{journals/ese/HulseEM25}, machi
 \subsection{What Does It Mean Exactly for X to Cause Y?}
 \label{sec:primer-causality}
 
-Consider a question that is highly relevant to SE research: Does adopting AI coding tools increase a project's productivity?
-At its core, this is a question about a contrast between two worlds---one in which a project adopts AI coding tools and one in which it does not---and whether productivity differs between them.
+Consider a question that is highly relevant to SE research: Does adopting AI coding tools increase a project's development velocity?
+At its core, this is a question about a contrast between two worlds---one in which a project adopts AI coding tools and one in which it does not---and whether development velocity differs between them.
 This deceptively simple framing conceals a deep conceptual question: What does it \emph{mean} for one thing to cause another?
 Two perspectives---one formal, one pragmatic---provide the conceptual foundation for the toolkit introduced in this section.\footnote{The philosophical literature offers additional accounts.
 The most intuitive, dating to \citet{hume1748enquiry}, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$---but regular association cannot distinguish genuine causal effects from systematic differences between compared groups (Section~\ref{sec:primer-naive} makes this failure concrete).
@@ -307,9 +307,9 @@ This interventionist view underpins the graphical causal model framework (Sectio
 
 \paragraph{Causation as Counterfactual Dependence.}
 The formal foundation of modern causal inference, developed by \citet{rubin1974estimating} building on philosophical work by \citet{lewis1973causation}, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
-Applied to our example: AI tools \emph{caused} the productivity increase for a given project if that project \emph{would have had lower productivity} had it not adopted AI tools, all else being equal.
+Applied to our example: AI tools \emph{caused} the velocity increase for a given project if that project \emph{would have had lower development velocity} had it not adopted AI tools, all else being equal.
 This definition is precise but introduces what \citet{holland1986statistics} called the \emph{fundamental problem of causal inference}: We can never observe both worlds for the same unit.
-We observe the project's productivity after adopting AI tools, or its productivity without AI tools, but never both.
+We observe the project's development velocity after adopting AI tools, or its velocity without AI tools, but never both.
 The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
 Still, the counterfactual view is useful in that it helps the researcher derive \emph{estimands}---precise definitions of the causal quantities we seek to estimate---and is formalized through the potential outcomes framework (Section~\ref{sec:primer-po}).
 
@@ -317,7 +317,7 @@ Still, the counterfactual view is useful in that it helps the researcher derive 
 For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers a pragmatic operationalization of counterfactual reasoning: Every causal question implicitly describes a hypothetical randomized experiment.
 The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
 For the AI coding tools question, the target trial would randomly assign half of a set of comparable software projects to adopt AI coding tools and compare monthly commits after a fixed period.
-Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign tool adoption, teams willing to adopt AI tools likely differ from those that do not, the ``treatment'' is ambiguous (which tools? how deeply integrated?), and commit counts may reflect development practices rather than genuine productivity.
+Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign tool adoption, teams willing to adopt AI tools likely differ from those that do not, the ``treatment'' is ambiguous (which tools? how deeply integrated?), and commit counts may reflect development practices rather than genuine development velocity.
 Each of these concerns maps directly to a specific identification assumption that must be addressed.
 The target trial view also forces the researcher to confront the difference between \emph{observing} that AI-adopting projects have more commits ($P(Y \mid X\!=\!1)$) and \emph{intervening} to make a project adopt AI tools and measuring the result ($P(Y \mid do(X\!=\!1))$)---a distinction that all causal inference methods, in some sense, seek to resolve.
 
@@ -331,33 +331,33 @@ Before introducing the toolkit, we must understand why the approaches dominant i
 Two common strategies---comparing outcomes across groups and adding regression controls---each fall short in ways that motivate the formal machinery in Sections~\ref{sec:primer-toolkit}.
 
 Consider the AI tools question again: Suppose a researcher compares monthly commits in a group of projects that adopted AI coding tools against a group of projects that did not and finds that AI-adopting projects have more commits.
-Can this comparison support the claim that AI tools \emph{cause} higher productivity?
+Can this comparison support the claim that AI tools \emph{cause} higher development velocity?
 Almost certainly not, because the two groups were never comparable to begin with.
 It is very likely that projects that adopt AI coding tools differ systematically from those that do not---they may have more active maintainers, more resources, more disciplined development practices, and may belong to organizations that invest more in developer productivity.
-These characteristics are \emph{confounders}: They influence both the decision to adopt AI tools (the treatment) and productivity (the outcome), creating an association between AI tools and higher productivity even if the tools themselves have zero causal effect.
+These characteristics are \emph{confounders}: They influence both the decision to adopt AI tools (the treatment) and development velocity (the outcome), creating an association between AI tools and higher velocity even if the tools themselves have zero causal effect.
 The observed difference in commit rates is a mixture of any genuine AI tool effect and the \emph{selection bias} arising from systematic differences between the compared groups---and a simple group comparison cannot disentangle the two.
 
 The natural response is to ``control for'' these confounders using multivariate regression---e.g., one with project age, project size, number of contributors, and other covariates---and interpret the remaining coefficient on AI tool adoption as the causal effect.
 This strategy is by far the most common approach to causal questions in empirical SE research, yet it suffers from at least four distinct problems plaguing many observational studies:
 \begin{itemize}[leftmargin=15pt]
     \item \emph{Unobserved Confounders.}
-    Regression can only adjust for measured variables, yet many confounders that plausibly affect both AI tool adoption and productivity---e.g., developer expertise, team culture, organizational practices, project management quality---are largely unmeasurable from repository data.
-    No amount of observed controls can compensate for these missing variables, and the resulting bias can be arbitrarily large in either direction.\footnote{Formally, if the true causal model includes an unobserved confounder $U$, the regression coefficient on the treatment converges to $\hat{\tau} \xrightarrow{p} \tau + \gamma \cdot \text{Cov}(D, U|X) / \text{Var}(D|X)$, where $\gamma$ is the effect of $U$ on the outcome and $\text{Cov}(D, U|X)/\text{Var}(D|X)$ captures the residual association between treatment and the omitted variable after partialling out the included controls (see~\citet[Ch.~3, \S3.2.2]{angrist2009mostly} for a formal derivation and \citet{cinelli2020making} for a modern sensitivity-analysis extension).
+    Regression can only adjust for measured variables, yet many confounders that plausibly affect both AI tool adoption and development velocity---e.g., developer expertise, team culture, organizational practices, project management quality---are largely unmeasurable from repository data.
+    No amount of observed controls can compensate for these missing variables, and the resulting bias can be large in either direction.\footnote{Formally, if the true causal model includes an unobserved confounder $U$, the regression coefficient on the treatment converges to $\hat{\tau} \xrightarrow{p} \tau + \gamma \cdot \text{Cov}(D, U|X) / \text{Var}(D|X)$, where $\gamma$ is the effect of $U$ on the outcome and $\text{Cov}(D, U|X)/\text{Var}(D|X)$ captures the residual association between treatment and the omitted variable after partialling out the included controls (see~\citet[Ch.~3, \S3.2.2]{angrist2009mostly} for a formal derivation and \citet{cinelli2020making} for a modern sensitivity-analysis extension).
     The bias is large whenever $U$ strongly predicts both treatment $D$ and outcome $Y$.}
     \item \emph{Collider Bias.}
     When a variable is a common \emph{effect} of both treatment and outcome, conditioning on it in a regression creates spurious associations.
-    For example, if GitHub popularity (e.g., star count) is influenced by both AI tool adoption (early adopters attract attention) and productivity (active projects gain visibility), a regression with popularity as a control can manufacture an apparent relationship between AI tools and productivity even where none exists in the full population.\footnote{In a causal directed acyclic graph (DAG), a \emph{collider} is a variable with two or more incoming arrows (e.g., $X \to C \leftarrow Y$).
+    For example, if GitHub popularity (e.g., star count) is influenced by both AI tool adoption (early adopters attract attention) and development velocity (active projects gain visibility), a regression with popularity as a control can manufacture an apparent relationship between AI tools and development velocity even where none exists in the full population.\footnote{In a causal directed acyclic graph (DAG), a \emph{collider} is a variable with two or more incoming arrows (e.g., $X \to C \leftarrow Y$).
     Marginally, $X$ and $Y$ may be independent, but conditioning on $C$ ``opens'' the path between them, inducing a spurious association---an effect sometimes called Berkson's paradox~\cite{berkson1946limitations}.
-    Intuitively, once we know the value of a common effect, learning about one cause provides information about the other: Among popular projects, if a project did \emph{not} benefit from AI tool adoption (and its associated visibility), it likely achieved popularity through high productivity, creating a negative association between AI adoption and productivity that is purely an artifact of the conditioning.
+    Intuitively, once we know the value of a common effect, learning about one cause provides information about the other: Among popular projects, if a project did \emph{not} benefit from AI tool adoption (and its associated visibility), it likely achieved popularity through high development velocity, creating a negative association between AI adoption and development velocity that is purely an artifact of the conditioning.
     See Section~\ref{sec:primer-dags} for more details on DAGs, \citet[Ch.~1, \S1.2.3]{pearl2009causality} for the formal $d$-separation proof, and \citet{elwert2014endogenous} for an accessible treatment with social-science examples.}
     \item \emph{Mediator Bias.}
     When a variable lies \emph{on the causal pathway} from treatment to outcome, conditioning on it in a regression blocks part of the genuine effect.
-    For example, if AI coding tools increase productivity partly by automating code review and accelerating pull request throughput, then controlling for PR throughput attenuates or eliminates the very signal the researcher seeks to detect.\footnote{Formally, if the causal structure is $X \to M \to Y$ (treatment affects outcome through mediator $M$), conditioning on $M$ removes the indirect effect and leaves only the direct effect $X \to Y$.
-    When the entire effect operates through the mediator---as may be the case if AI tools' productivity benefit operates entirely through faster code generation---conditioning on $M$ makes the effect vanish entirely, even though the treatment genuinely causes the outcome.
+    For example, if AI coding tools increase development velocity partly by automating code review and accelerating pull request throughput, then controlling for PR throughput attenuates or eliminates the very signal the researcher seeks to detect.\footnote{Formally, if the causal structure is $X \to M \to Y$ (treatment affects outcome through mediator $M$), conditioning on $M$ removes the indirect effect and leaves only the direct effect $X \to Y$.
+    When the entire effect operates through the mediator---as may be the case if AI tools' velocity benefit operates entirely through faster code generation---conditioning on $M$ makes the effect vanish entirely, even though the treatment genuinely causes the outcome.
     The researcher who targets the \emph{total} effect of $X$ on $Y$ should therefore not condition on any variable on the causal pathway.
     Similarly, see \citet[Ch.~3, \S3.3.1]{pearl2009causality} for the formal derivation via the back-door criterion and \citet{wysocki2022statistical} for a demonstration of this error in applied research.}
     \item \emph{Reverse Causality.}
-    Finally, regression on cross-sectional data (i.e., data collected at a single point in time) cannot determine whether AI tools increase productivity or whether already-productive teams are the ones that adopt AI tools; no set of cross-sectional controls can distinguish these two causal directions.
+    Finally, regression on cross-sectional data (i.e., data collected at a single point in time) cannot determine whether AI tools increase development velocity or whether already-high-velocity teams are the ones that adopt AI tools; no set of cross-sectional controls can distinguish these two causal directions.
  %   \item \emph{The Table~2 Fallacy.}
  %   \citet{westreich2013table2} identified a pervasive error in which researchers interpret \emph{all} coefficients in a regression table as though each has a valid causal interpretation.
  %   A regression may be properly specified to identify the effect of one variable (say, language choice), but the coefficients on the control variables are generally confounded by their own omitted causes; presenting them as ``effects'' of those covariates is unjustified without a separate identification argument for each.
@@ -392,8 +392,8 @@ The individual causal effect $\tau_i = Y_i(1) - Y_i(0)$ is unobservable because 
 
 \paragraph{Causal Estimands.}
 To get over this problem, researchers seek to estimate \emph{population-level summaries}.
-One option is the \emph{Average Treatment Effect} (ATE), $\text{ATE} = E[Y(1)] - E[Y(0)]$, which answers questions like: On average across \emph{all} projects, how much does adopting AI coding tools change productivity?
-Another option is the \emph{Average Treatment Effect on the Treated} (ATT), $\text{ATT} = E[Y(1) - Y(0) \mid D = 1]$, which answers questions like: Among projects that \emph{actually adopted} AI coding tools, how much did adoption change their productivity?
+One option is the \emph{Average Treatment Effect} (ATE), $\text{ATE} = E[Y(1)] - E[Y(0)]$, which answers questions like: On average across \emph{all} projects, how much does adopting AI coding tools change development velocity?
+Another option is the \emph{Average Treatment Effect on the Treated} (ATT), $\text{ATT} = E[Y(1) - Y(0) \mid D = 1]$, which answers questions like: Among projects that \emph{actually adopted} AI coding tools, how much did adoption change their development velocity?
 ATE and ATT coincide only under homogeneous effects or independence of treatment assignment.
 Other estimands include the \emph{Local Average Treatment Effect} (LATE) for the subpopulation affected by an instrument, and \emph{conditional average treatment effects} (CATEs) for specific subgroups.\footnote{The LATE theorem, which shows that instrumental variables identify the causal effect for the subpopulation of \emph{compliers}, was introduced by \citet{angrist1996identification}; see \citet[Ch.~4, \S4.4--4.5]{angrist2009mostly} for a textbook treatment.
 For CATEs and heterogeneous treatment effects more broadly, see \citet[Ch.~10]{huntingtonklein2021effect} for an accessible introduction and \citet{athey2016recursive} for the causal forest methodology.}
@@ -424,9 +424,9 @@ A DAG encodes \emph{the researcher's beliefs about the true data-generating proc
 Every arrow is a substantive claim; every absent arrow asserts no direct effect.
 This transparency is the central value of DAGs for applied research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
 %In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
-As a pedagogical example (without aiming for completeness), Figure~\ref{fig:ai-dag} presents a plausible DAG for the causal question of whether adopting AI coding tools affects a project's productivity.
-In this DAG, AI Tool Adoption affects Productivity through two \emph{mediators}---Code Generation and Workflow Automation; Domain, Team Skill, Org Culture, and Project Maturity each influence both AI Tool Adoption and Productivity, making them \emph{confounders}; and both AI Tool Adoption and Productivity influence Stars, making Stars a \emph{collider}.
-Since we care about the AI tools--productivity question, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.
+As a pedagogical example (without aiming for completeness), Figure~\ref{fig:ai-dag} presents a plausible DAG for the causal question of whether adopting AI coding tools affects a project's development velocity.
+In this DAG, AI Tool Adoption affects Dev.\ Velocity through two \emph{mediators}---Code Generation and Workflow Automation; Domain, Team Skill, Org Culture, and Project Maturity each influence both AI Tool Adoption and Dev.\ Velocity, making them \emph{confounders}; and both AI Tool Adoption and Dev.\ Velocity influence Stars, making Stars a \emph{collider}.
+Since we care about the AI tools--velocity question, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.\footnote{The sharp reader may have already noticed the fact that the DAG presented in Figure~\ref{fig:ai-dag} is ambiguous without considering the temporal nature of software engineering data: For example, the number of stars received can be a confounder \emph{before} AI tools adoption (more popular projects both exhibit higher velocity and are more likely to adopt AI tools) and a collider \emph{after} AI tools adoption (higher-velocity and AI-enabled projects are more likely to receive more stars). We will delegate the discussion of this practical problem and the derivation of a temporal DAG to Section~\ref{sec:worked-example}.}
 
 \begin{figure}[t]
 \centering
@@ -438,7 +438,7 @@ Since we care about the AI tools--productivity question, we do not show other po
 \node[var] (treat) at (0, 0) {AI Tool Adoption};
 \node[var] (codegen) at (5.2, 0.45) {Code Generation};
 \node[var] (workflow) at (5.2, -0.45) {Workflow Autom.};
-\node[var] (outcome) at (10.4, 0) {Productivity};
+\node[var] (outcome) at (10.4, 0) {Dev.\ Velocity};
 % Confounders (top row)
 \node[var] (org) at (0, 2) {Org Culture};
 \node[var] (skill) at (3.5, 2) {Team Skill};
@@ -465,24 +465,24 @@ Since we care about the AI tools--productivity question, we do not show other po
 \draw[arr] (treat) -- (stars);
 \draw[arr] (outcome) -- (stars);
 \end{tikzpicture}
-\caption{A plausible causal DAG for the AI coding tools and productivity problem.
+\caption{A causal DAG for the AI coding tools and development velocity problem.
 Arrows represent hypothesized direct causal effects.
-The causal paths of interest run through two mediators: AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Productivity.
-Back-door paths through common causes (e.g., AI Tool Adoption $\leftarrow$ Team Skill $\to$ Productivity) must be blocked for causal identification.
-Stars is a \emph{collider} (AI Tool Adoption $\to$ Stars $\leftarrow$ Productivity): Conditioning on it opens a spurious path and must be avoided.}
+The causal paths of interest run through two mediators: AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Dev.\ Velocity.
+Back-door paths through common causes (e.g., AI Tool Adoption $\leftarrow$ Team Skill $\to$ Dev.\ Velocity) must be blocked for causal identification.
+Stars is a \emph{collider} (AI Tool Adoption $\to$ Stars $\leftarrow$ Dev.\ Velocity): Conditioning on it opens a spurious path and must be avoided.}
 \label{fig:ai-dag}
 \end{figure}
 
 \paragraph{Back-Door Paths and the Back-Door Criterion.}
-In a DAG, \emph{causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:ai-dag}, the causal paths run AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Productivity.
+In a DAG, \emph{causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:ai-dag}, the causal paths run AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Dev.\ Velocity.
 These paths transmit the genuine causal effect.
-A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, AI Tool Adoption $\leftarrow$ Team Skill $\to$ Productivity.
-These back-door paths transmit spurious associations: Even if AI tools had zero effect on Productivity, the fact that skilled teams both adopt AI tools earlier and are inherently more productive creates an observed correlation between AI adoption and productivity.
+A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, AI Tool Adoption $\leftarrow$ Team Skill $\to$ Dev.\ Velocity.
+These back-door paths transmit spurious associations: Even if AI tools had zero effect on Dev.\ Velocity, the fact that skilled teams both adopt AI tools earlier and inherently exhibit higher velocity creates an observed correlation between AI adoption and development velocity.
 A naive comparison conflates the genuine causal effect that flows through the causal paths with the spurious associations that flow through the back-door paths.
 
 The \emph{back-door criterion}~\cite{pearl2009causality} provides a principled rule for which variables to condition on in order to block all back-door paths without inadvertently blocking the causal paths.
 A set $Z$ satisfies the criterion if (1)~no variable in $Z$ is a descendant of the treatment, and (2)~conditioning on $Z$ blocks every back-door path.
-In Figure~\ref{fig:ai-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{Org Culture},\, \text{Project Maturity}\}$ satisfies this criterion: Each is a common cause of AI Tool Adoption and Productivity, and conditioning on all four blocks every spurious path.
+In Figure~\ref{fig:ai-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{Org Culture},\, \text{Project Maturity}\}$ satisfies this criterion: Each is a common cause of AI Tool Adoption and Dev.\ Velocity, and conditioning on all four blocks every spurious path.
 Two types of variables must \emph{not} be included in $Z$.
 Code Generation and Workflow Automation are \emph{mediators} on the causal path: Conditioning on either blocks the very effect the researcher seeks to estimate.
 Stars is a \emph{collider}: Conditioning on it \emph{opens} a spurious path rather than closing one.
@@ -562,7 +562,7 @@ In this section, we illustrate the high-level idea of each method with SE exampl
 
 \begin{itemize}[leftmargin=15pt]
     \item \emph{Difference-in-Differences (DiD).}
-    DiD compares changes in outcomes over time between a treated group and a control group, e.g., comparing productivity trends before and after AI tool adoption in treatment repositories versus comparable repositories that did not adopt.
+    DiD compares changes in outcomes over time between a treated group and a control group, e.g., comparing development velocity trends before and after AI tool adoption in treatment repositories versus comparable repositories that did not adopt.
     The key assumption---\emph{parallel trends}---requires that, absent the adoption, both groups would have followed the same outcome trajectory.
     This assumption can be partially assessed using pre-treatment trend tests, and modern estimators leverage staggered adoption to construct natural experiments among treated units with different adoption timings~\cite {callaway2021difference, roth2023whats}.
     The DiD methodology has been successfully applied in SE settings to study the impact of social media promotion on open-source project popularity and contributor attraction~\cite{DBLP:conf/icse/FangLHV22}, the impact of core contributor disengagement on open-source project workflows~\cite{DBLP:conf/icse/ChenSSGT26}, and the impact of LLM coding agent adoption on development velocity and code quality~\cite{DBLP:conf/msr/HeMAKV26}.
@@ -602,7 +602,7 @@ Drawing on the emerging consensus across econometrics~\cite{imbens2020potential,
 \label{sec:stance-prior-research}
 Every step of a causal inquiry---framing the question, proposing a DAG, choosing covariates---requires \emph{domain knowledge} that cannot be derived from the data alone.
 In SE, this knowledge comes from three sources.
-First, prior quantitative studies provide the raw material for proposing causal structures: An observed association between AI tool adoption and productivity does not itself establish causation, but it motivates a DAG edge that can then be subjected to rigorous identification.
+First, prior quantitative studies provide the raw material for proposing causal structures: An observed association between AI tool adoption and development velocity does not itself establish causation, but it motivates a DAG edge that can then be subjected to rigorous identification.
 Second, gray literature---blog posts, postmortems, industry reports, conference talks---encodes rich practitioner causal beliefs (``we adopted X and Y improved'') that inform which mechanisms are plausible and which confounders are likely.
 Third, qualitative SE research---interviews, case studies, grounded theory---surfaces causal reasoning that developers and teams use in practice, providing mechanistic accounts that purely quantitative data cannot.
 These sources collectively generate the theories that causal methods then test, creating a virtuous cycle: Prior work proposes causal structures, rigorous methods evaluate them, and the findings refine theory for the next iteration.
@@ -662,14 +662,14 @@ This iterative refinement is not a failure of planning but an integral part of r
 Many SE settings do not neatly fit either path: For example, the DAG may reveal unmeasured confounders, the quasi-experimental variation may not control important unobserved confounders, or the treatment and outcome are not well-defined.
 This is not a failure of empirical research but rather the norm; the pragmatic response is to use the best available strategy and be transparent about the limitations and the direction of likely bias.
 Conclusions should be framed as ``consistent with a causal interpretation under assumptions X, Y, Z'' rather than as definitive causal claims.
-The researcher should also consider whether the causal question can be \emph{reformulated} to exploit available variation---often the most creative and valuable act in a causal inquiry, transforming an intractable question into a tractable one (e.g., ``Do AI tools improve software quality?'' is intractable from cross-sectional data, but ``Does adopting AI coding tools increase monthly commit throughput?'' can be studied with DiD if adoption events are observable).
+The researcher should also consider whether the causal question can be \emph{reformulated} to exploit available variation---often the most creative and valuable act in a causal inquiry, transforming an intractable question into a tractable one (e.g., ``Does the adoption of certain programming language improve software quality?'' is intractable from cross-sectional data, but ``Does adopting type systems decrease defect proneness?'' can be studied with a difference-in-differences design if adoption events are observable).
 An honest, well-argued correlational analysis or an imperfect design-based identification strategy that explicitly states its limitations is more valuable than a spurious claim of causation pretending that certain methods ``automatically bring causality.''
 Indeed, the full disclosure of what a study \emph{cannot} identify is one of the causal framework's most powerful outputs: It converts each unfulfilled assumption into an explicit pointer toward a stronger future design---telling the next researcher precisely what data to collect, what variation to exploit, or what confounder to measure.
 
 \paragraph{Engage with Alternative Explanations.}
 \label{sec:guide-credibility}
 After choosing an identification strategy, the researcher must honestly assess its fragility and engage with rival explanations.
-Limitations should be \emph{mitigated}, not merely listed---a bare-bones ``threats to validity'' section that catalogues every conceivable problem without engaging with their severity or providing mitigation strategies fails the reader.
+Limitations should be \emph{mitigated}, not merely listed---as \citet{DBLP:journals/tosem/RobillardAEGLNNSSS24} argue for threats-to-validity sections generally, the causal setting demands that each limitation be engaged with substantively, not catalogued perfunctorily.
 Three common patterns of alternative explanations arise in SE research.
 \emph{Alternative mechanism}: The treatment effect operates through a different pathway than hypothesized; conditioning on the alternative mediator should attenuate the effect.
 \emph{Unmeasured confounding}: A hidden variable drives both treatment and outcome; sensitivity analysis (Rosenbaum bounds, robustness values) quantifies the required strength, and falsification tests probe whether the confounding story predicts spurious effects on unrelated outcomes.
@@ -682,7 +682,17 @@ Some features of the SE research landscape make this synthesis particularly prom
 First, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
 Second, SE ecosystems generate rich quasi-experimental variation: Company policies mandate practices, projects adopt practices in staggered waves, and migrations create sharp treatment contrasts---all of which offer credible identification strategies that purely cross-sectional analysis cannot exploit.
 Finally, SE's rich body of quantitative studies, qualitative investigations, and gray literature provides fertile ground for theory proposition and DAG formulation---decades of empirical findings, practitioner postmortems, and case studies supply the domain knowledge needed to propose plausible causal structures before any identification strategy is chosen.
-The SE-specific challenges that temper these promises---unmeasured confounders, compound treatments, SUTVA violations, and noisy outcome proxies---are discussed in Section~\ref{sec:bg-challenges}; importantly, each has a principled response within the toolkit so that SE researchers can engage with the specific threats in their settings.
+
+On the other hand, several SE-specific challenges also temper these promises and require careful consideration by the SE researcher.
+First, SE's observational data is plagued by unmeasured confounders---developer skill, team culture, organizational practices---that are rarely captured in repository data, making design-based identification or sensitivity analysis of unmeasured confounders essential.
+Second, SE treatments are often \emph{compound}: For example, ``adopting AI coding tools''---as identified by AI configuration files in a repository---bundles the tools themselves, the workflow reorganization that accompanies systematic adoption, and the self-selection of teams willing to integrate AI into their process; the researcher should interpret the estimated effect as the effect of this entire bundle rather than attribute it to a single oversimplified treatment (e.g., ``just use AI coding tools to ship faster'').
+Third, interconnected software ecosystems create \emph{SUTVA violations}: Shared libraries propagate treatment effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
+Careful unit definition and robustness checks can bound this threat, and recent advances in causal inference under network interference provide promising tools~\cite{savje2021average, forastiere2021identification}, but adapting these methods to SE's sociotechnical structures---where spillover propagates simultaneously through dependency graphs, developer networks, and ecosystem coupling---remains an open frontier.
+Finally, SE outcomes are typically \emph{noisy proxies} for the constructs of interest: Number of commits proxy for development velocity, lines of code proxy for project complexity, and star counts proxy for popularity---each introducing measurement error that may attenuate effect estimates and complicate interpretation.
+One can strengthen the evidentiary basis by triangulating across multiple outcome measures that capture different facets of the same construct~\cite{lawlor2016triangulation} and conducting measurement error analysis to bound attenuation bias~\cite{hausman2001mismeasured}.
+More broadly, \emph{measurement} and \emph{identification} are orthogonal challenges: A perfectly identified design still produces misleading conclusions if the outcome proxy is invalid, and a perfectly measured outcome still conflates causal effects with confounding if the design lacks identification.
+The causal inference toolkit addresses identification; measurement validity requires its own careful attention---including construct definition, proxy validation, and sensitivity to measurement error---that this tutorial acknowledges but does not attempt to resolve.
+Importantly, each peril on the identification side has a principled response within the toolkit so that SE researchers can engage with the specific threats in their settings.
 To faciliate constructive evaluation of SE studies with causal claims, we provide an empirical standard for causal inquiries following the format of the ACM SIGSOFT Empirical Standards (Appendix~\ref{sec:appendix-standard}).
 
 % =============================================================================
@@ -693,7 +703,7 @@ To faciliate constructive evaluation of SE studies with causal claims, we provid
 \label{sec:worked-example}
 
 \TODO{This section applies the causal inference toolkit from Section~\ref{sec:primer} to a concrete dataset of approximately 1,000 popular GitHub repositories across 10 programming languages, where roughly 300 contain AI configuration files (treatment) and 600 do not (control).
-The research question: How does adopting AI coding tools systematically (as signaled by AI config files in the repository) affect the repository's productivity, measured by monthly commits?
+The research question: How does adopting AI coding tools systematically (as signaled by AI config files in the repository) affect the repository's development velocity, measured by monthly commits?
 The section progressively applies cross-sectional and longitudinal methods, illustrating how each method's assumptions and limitations become transparent through the toolkit.}
 
 \subsection{Cross-Sectional Methods}
