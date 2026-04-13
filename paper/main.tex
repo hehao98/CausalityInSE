@@ -187,8 +187,9 @@ For a detailed historical account of these intellectual traditions and the recen
 \subsection{Existing Tutorials and Methodological Guides in Software Engineering}
 \label{sec:bg-tutorials}
 
-The software engineering community has invested substantially in methodological guidance for empirical research---notable efforts include \citeauthor{DBLP:books/sp/WohlinRHORW24}'s \emph{Experimentation in Software Engineering}~\cite{DBLP:books/sp/WohlinRHORW24} textbook, the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} that provides 19 method-specific checklists for each major SE research method, and \citeauthor{DBLP:journals/tosem/RobillardAEGLNNSSS24}'s~\cite{DBLP:journals/tosem/RobillardAEGLNNSSS24} trade-off framing for threats to validity discussions.
-However, these resources provide general methodological infrastructure for empirical SE---covering how to design, execute, and report studies---rather than addressing the specific problem of how to substantiate causal claims from observational data: e.g., there is no discussion of identification strategies, sensitivity analysis, or criteria for evaluating when correlational evidence can bear a causal interpretation.
+The software engineering community has invested substantially in methodological guidance for empirical research---notable efforts include \citeauthor{DBLP:books/sp/WohlinRHORW24}'s \emph{Experimentation in Software Engineering}~\cite{DBLP:books/sp/WohlinRHORW24} textbook and the ACM SIGSOFT Empirical Standards~\cite{DBLP:journals/corr/abs-2010-03525} that provides 19 method-specific checklists for each major SE research method.
+Other works scrutinize the validity infrastructure itself: \citet{DBLP:conf/icse/SiegmundSA15} revealed that the community lacks consensus on how to balance internal and external validity, and \citet{DBLP:journals/tosem/RobillardAEGLNNSSS24} proposed replacing conventional threats-to-validity sections with explicit discussions of study design trade-offs.
+However, these resources provide general methodological infrastructure for empirical SE---covering how to design, execute, and report studies---rather than addressing the specific problem of how to substantiate causal claims from observational data: there is no discussion of identification strategies, sensitivity analysis, or criteria for evaluating when correlational evidence can bear a causal interpretation.
 
 The field has gradually begun to address this gap, though contributions remain fragmented.
 On the diagnostic side, systematic reviews have documented the state of practice: \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} mapping study found only 25 SE papers (2010--2022) applying Pearl's graphical framework, while \citet{DBLP:journals/infsof/GiamatteiGPR25} expanded the scope to 86 papers and revealed that ``causal reasoning'' in SE quality assurance often refers loosely to fault localization heuristics rather than formal causal identification.
@@ -196,7 +197,7 @@ A subsequent special issue~\cite{journals/infsof/SiebertTGWKS25} confirmed that 
 These diagnostic efforts focus exclusively on Pearl's graphical paradigm, leaving the design-based credibility revolution and the potential outcomes framework unaddressed.
 
 On the prescriptive side, individual tutorials have introduced specific methods for causal inference or for strengthening causal credibility to SE audiences---including a tutorial on instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, a discussion of strategies for mitigating omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, the use of causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}, and matching as a strategy for mitigating confounding bias in MSR studies~\cite{DBLP:conf/msr/NoceraSLTV26}---but each addresses a single method or concern without situating it in the broader causal inference landscape.
-Outside SE, \citeauthor{rohrer2024causal}'s~\cite{rohrer2024causal} recent tutorial for psychologists is the closest existing analog to our work, but it does not cover design-based identification strategies or SE-specific confounding structures.
+Outside SE, \citeauthor{rohrer2024causal}'s~\cite{rohrer2024causal} recent tutorial for psychologists is the closest existing analog to our work, but it does not cover design-based identification strategies or SE-specific causal inference promises and perils.
 Our tutorial fills this gap with an integrative treatment, covering multiple intellectual traditions of causal inference (potential outcomes, graphical causal models, design-based identification) and a pragmatic stance for conducting credible causal inquiry in SE (Section~\ref{sec:primer}).
 
 \subsection{Causal Inference Adoption in Software Engineering to Date}
@@ -210,16 +211,16 @@ We do not aim to achieve methodological perfection in this analysis, but even a 
 For each venue (ICSE, FSE, ASE), we obtained a list of papers, paper titles, and DOIs from DBLP, and retrieved the paper abstracts via the Semantic Scholar batch API, using OpenAlex as a backfill source.
 This produced a corpus of 5,341 papers.
 Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, %(2)~whether it is a mining software repositories (MSR) study, and 
-(2)~whether it investigates (or implies to be motivated by) an intervention-outcome research question, and (3) whether it claims to employ a causal inference method.
+(2)~whether it investigates or is motivated by an causal research question (RQ) about interventions and outcomes, and (3) whether it claims to employ a causal inference method.
 For papers tagged as claiming to use causal inference methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
 The first author manually audited a sample of 100 papers and all papers classified as using causal inference methods, finding a 95\% accuracy in paper classification and 81\% accuracy in method classification; the method classification errors are manually corrected before they are summarized in Table~\ref{tab:taxonomy}.
 We adopt deterministic decoding and an explicit classification schema to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package.
 
 \paragraph{The Causal Ambition--Methodology Gap.}
-Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by intervention-outcome research questions (RQs); but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
+Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by a causal RQ; but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
 The vast majority of the 621 papers investigate their proposed RQs through interpreting correlational, descriptive, or qualitative evidence.
-Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers asking intervention-outcome RQs has grown steadily---from 23 in 2015 to 131 in 2025---the number claiming to employ causal inference methods has grown far more slowly, from 3 to 14 over the same period.
-The ratio of intervention-outcome RQs to causal inference methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
+Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers asking or motivated by causal RQs has grown steadily---from 23 in 2015 to 131 in 2025---the number claiming to employ causal inference methods has grown far more slowly, from 3 to 14 over the same period.
+The ratio of causal motivation to causal inference methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
 
 \begin{figure}[t]
 \centering
