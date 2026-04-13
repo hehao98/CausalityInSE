@@ -109,17 +109,18 @@ We hope this paper will provide a methodological blueprint for future empirical 
 \label{sec:introduction}
 
 \emph{"Correlation does not imply causation"} is among the most widely repeated methodological maxims in empirical software engineering (SE) and broadly many parts of empirical science~\cite{hernan2018cword, haber2022causal}. 
-It is technically correct, but, as typically deployed, not particularly useful. 
+It is technically correct, but, as typically deployed, not particularly useful.\footnote{
+  % As one concrete example, \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} reported a modest but significant association between language class and defect proneness, framing their findings as correlational.
+  % Yet, our citation analysis of 451 papers citing this study reveals that, among papers that engage with the finding substantively, causal interpretations outnumber hedged ones roughly 2:1---a striking ratio given the authors' explicit and appropriate hedging (Appendix~\ref{sec:appendix-misinterpretation}).
+  % This is not an isolated incident but a systemic field-level pattern consistent with \citeauthor{hernan2018cword}'s~\cite{hernan2018cword} observation that associational euphemisms do not prevent causal interpretation.
+  As argued by \citet{hernan2018cword}, \emph{associational euphemisms do not improve observational causal inference}.
+  The psychology and epidemiology literature experiences the same problem (see Appendix~\ref{sec:appendix-psych-reform}): For example, \citet{haber2022causal} found that 52\% of epidemiology abstracts imply causality despite ostensibly associational language.
+  The methodological reformers in these fields responded by shifting from associational euphemisms to explicit causal framing---requiring authors to state target estimands, construct DAGs to justify covariate selection, and openly argue for identification assumptions~\cite{grosz2020taboo, lundberg2021estimand, rohrer2018thinking, rohrer2024causal}.
+}
 In empirical SE papers, the phrase tends to appear in a limitations section, after which the paper's findings are left for readers to interpret as they see fit.
 This is understandable: Associational evidence is valuable, and a significant part of the knowledge in empirical SE has been built from it. 
 The difficulty arises on the receiving end. 
-For example, when a study reports that teams using certain tools, practices, or processes (e.g., AI coding, continuous integration, code review) ship features faster than teams that do not, readers (especially practitioners deciding whether to invest in such tools) naturally want to read this as evidence that adoption causes the improvement.\footnote{
-% As one concrete example, \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} reported a modest but significant association between language class and defect proneness, framing their findings as correlational.
-% Yet, our citation analysis of 451 papers citing this study reveals that, among papers that engage with the finding substantively, causal interpretations outnumber hedged ones roughly 2:1---a striking ratio given the authors' explicit and appropriate hedging (Appendix~\ref{sec:appendix-misinterpretation}).
-% This is not an isolated incident but a systemic field-level pattern consistent with \citeauthor{hernan2018cword}'s~\cite{hernan2018cword} observation that associational euphemisms do not prevent causal interpretation.
-As argued by \citet{hernan2018cword}, \emph{associational euphemisms do not improve observational causal inference}.
-The psychology and epidemiology literature experiences the same problem (see Appendix~\ref{sec:appendix-psych-reform}): For example, \citet{haber2022causal} found that 52\% of epidemiology abstracts imply causality despite ostensibly associational language.
-The methodological reformers in these fields responded by shifting from associational euphemisms to explicit causal framing---requiring authors to state target estimands, construct DAGs to justify covariate selection, and openly argue for identification assumptions~\cite{grosz2020taboo, lundberg2021estimand, rohrer2018thinking, rohrer2024causal}.} 
+For example, when a study reports that teams using certain tools, practices, or processes (e.g., AI coding, continuous integration, code review) ship features faster than teams that do not, readers (especially practitioners deciding whether to invest in such tools) naturally want to read this as evidence that adoption causes the improvement.
 Whether or not the authors intended a causal interpretation, the practical questions motivating much empirical SE research are causal in nature: They concern the consequences of decisions, interventions, and changes to practice.
 
 This creates a productive tension. 
@@ -142,7 +143,7 @@ Second, the \emph{directed acyclic graphs (DAGs)} from \citet{pearl2009causality
 Finally, \emph{design-based identification}~\cite{angrist2010credibility, cunningham2021causal} provides systematic frameworks to find \emph{natural experiment} settings~\cite{dunning2012natural} in which the causal quantity can be estimated without complete and accurate articulation of the underlying causal theory.
 We will introduce all three pillars at a level accessible to researchers without formal training in causal inference.
 
-We illustrate their use through a running example: \emph{estimating the impact of AI coding assistant adoption on development velocity}.
+We illustrate their use through a running example: \emph{estimating the impact of systematic AI coding tool adoption on development velocity}.
 We begin with the most direct approach, comparing measured outcomes between a sample of open-source projects that adopted AI tools and open-source projects that did not, and use a DAG-encoded causal theory to surface the assumptions this comparison requires. 
 We then show how plausible violations of those assumptions (i.e., AI-adopting projects differ in important ways that affect development velocity) motivate progressively stronger designs: multivariate regressions, longitudinal comparisons, and staggered difference-in-differences that builds a natural experiment setting from variations in adoption timing. 
 At each stage, the theory makes visible which sources of confounding are addressed by the design, which remain, and what the researcher must assume for the analysis to yield a credible causal estimate. 
@@ -214,7 +215,7 @@ Each paper was classified by a large language model (Claude Opus 4.6, \Code{temp
 (2)~whether it is motivated by an causal research question (RQ) about interventions and outcomes, and (3) whether it claims to employ a causal inference method.
 For papers tagged as claiming to use causal inference methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
 The first author manually audited a sample of 100 papers and all papers classified as using causal inference methods, finding a 95\% accuracy in paper classification and 81\% accuracy in method classification; the method classification errors are manually corrected before they are summarized in Table~\ref{tab:taxonomy}.
-We adopt deterministic decoding and an explicit classification schema to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package.
+We adopt deterministic decoding and an explicit classification schema to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package (Section~\ref{sec:data-availability}).
 
 \paragraph{The Causal Ambition--Methodology Gap.}
 Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by a causal RQ about interventions and outcomes; but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
@@ -240,7 +241,7 @@ Regression-based causal inference (14 papers) includes studies that use regressi
 \begin{table}[t]
 \centering
 \caption{Taxonomy of causal methods in 99 SE papers (ICSE + FSE + ASE, 2015--2025) classified as employing a causal inference method.
-Each paper is assigned a primary category; multi-label assignments are stored separately in the replication package.}
+Each paper is assigned a primary category; multi-label assignments are stored separately in the replication package (Section~\ref{sec:data-availability}).}
 \label{tab:taxonomy}
 \footnotesize
 \begin{tabular}{lrl}
@@ -358,6 +359,7 @@ This strategy is by far the most common approach to causal questions in empirica
     Similarly, see \citet[Ch.~3, \S3.3.1]{pearl2009causality} for the formal derivation via the back-door criterion and \citet{wysocki2022statistical} for a demonstration of this error in applied research.}
     \item \emph{Reverse Causality.}
     Finally, regression on cross-sectional data (i.e., data collected at a single point in time) cannot determine whether AI tools increase development velocity or whether already-high-velocity teams are the ones that adopt AI tools; no set of cross-sectional controls can distinguish these two causal directions.
+    Section~\ref{sec:temporal-collapse} formalizes this problem as \emph{temporal collapse}: When a cross-sectional snapshot collapses time-indexed variables into atemporal summaries, the resulting graph is cyclic and no valid adjustment set exists.
  %   \item \emph{The Table~2 Fallacy.}
  %   \citet{westreich2013table2} identified a pervasive error in which researchers interpret \emph{all} coefficients in a regression table as though each has a valid causal interpretation.
  %   A regression may be properly specified to identify the effect of one variable (say, language choice), but the coefficients on the control variables are generally confounded by their own omitted causes; presenting them as ``effects'' of those covariates is unjustified without a separate identification argument for each.
@@ -426,7 +428,7 @@ This transparency is the central value of DAGs for applied research: Rather than
 %In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
 As a pedagogical example (without aiming for completeness), Figure~\ref{fig:ai-dag} presents a plausible DAG for the causal question of whether adopting AI coding tools affects a project's development velocity.
 In this DAG, AI Tool Adoption affects Dev.\ Velocity through two \emph{mediators}---Code Generation and Workflow Automation; Domain, Team Skill, Org Culture, and Project Maturity each influence both AI Tool Adoption and Dev.\ Velocity, making them \emph{confounders}; and both AI Tool Adoption and Dev.\ Velocity influence Stars, making Stars a \emph{collider}.
-Since we care about the AI tools--velocity question, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.\footnote{The sharp reader may have already noticed the fact that the DAG presented in Figure~\ref{fig:ai-dag} is ambiguous without considering the temporal nature of software engineering data: For example, the number of stars received can be a confounder \emph{before} AI tools adoption (more popular projects both exhibit higher velocity and are more likely to adopt AI tools) and a collider \emph{after} AI tools adoption (higher-velocity and AI-enabled projects are more likely to receive more stars). We will delegate the discussion of this practical problem and the derivation of a temporal DAG to Section~\ref{sec:worked-example}.}
+Since we care about the AI tools--velocity question, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.\footnote{The sharp reader may have already noticed the fact that the DAG presented in Figure~\ref{fig:ai-dag} is ambiguous without considering the temporal nature of software engineering data: For example, the number of stars received can be a confounder \emph{before} AI tools adoption (more popular projects both exhibit higher velocity and are more likely to adopt AI tools) and a collider \emph{after} AI tools adoption (higher-velocity and AI-enabled projects are more likely to receive more stars). We construct the proper temporal DAG and diagnose this problem formally in Section~\ref{sec:temporal-dag}.}
 
 \begin{figure}[t]
 \centering
@@ -566,6 +568,7 @@ In this section, we illustrate the high-level idea of each method with SE exampl
     The key assumption---\emph{parallel trends}---requires that, absent the adoption, both groups would have followed the same outcome trajectory.
     This assumption can be partially assessed using pre-treatment trend tests, and modern estimators leverage staggered adoption to construct natural experiments among treated units with different adoption timings~\cite {callaway2021difference, roth2023whats}.
     The DiD methodology has been successfully applied in SE settings to study the impact of social media promotion on open-source project popularity and contributor attraction~\cite{DBLP:conf/icse/FangLHV22}, the impact of core contributor disengagement on open-source project workflows~\cite{DBLP:conf/icse/ChenSSGT26}, and the impact of LLM coding agent adoption on development velocity and code quality~\cite{DBLP:conf/msr/HeMAKV26}.
+    We apply staggered DiD to the AI coding tools question in Section~\ref{sec:staggered-did}.
 
     \item \emph{Instrumental Variables (IV).}
     IV uses an \emph{instrument}---a variable that affects the treatment but influences the outcome only through the treatment---to isolate exogenous variation.
@@ -583,6 +586,7 @@ In this section, we illustrate the high-level idea of each method with SE exampl
     For example, observing the same repository before and after AI tool adoption removes confounding from all time-invariant repository characteristics---codebase domain, long-term team composition, organizational practices---that cross-sectional comparisons cannot address.
     The identifying assumption is \emph{strict exogeneity}: Conditional on unit fixed effects, the treatment is uncorrelated with time-varying unobservables (i.e., no time-varying confounders that are left unmeasured).\footnote{This assumption differs from the conditional ignorability assumption from selection-on-observables methods: Panel fixed effects automatically absorb all time-invariant confounders without requiring them to be measured, but the researcher must still argue---using domain knowledge or a DAG---that no unmeasured time-varying confounders remain and that past outcomes do not feed back into future treatment assignment.}
     Panel fixed effects models have been applied in SE settings to study the causal impact of code quality on developer productivity at Google~\cite{DBLP:conf/sigsoft/ChengMCJGKZ022}.
+    We apply TWFE to the AI coding tools question in Section~\ref{sec:twfe}.
 
 %    \item \emph{Synthetic Control.}
 %    Synthetic control constructs a weighted combination of untreated units to serve as a counterfactual for a single treated unit.
@@ -619,7 +623,7 @@ The target trial framework is especially natural for SE researchers who are alre
 Once the target trial is articulated, construct a DAG encoding the assumed causal structure.
 The DAG identifies which covariates must be controlled for (back-door criterion), which must \emph{not} be controlled for (mediators and colliders), and makes every assumption explicit so that reviewers can challenge specific edges rather than raising vague concerns.
 While the DAG is less central to identification for design-based methods, it remains valuable for reasoning about which confounders the design absorbs, what remaining threats exist, and more importantly, what is the actual \emph{mechanism} behind the observed cause and effect.
-A genuine and rigorous reasoning on causal mechanisms often reveals important design considerations and practical implications, as we will demonstrate in the worked example (Section~\ref{sec:worked-example}).
+A genuine and rigorous reasoning on causal mechanisms often reveals important design considerations and practical implications, as we demonstrate in the worked example: The temporal DAG (Section~\ref{sec:temporal-dag}) reveals that many commonly used cross-sectional covariates are temporally ambiguous, motivating a shift from covariate adjustment to design-based identification (Section~\ref{sec:longitudinal}).
 
 \paragraph{Use Design-Based Identification When the Setting Permits.}
 \label{sec:guide-identification}
@@ -677,7 +681,7 @@ Three common patterns of alternative explanations arise in SE research.
 SE research faces distinctive measurement challenges that compound these threats: noisy proxies for latent constructs (e.g., bug-fix commits as a proxy for defect proneness), construct validity issues (e.g., lines of code as a measure of complexity), and potential SUTVA violations in interconnected software ecosystems where one project's treatment spills over to affect another's outcomes.
 The mark of a credible causal study is not the absence of limitations but the transparency and rigor with which they are addressed---and the degree to which honestly stated limitations chart a path for subsequent work to follow.
 
-\paragraph{Promises of Causal Inference in SE Research.}
+\paragraph{Promises and Perils of Causal Inference in Empirical SE.}
 Some features of the SE research landscape make this synthesis particularly promising.
 First, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
 Second, SE ecosystems generate rich quasi-experimental variation: Company policies mandate practices, projects adopt practices in staggered waves, and migrations create sharp treatment contrasts---all of which offer credible identification strategies that purely cross-sectional analysis cannot exploit.
@@ -695,31 +699,155 @@ The causal inference toolkit addresses identification; measurement validity requ
 Importantly, each peril on the identification side has a principled response within the toolkit so that SE researchers can engage with the specific threats in their settings.
 To faciliate constructive evaluation of SE studies with causal claims, we provide an empirical standard for causal inquiries following the format of the ACM SIGSOFT Empirical Standards (Appendix~\ref{sec:appendix-standard}).
 
-% =============================================================================
-% WORKED EXAMPLE
-% =============================================================================
-
-\section{Worked Example: The Impact of AI Coding Tools in Open-Source Software}
+\section{Worked Example: The Impact of AI Coding Tools in Open-Source Projects}
 \label{sec:worked-example}
 
-\TODO{This section applies the causal inference toolkit from Section~\ref{sec:primer} to a concrete dataset of approximately 1,000 popular GitHub repositories across 10 programming languages, where roughly 300 contain AI configuration files (treatment) and 600 do not (control).
-The research question: How does adopting AI coding tools systematically (as signaled by AI config files in the repository) affect the repository's development velocity, measured by monthly commits?
-The section progressively applies cross-sectional and longitudinal methods, illustrating how each method's assumptions and limitations become transparent through the toolkit.}
+The preceding sections introduced the causal inference toolkit at a conceptual level---defining estimands, encoding assumptions in DAGs, and outlining design-based identification strategies.
+We now put these ideas to work on a concrete empirical problem.
+Using a dataset of popular open-source GitHub repositories, we ask: \emph{Does the systematic adoption of AI coding tools increase a project's development velocity?}\footnote{The choice of this worked example is partially motivated by the authors' own prior work~\cite{DBLP:conf/msr/HeMAKV26}, but we deliberately tailored the worked example to be more up-to-date and more illustrative of our thought process that arrived at a more credible causal inference design presented in the original paper.}
+We introduced this question in Section~\ref{sec:primer-causality} and used it throughout Section~\ref{sec:primer} to motivate each pillar of the toolkit; here, we get our hands dirty with real data.
+Rather than presenting a single analysis and defending its conclusions, we walk through a \emph{progression} of methods---each motivated by the specific inadequacy of the previous one---to illustrate how the toolkit guides a researcher from a na\"ive comparison to a credible causal design.
+The goal is not to produce a definitive causal estimate of AI coding tools' impact---no single observational study can---but to demonstrate the full arc of a credible causal inquiry: how a researcher should reason about design choices, what they should worry about, and how they should communicate the strength of their evidence.
+
+\subsection{Study Setting}
+\label{sec:study-setting}
+
+\paragraph{Research Question and Target Trial.}
+In Section~\ref{sec:primer-causality}, we sketched the target trial for this question: randomly assign half of a set of comparable software projects to adopt AI coding tools and compare monthly commits after a fixed period.
+We now operationalize each component of this target trial using observational data from GitHub.
+The population is popular open-source repositories.
+The treatment is systematic AI coding tool adoption, as signaled by AI configuration files committed to the repository.
+The outcome is the monthly commit count on the default branch, used as a proxy for development velocity.
+Articulating the target trial immediately surfaces the threats we must address: We cannot randomly assign tool adoption (selection bias); the ``treatment'' bundles multiple distinct interventions (the compound treatment concern from Section~\ref{sec:primer-stance}); and commit counts are a noisy proxy for the latent construct of development velocity (the measurement concern from Section~\ref{sec:primer-stance}).
+The remainder of this subsection describes how we construct the dataset and discusses the implications of each operationalization choice.
+
+\paragraph{Corpus Construction.}
+We sample repositories from GitHub, the largest host of open-source software, using a stratified design across 10 widely used programming languages: Python, JavaScript, TypeScript, Java, C++, C, Go, Rust, Ruby, and Swift.
+For each language, we query the GitHub Search API for the top 100 non-fork, non-archived repositories ranked by star count, yielding a corpus of 1,000 repositories.
+For each repository, we collect cross-sectional metadata available through the GitHub REST and GraphQL APIs: star count, fork count, open issue count, repository size, creation date, owner type (user vs.\ organization), total commit count, total pull request count, total issue count, total release count, and whether the repository has continuous integration workflows and discussion forums enabled.
+
+To support the longitudinal analysis in Section~\ref{sec:longitudinal}, we construct a monthly panel spanning 27 months (January 2024 through March 2026) for each repository.
+We clone each repository and mine its git history to extract two outcome measures per repository-month: the number of commits and the number of unique active contributors (distinct author email addresses).
+To identify treatment timing, we scan the git history for the earliest commit that added an AI configuration file, using the author date of that commit as the treatment date; this allows us to determine precisely when each repository transitioned from untreated to treated, which is essential for the before-and-after and difference-in-differences designs.
+We enrich the panel with time-varying covariates from the GHArchive public dataset via BigQuery, aggregating monthly counts of new stars, issues opened, forks, pull requests merged, and releases for each repository.
+These time-varying covariates serve dual roles in the analysis: as potential confounders in the longitudinal models (Section~\ref{sec:twfe-covariates}) and as concrete examples of the temporal collapse problem when measured cross-sectionally (Section~\ref{sec:temporal-collapse}).
+All data collection scripts are available in the replication package (Section~\ref{sec:data-availability}).
+
+\paragraph{Treatment: Systematic AI Coding Tool Adoption.}
+We operationalize AI coding tool adoption by scanning each repository's file tree for configuration files associated with AI coding assistants.
+These files---such as \Code{CLAUDE.md} and \Code{AGENTS.md} (Anthropic Claude), \Code{.cursorrules} and \Code{.cursor/rules/} (Cursor), and \Code{.github/copilot-instructions.md} (GitHub Copilot)---provide repository-specific instructions, coding conventions, and context to AI tools, signaling that the development team has made a deliberate decision to integrate AI coding assistants into their workflow.
+The full list of file-path patterns used for classification is available in the replication package (Section~\ref{sec:data-availability}).
+A repository is \emph{treated} if it contains any such AI configuration artifacts and \emph{untreated} otherwise.
+%As a supplementary treatment signal, we also scan each repository's contributor list for known AI bot accounts (e.g., accounts associated with Claude, Devin, CodeRabbit, or Copilot), which provide additional evidence of AI tool integration beyond configuration files.
+
+\paragraph{Outcome: Development Velocity.}
+We measure development velocity using monthly commit counts, extracted from the git history of each repository across the 27-month panel window.
+Commit count is a standard---albeit imperfect---proxy for development activity in mining software repositories research: It is readily available, consistently defined across repositories, and captures a meaningful dimension of development effort.
+However, commit counts conflate substantively different activities (feature development, bug fixes, documentation updates, automated commits) and can be inflated by CI-generated or bot-generated commits.
+As Section~\ref{sec:primer-stance} emphasized, measurement and identification are orthogonal challenges: A perfectly identified design still produces misleading conclusions if the outcome proxy is invalid.
+We proceed with monthly commits as the primary outcome while acknowledging this limitation; researchers applying these methods to their own settings should invest in validating and triangulating their outcome proxies.
+
+\paragraph{What Does This Treatment Identify?}
+The treatment variable deserves careful scrutiny, because it determines the estimand's substantive interpretation.
+The presence of AI configuration files does not merely signal that individual developers use AI coding tools---such use is widespread and leaves no trace in the repository.
+Rather, it signals that the team has invested effort in integrating AI tools at the project level: writing repository-specific instructions, establishing AI-related conventions, and in some cases deploying autonomous AI agents for triage, code review, or code generation.
+This is precisely the \emph{compound treatment} concern raised in Section~\ref{sec:primer-stance}: What we estimate is the effect of the \emph{entire bundle}---the AI tools themselves, the workflow reorganization that accompanies structured adoption, and the team characteristics that lead to early adoption---not the isolated effect of AI tools alone.
+A positive estimated effect does not mean that ``just using AI tools'' increases velocity; it means that the constellation of practices accompanying systematic AI integration is associated with---or, under stronger identification, causes---higher development velocity.
+
+This framing is deliberate.
+We do not attempt to measure the effect of ``using AI coding tools'' in general---an ill-defined treatment that would require knowing whether each individual developer uses one of the AI coding tools, which is unobservable from GitHub data and would introduce severe measurement error if we were to only collect partial traces of AI tool usage from one or two tools.
+Instead, we define the treatment as \emph{systematic, project-level AI integration}, which is directly observable through committed configuration files and represents a substantively meaningful intervention: the decision to restructure a project's workflow around AI tools.
+The contrast we estimate---systematic adoption versus no systematic adoption---is well-defined and practically relevant, because it is exactly the organizational decision that engineering leaders face.
+This cleaner treatment definition does not eliminate measurement error entirely.
+Repositories without configuration files may still have developers who use AI coding tools individually, contaminating the control group with unmeasured individual-level AI use.
+This misclassification is asymmetric: Treated repositories are likely genuine systematic adopters, but some control repositories contain individual AI users.
+The standard consequence is \emph{attenuation bias}---the estimated treatment effect is biased toward zero because the contrast between treated and control groups is blurred~\cite{hausman2001mismeasured}.
+Attenuation bias means our estimates would be conservative and lower than the effect of systematic AI coding tool adoption compared to not using AI at all.
+
+\paragraph{Population and External Validity.}
+Our sampling strategy---selecting the most-starred repositories per language---produces a diverse corpus of highly visible, actively maintained open-source projects.
+This population is deliberately unrepresentative of the ``average'' GitHub repository, most of which are small, single-developer, or dormant.
+The trade-off is intentional.
+Popular repositories offer sustained development activity, meaningful commit histories, and observable adoption signals---properties required for any analysis to be informative.
+A random sample of all GitHub repositories would suffer from severe floor effects (most repos have near-zero monthly commits) and sparse treatment prevalence (AI configuration files are rare outside well-maintained projects), yielding a dataset with little statistical power and questionable practical relevance.
+This is an instance of the tension between internal and external validity discussed in Section~\ref{sec:primer-stance}: We restrict the study population to improve data quality and the plausibility of the identification strategy, at the cost of generalizability.
+The resulting estimates speak to the effect of systematic AI adoption among popular, actively maintained open-source projects---the segment where AI tools are being integrated most visibly and where the stakes of adoption decisions are highest.
+Whether the same dynamics hold for smaller, less visible, or proprietary projects is an open question that lies outside the scope of this worked example but constitutes a natural direction for future research.
 
 \subsection{Cross-Sectional Methods}
 \label{sec:cross-sectional}
 
-\TODO{Na\"ive comparison (document the large raw difference driven by selection bias); DAG-justified OLS vs.\ kitchen-sink regression (demonstrate that many cross-sectional metrics become mediators due to future leakage); compare DAG-justified OLS, PSM, and IPW (demonstrate convergence---using PSM or IPW does not automatically make a study ``causal inference''); conclude that cross-sectional analysis provides informative but less convincing evidence and that the assumptions are hard to defend.}
+\TODO{Introductory paragraph: We start from the approach most SE researchers would take and progressively diagnose its failures using the toolkit from Section~\ref{sec:primer}.}
+
+\paragraph{Na\"ive Group Comparison.}
+\label{sec:naive-comparison}
+
+\TODO{Compare raw outcome means between treated and control repositories. Document the large raw difference in monthly commits and the massive covariate imbalance across all dimensions (Table: descriptive comparison). A na\"ive analyst might interpret this as evidence of an AI tool effect, but Section~\ref{sec:primer-naive} explained why such comparisons conflate genuine effects with selection bias.}
+
+\paragraph{Kitchen-Sink Regression.}
+\label{sec:kitchen-sink}
+
+\TODO{Add all available covariates to an OLS regression. The coefficient on AI adoption remains highly significant and ``looks'' robust. A researcher following standard MSR practice might stop here. But should we trust this estimate?}
+
+\paragraph{The Temporal DAG.}
+\label{sec:temporal-dag}
+
+\TODO{Construct the true temporal DAG for this setting. Time-index each variable: $\text{Stars}_{t-1} \to \text{Adoption}_t$, $\text{Stars}_{t-1} \to \text{Commits}_t$, $\text{Adoption}_t \to \text{Stars}_{t+1}$, $\text{Commits}_t \to \text{Stars}_{t+1}$. In this DAG, covariate roles are unambiguous: Pre-treatment stars are a confounder, post-treatment stars are a collider, and the back-door adjustment set is clear. Connect to Figure~\ref{fig:ai-dag} and elaborate on the footnote there about temporal ambiguity.}
+
+\paragraph{Temporal Collapse in Cross-Sectional Data.}
+\label{sec:temporal-collapse}
+
+\TODO{Show that a cross-sectional snapshot collapses time-indexed nodes into a single ``stars'' node with both incoming and outgoing arrows---a cyclic graph, not a DAG. This is pervasive in MSR studies that rely on snapshot data. Connect to Hern\'{a}n \& Robins (Ch.~20) on treatment-confounder feedback. Consequence: Only \emph{structurally pre-treatment} covariates (repo age, language, org type---determined at creation, cannot be affected by adoption under any timing) are defensible controls. All time-varying covariates are temporally ambiguous.}
+
+\paragraph{DAG-Justified Regression.}
+\label{sec:dag-justified}
+
+\TODO{Table: Compare kitchen-sink regression vs.\ regression restricted to structurally pre-treatment covariates. Coefficient attenuates as controls are added, but the drop from pre-treatment to kitchen-sink is uninterpretable---the collapsed graph is not a DAG, so no adjustment formula applies. Apply the back-door criterion (Section~\ref{sec:primer-dags}) to the temporal DAG to justify the pre-treatment-only specification.}
+
+\paragraph{Sensitivity Analysis.}
+\label{sec:cross-sectional-sensitivity}
+
+\TODO{Apply Oster bounds and sensemakr (robustness values from Section~\ref{sec:primer-po}) to the pre-treatment-only estimate. Show that the estimate is fragile: Structurally pre-treatment covariates are weak proxies for the real confounders (developer skill, team culture), and a moderate amount of unmeasured confounding would explain away the result.}
+
+\paragraph{Estimator Convergence: OLS, PSM, and IPW.}
+\label{sec:estimator-convergence}
+
+\TODO{Table: OLS, propensity score matching (PSM), and inverse probability weighting (IPW) using the same pre-treatment covariates yield nearly identical estimates. The estimator is not the bottleneck; the identifying assumption is. Using PSM or IPW does not automatically make a study ``causal inference''---if the conditional ignorability assumption fails, all three estimators are biased in the same direction.}
+
+\paragraph{Cross-Sectional Takeaway.}
+\label{sec:cross-sectional-takeaway}
+
+\TODO{Cross-sectional MSR data suffers from temporal collapse: The measurement design destroys the temporal ordering that DAGs require, making principled covariate selection impossible for time-varying covariates. Even restricting to structurally pre-treatment covariates yields fragile estimates due to unobserved confounders. Only within-repo longitudinal variation---comparing the same project before and after adoption---can make progress on identification.}
 
 \subsection{Longitudinal Methods}
 \label{sec:longitudinal}
 
-\TODO{Basic before/after comparison; TWFE without time-varying covariates; TWFE with time-varying covariates; modern DiD estimators.
-Demonstrate how a longitudinal setting with design-based identification can address unobserved confounders through within-unit comparisons.}
+\TODO{Introductory paragraph: The cross-sectional analysis in Section~\ref{sec:cross-sectional} revealed that comparing \emph{different} repositories cannot credibly identify a causal effect because the groups differ in unmeasured ways. We now exploit the panel structure of our data---observing the \emph{same} repositories over time---to address this limitation through design-based identification (Section~\ref{sec:primer-design}).}
 
-% =============================================================================
-% DISCUSSION AND CONCLUSION
-% =============================================================================
+\paragraph{Before-and-After Comparison.}
+\label{sec:before-after}
+
+\TODO{For treated repositories, compare monthly commits before vs.\ after the first AI config file commit. This absorbs all time-invariant confounders but conflates the treatment effect with any concurrent time trends (e.g., a general increase in AI-assisted development activity across all repositories).}
+
+\paragraph{Two-Way Fixed Effects.}
+\label{sec:twfe}
+
+\TODO{Introduce the TWFE specification with repository and time fixed effects. Repository FEs absorb all time-invariant confounders (domain, long-term team composition, organizational culture---the unmeasured confounders that defeated the cross-sectional analysis). Time FEs absorb common shocks affecting all repositories in a given month. The identifying assumption is strict exogeneity (Table~\ref{tab:methods-summary}): Conditional on unit and time FEs, treatment timing is uncorrelated with time-varying unobservables.}
+
+\paragraph{Two-Way Fixed Effects with Time-Varying Covariates.}
+\label{sec:twfe-covariates}
+
+\TODO{Extend the TWFE model with time-varying covariates (e.g., monthly star growth, contributor count changes). Discuss which time-varying covariates are legitimate controls vs.\ potential mediators in the temporal DAG from Section~\ref{sec:temporal-dag}. Compare estimates with and without time-varying controls.}
+
+\paragraph{Staggered Difference-in-Differences.}
+\label{sec:staggered-did}
+
+\TODO{AI tool adoption is staggered: Different repositories adopt at different times, creating natural variation in treatment timing. Apply modern DiD estimators (Callaway \& Sant'Anna) that avoid the negative weighting problems of TWFE under staggered adoption. Assess parallel trends using pre-treatment event-study plots. Discuss what the parallel trends assumption means in this setting and how pre-treatment trend tests provide (partial) evidence for or against it.}
+
+\paragraph{Longitudinal Takeaway.}
+\label{sec:longitudinal-takeaway}
+
+\TODO{The longitudinal analysis demonstrates how design-based identification addresses the specific threats that defeated the cross-sectional approach. Repository fixed effects absorb the unmeasured time-invariant confounders; staggered adoption provides quasi-random variation in treatment timing. The remaining threats---time-varying confounders, anticipation effects, parallel trends violations---are more transparent and partially testable than the all-confounders-measured assumption required by cross-sectional methods. Compare the cross-sectional and longitudinal estimates and discuss what the difference reveals about the magnitude and direction of selection bias.}
 
 \section{Discussion and Conclusion}
 \label{sec:discussion}
@@ -736,6 +864,12 @@ Demonstrate how a longitudinal setting with design-based identification can addr
 %   prevent people from pretending to use better methods (analogous to the
 %   grounded theory adoption problem in SE).
 
+
+\section*{Data Availability}
+\label{sec:data-availability}
+
+All data, analysis scripts, classification prompts, and R~notebooks used in this paper are publicly available at \url{https://github.com/hehao98/CausalityInSE}.
+The repository includes the LLM-classified corpus of 5,341 SE papers (Section~\ref{sec:bg-adoption}), the AI adoption dataset of 1,000 GitHub repositories with monthly commit histories (Section~\ref{sec:worked-example}), and all R~Markdown notebooks that reproduce the figures, tables, and statistical analyses reported in this paper.
 
 \begin{acks}
   He's and Kästner's work was supported in part by the National Science Foundation (award 2206859).
