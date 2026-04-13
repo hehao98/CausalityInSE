@@ -1,0 +1,41 @@
+Empirical software engineering has built a rich research tradition: Descriptive studies characterize how developers work~\cite{DBLP:journals/queue/ForsgrenSMZHB21}, correlational analyses reveal associations in repository data, qualitative investigations surface practitioner beliefs~\cite{DBLP:conf/icse/Devanbu0B16}, and controlled experiments test hypotheses under laboratory conditions~\cite{DBLP:books/sp/WohlinRHORW24}.
+Among the diverse set of problems this community tackles, a particular type---the \emph{intervention-outcome} problem---is especially of researcher's interest because of its  immediate implications for practice.
+When practitioners ask whether adopting code review reduces defects~\cite{DBLP:journals/ese/McIntoshKAH16}, whether CI/CD improves release quality~\cite{DBLP:conf/kbse/HiltonTHMD16}, or whether AI coding tools increase developer productivity~\cite{DBLP:conf/msr/HeMAKV26}, they are fundamentally asking whether a certain \emph{intervention} really improves the desired target \emph{outcome} they care about, so that they can make informed decisions regarding their adoption.
+
+Randomized controlled experiments are usually recommended as the gold standard for intervention-outcome questions~\cite{shadish2002experimental}, but they have important limitations in empirical SE research.
+For some problems, it is challenging to address external validity concerns: A controlled lab experiment cannot capture the complexity and timeline of real-world software development at scale.
+For others, experiments are simply infeasible: For example, one cannot randomly assign programming languages to production teams or force organizations to adopt new development processes.
+
+The alternative is \emph{observational data}, such as data from software repositories.
+Over the past two decades, the SE community has been engaged in a delicate dance pursuing causal inference from observational data.
+It is extremely challenging.
+Arguably, there is no consensus in the field, but one popular approach is to rigorously frame the study as presenting descriptive and correlational evidence---which is only \emph{suggestive} of the causal ambition that motivates it.
+However, this conservative approach---and the lack of an explicit vocabulary and toolkit to convey the strength of causal evidence in each study---has important consequences.
+First, the cautious framing does not prevent downstream causal misinterpretations.\footnote{The programming language and code quality debate illustrates this pattern: \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} reported a ``modest but significant'' association between language class and defect proneness, framing their findings as correlational.
+Yet, our citation analysis of 451 papers citing this study reveals that, among papers that engage with the finding substantively, causal interpretations outnumber hedged ones roughly 2:1---a striking ratio given the authors' explicit and appropriate hedging (Appendix~\ref{sec:appendix-misinterpretation}).
+This is not an isolated incident but a systemic field-level pattern, consistent with \citeauthor{hernan2018cword}'s~\cite{hernan2018cword} observation that associational euphemisms do not prevent causal interpretation.
+The psychology and epidemiology literature documents the same problem and provides a valuable reference for the SE community (see Appendix~\ref{sec:appendix-psych-reform}): \citet{haber2022causal} found that 52\% of abstracts imply causality despite ostensibly associational language.
+The methodological reformers in these fields responded by shifting from associational euphemisms to explicit causal framing---requiring authors to state target estimands, construct DAGs to justify covariate selection, and openly argue for identification assumptions~\cite{grosz2020taboo, lundberg2021estimand, rohrer2018thinking, rohrer2024causal}.}
+Second, even when some researchers claim to use ``causal inference'' methods, others may not understand the specific aspect in which ``causal inference'' is better---the field lacks a shared vocabulary for communicating the strength of evidence provided by different methods and designs.
+This state of affairs is unsurprising, as most empirical SE researchers do not enter the field with the training necessary for causal inference, which is typically taught in statistics, economics, and public policy programs, not in computer science.
+
+In this paper, we argue that the entire empirical SE field needs to move forward by adopting the modern causal inference toolkit, developed primarily in econometrics and epidemiology over the past several decades~\cite{angrist2010credibility, pearl2009causality, cunningham2021causal}, as the new standard for all causal inquiries on observational SE data.
+The value of this toolkit lies not in any claim to methodological perfection but in its insistence on \emph{transparency}: Every causal design rests on assumptions that must be explicitly stated, examined, and debated.
+This transparency is not merely an exercise in intellectual honesty; it is \emph{generative}: Each stated assumption that cannot be fully defended becomes a concrete direction for future work (see the worked example in Section~\ref{sec:worked-example} for a concrete illustration).
+The causal framework thus converts methodological limitations into a structured research agenda, making each study a stepping stone rather than a dead end.
+
+The room for improvement is substantial.
+Our analysis of 5,341 papers from ICSE, FSE, and ASE (2015--2025) reveals that 29\% of empirical SE papers investigate or implies to investigate intervention-outcome questions, yet fewer than 4\% employ any recognized causal inference method---and those that do rely overwhelmingly on controlled experiments or causal fault localization rather than the design-based identification strategies suited to the field's observational data (Section~\ref{sec:bg-adoption}).
+Recent methodological contributions have begun addressing specific gaps---instrumental variables~\cite{DBLP:journals/tosem/GrafVlachyW24}, omitted variable bias~\cite{DBLP:journals/corr/abs-2501-17026}, causal DAGs for requirements engineering~\cite{DBLP:journals/corr/abs-2511-03875}, matching for MSR studies~\cite{DBLP:conf/msr/NoceraSLTV26}---but no existing work spans the potential outcomes framework, graphical causal models, and design-based identification strategies, nor offers a systematic protocol for assessing causal credibility.
+This tutorial fills that gap.
+
+We make three contributions.
+First, we provide an education on the causal inference vocabulary and methods for SE researchers (Section~\ref{sec:primer}), covering the potential outcomes framework, graphical causal models, and design-based identification strategies using SE-specific examples.
+Second, the primer concludes with a pragmatic guide for conducting credible causal inquiry in SE (Section~\ref{sec:guide}), which synthesizes the toolkit into actionable guidance: building on prior SE research and practitioner knowledge to propose causal theories, framing research designs as target trials, using DAGs to make assumptions explicit, exploiting quasi-experimental variation for identification, and honestly engaging with alternative explanations.
+Third, we demonstrate the primer's power through a worked example on the impact of AI coding tools in open-source software (Section~\ref{sec:worked-example}), progressively applying cross-sectional and longitudinal methods to the same dataset to illustrate why common approaches fail and how design-based identification can do better.
+
+The remainder of this paper is organized as follows.
+Section~\ref{sec:background} reviews the background and related work, including a case study on downstream causal misinterpretation.
+Section~\ref{sec:primer} presents our causal inference primer, concluding with a pragmatic guide for conducting credible causal inquiry in SE (Section~\ref{sec:guide}).
+Section~\ref{sec:worked-example} presents the worked example on AI coding tools in open-source software, demonstrating the full arc from na\"ive comparison through cross-sectional methods to design-based longitudinal identification.
+Section~\ref{sec:discussion} discusses implications and concludes.
