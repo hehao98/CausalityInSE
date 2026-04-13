@@ -300,37 +300,29 @@ We do not cover causal discovery algorithms~\cite{journals/ese/HulseEM25}, machi
 Consider a question that is highly relevant to SE research: Does adopting AI coding tools increase a project's productivity?
 At its core, this is a question about a contrast between two worlds---one in which a project adopts AI coding tools and one in which it does not---and whether productivity differs between them.
 This deceptively simple framing conceals a deep conceptual question: What does it \emph{mean} for one thing to cause another?
-Four perspectives, developed across philosophy, statistics, and epidemiology, provide complementary answers.
+Two perspectives---one formal, one pragmatic---provide the conceptual foundation for the toolkit introduced in this section.\footnote{The philosophical literature offers additional accounts.
+The most intuitive, dating to \citet{hume1748enquiry}, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$---but regular association cannot distinguish genuine causal effects from systematic differences between compared groups (Section~\ref{sec:primer-naive} makes this failure concrete).
+A complementary perspective, developed by \citet{woodward2003making} and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} \emph{do-calculus}, defines causation through \emph{intervention}: $X$ causes $Y$ if intervening on $X$---holding everything else fixed---changes $Y$.
+This interventionist view underpins the graphical causal model framework (Section~\ref{sec:primer-dags}), and its central insight---the difference between \emph{seeing} and \emph{doing}---recurs throughout this primer.}
 
-\begin{itemize}[leftmargin=15pt]
-    \item \emph{Causation as Regular Association.} 
-    The most intuitive notion, dating to \citet{hume1748enquiry}, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$.
-    In SE terms: If projects using AI coding tools consistently produce more commits, we might say AI tools ``cause'' higher productivity.
-    This view fails almost immediately in an observational setting: Even when AI-adopting projects consistently show higher productivity, this association likely reflects the activity level and resources of teams that adopt AI tools---not a causal effect of the tools on productivity.
-    Regular association cannot distinguish genuine causal effects from systematic differences between the groups being compared.  
-    \item \emph{Causation as Counterfactual Dependence.} 
-    A deeper account, formalized by \citet{rubin1974estimating} building on philosophical work by \citet{lewis1973causation}, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
-    Applied to our example: AI tools \emph{caused} the productivity increase for a given project if that project \emph{would have had lower productivity} had it not adopted AI tools, all else being equal.
-    This definition is precise but introduces what \citet{holland1986statistics} called the \emph{fundamental problem of causal inference}: We can never observe both worlds for the same unit.
-    We observe the project's productivity after adopting AI tools, or its productivity without AI tools, but never both.
-    The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
-    \item \emph{Causation as Intervention.} 
-    A third perspective, developed by \citet{woodward2003making} in philosophy and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} \emph{do-calculus}, defines causation through \emph{intervention}: $X$ causes $Y$ if \emph{intervening} on $X$---holding everything else fixed---changes $Y$.
-    The key insight is the difference between \emph{seeing} and \emph{doing}.
-    Observing that AI-adopting projects have more commits ($P(Y \mid X\!=\!1)$) is not the same as forcing a project to adopt AI tools and measuring the result ($P(Y \mid do(X\!=\!1))$).
-    The former reflects both the causal effect of AI tools and the systematic differences between projects that adopt AI tools and those that do not; the latter isolates the causal effect by holding the selection process fixed.
-    All causal inference methods, in some sense, are trying to close the gap between passive observation (i.e., conditioning on $X$) and active intervention (i.e., intervening on $X$).
-    \item \emph{Causation as a Target Trial.} For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers the most pragmatic formulation: Every causal question implicitly describes a hypothetical randomized experiment.
-    The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
-    For the AI tools question, the target trial would randomly assign half of a set of comparable software projects to adopt AI coding tools and compare monthly commits after a fixed period.
-    Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign tool adoption, teams willing to adopt AI tools likely differ from those that do not, the ``treatment'' is ambiguous (which tools? how deeply integrated?), and commit counts may reflect development practices rather than genuine productivity.
-    Each of these concerns maps directly to a specific identification assumption that must be addressed.  
-\end{itemize}
-These four perspectives are not competing theories but complementary lenses that modern applied causal inference uses together.
-The counterfactual view yields \emph{estimands}---precise definitions of the causal quantities we seek to estimate.
-The interventionist view yields \emph{identification conditions}---formal criteria for when observational data can approximate the result of an intervention.
-The target trial view yields \emph{research design}---a concrete protocol for evaluating whether a study's design is adequate for the causal question.
-Together, they form the conceptual backbone of the three technical pillars introduced in Section~\ref{sec:primer-toolkit}: Potential outcomes formalize the counterfactual view (Section~\ref{sec:primer-po}), DAGs formalize the interventionist view (Section~\ref{sec:primer-dags}), and design-based identification operationalizes the target trial view (Section~\ref{sec:primer-design}).
+\paragraph{Causation as Counterfactual Dependence.}
+The formal foundation of modern causal inference, developed by \citet{rubin1974estimating} building on philosophical work by \citet{lewis1973causation}, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
+Applied to our example: AI tools \emph{caused} the productivity increase for a given project if that project \emph{would have had lower productivity} had it not adopted AI tools, all else being equal.
+This definition is precise but introduces what \citet{holland1986statistics} called the \emph{fundamental problem of causal inference}: We can never observe both worlds for the same unit.
+We observe the project's productivity after adopting AI tools, or its productivity without AI tools, but never both.
+The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
+Still, the counterfactual view is useful in that it helps the researcher derive \emph{estimands}---precise definitions of the causal quantities we seek to estimate---and is formalized through the potential outcomes framework (Section~\ref{sec:primer-po}).
+
+\paragraph{Causation as a Target Trial.}
+For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers a pragmatic operationalization of counterfactual reasoning: Every causal question implicitly describes a hypothetical randomized experiment.
+The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
+For the AI coding tools question, the target trial would randomly assign half of a set of comparable software projects to adopt AI coding tools and compare monthly commits after a fixed period.
+Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign tool adoption, teams willing to adopt AI tools likely differ from those that do not, the ``treatment'' is ambiguous (which tools? how deeply integrated?), and commit counts may reflect development practices rather than genuine productivity.
+Each of these concerns maps directly to a specific identification assumption that must be addressed.
+The target trial view also forces the researcher to confront the difference between \emph{observing} that AI-adopting projects have more commits ($P(Y \mid X\!=\!1)$) and \emph{intervening} to make a project adopt AI tools and measuring the result ($P(Y \mid do(X\!=\!1))$)---a distinction that all causal inference methods, in some sense, seek to resolve.
+
+These two perspectives are complementary: The counterfactual view defines the \emph{target}---the causal quantity we seek to estimate---while the target trial view provides the \emph{research design template}---a concrete protocol for evaluating whether a study can credibly estimate it.
+Together, they form the conceptual backbone of the three technical pillars introduced in Section~\ref{sec:primer-toolkit}: Potential outcomes formalize the counterfactual view (Section~\ref{sec:primer-po}), DAGs encode the causal structure that connects the researcher's assumptions to identification (Section~\ref{sec:primer-dags}), and design-based identification operationalizes the target trial view by exploiting quasi-random variation in the observational setting (Section~\ref{sec:primer-design}).
 
 \subsection{Why Cannot We Use Descriptive and Correlational Evidence?}
 \label{sec:primer-naive}
