@@ -69,14 +69,14 @@
 \email{vasilescu@cmu.edu}
 
 \begin{abstract}
-Empirical software engineering (SE) research frequently investigates \emph{intervention-outcome} questions---does adopting a practice, tool, or process improve a target outcome?---with immediate implications for practice.
-While randomized controlled experiments are the gold standard for intervention-outcome questions, they are often limited in external validity or simply infeasible for many SE problems.
-The alternative is observational data from software repositories.
-However, despite the SE community's delicate dance pursuing causal inference from observational data, there is no consensus in the field, and the field lacks a shared vocabulary and toolkit to convey the strength of causal evidence in each study.
-To improve this state of affairs, we envision that the field needs to move forward and adopt the modern causal inference toolkit as the new standard for intervention-outcome questions involving observational SE data.
-Importantly, the power of the toolkit lies in making identifying assumptions \emph{transparent and open to scrutiny}, ensuring that the strength of evidence is clearly communicated and that the field can iteratively develop stronger designs.
-In this tutorial, we provide (1)~an education on the causal inference vocabulary and methods, covering the potential outcomes framework, graphical causal models, and design-based identification strategies; (2)~a pragmatic guide for conducting credible causal inquiry in empirical SE; and (3)~a worked example on the impact of AI coding tools in open-source software that demonstrates the full arc from na\"ive comparison through cross-sectional methods to design-based longitudinal identification.
-We hope this paper will provide a methodological blueprint for future empirical SE research, illustrating how to balance rigor with practicality to generate actionable, trustworthy evidence.
+\emph{``Correlation does not imply causation''} is among the most widely repeated maxims in empirical software engineering (SE), which is technically correct, but not particularly useful.
+The practical questions motivating much empirical SE research are \emph{causal} in nature, concerning the consequences of decisions, interventions, and changes to practice, and for many settings, the studies we can feasibly conduct on these questions are often observational.
+Despite the SE community's long engagement with this tension, the field lacks a shared vocabulary for reasoning about when and why a particular study design supports a causal claim versus a purely descriptive one.
+Our classification of 5,341 papers at ICSE, FSE, and ASE (2015--2025) quantifies this gap: 29\% of empirical SE papers are motivated by a causal ambition, but only 1.9\% employ a recognized causal inference method.
+To address this gap, we argue that the field needs to move forward and adopt the modern causal inference toolkit as the new standard for intervention-outcome questions involving observational SE data.
+Importantly, the power of the toolkit lies in making identifying assumptions \emph{transparent and open to scrutiny}, ensuring that the strength of evidence is clearly communicated and that the field can iteratively develop more credible designs.
+We demonstrate the full arc of a credible causal inquiry through a worked example on the impact of systematic AI coding tool adoption on development velocity in open-source projects, progressing from na\"ive group comparisons through DAG-guided cross-sectional analysis to a staggered difference-in-differences design.
+We envision that the adoption of this toolkit in empirical SE research will bring productive advancements on a broad range of important intervention-outcome questions involving observational SE data.
 \end{abstract}
 
 \begin{CCSXML}
