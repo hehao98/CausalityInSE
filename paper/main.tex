@@ -211,14 +211,14 @@ We do not aim to achieve methodological perfection in this analysis, but even a 
 For each venue (ICSE, FSE, ASE), we obtained a list of papers, paper titles, and DOIs from DBLP, and retrieved the paper abstracts via the Semantic Scholar batch API, using OpenAlex as a backfill source.
 This produced a corpus of 5,341 papers.
 Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, %(2)~whether it is a mining software repositories (MSR) study, and 
-(2)~whether it investigates or is motivated by an causal research question (RQ) about interventions and outcomes, and (3) whether it claims to employ a causal inference method.
+(2)~whether it is motivated by an causal research question (RQ) about interventions and outcomes, and (3) whether it claims to employ a causal inference method.
 For papers tagged as claiming to use causal inference methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
 The first author manually audited a sample of 100 papers and all papers classified as using causal inference methods, finding a 95\% accuracy in paper classification and 81\% accuracy in method classification; the method classification errors are manually corrected before they are summarized in Table~\ref{tab:taxonomy}.
 We adopt deterministic decoding and an explicit classification schema to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package.
 
 \paragraph{The Causal Ambition--Methodology Gap.}
-Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by a causal RQ; but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
-The vast majority of the 621 papers investigate their proposed RQs through interpreting correlational, descriptive, or qualitative evidence.
+Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by a causal RQ about interventions and outcomes; but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
+The dominating approach is to propose and investigate RQs that are framed ascorrelational, descriptive, or qualitative, and to only links back to the original causal motivation in the discussion.
 Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers asking or motivated by causal RQs has grown steadily---from 23 in 2015 to 131 in 2025---the number claiming to employ causal inference methods has grown far more slowly, from 3 to 14 over the same period.
 The ratio of causal motivation to causal inference methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
 
@@ -234,7 +234,7 @@ The persistent gap between RQs and methods quantifies the disconnect between cau
 \paragraph{Which Causal Methods Are Used?}
 Among the papers with causal methods, the distribution is highly concentrated (Table~\ref{tab:taxonomy}).
 Randomized controlled experiments dominate (37 papers), reflecting the SE community's established tradition of controlled developer studies~\cite{DBLP:books/sp/WohlinRHORW24}.
-Causal fault localization---applying causal testing, causal contribution scores, or causal debugging to identify root causes of failures---accounts for 13 papers, representing a growing research thread that applies causal reasoning to software analysis rather than to empirical research methodology.
+Causal fault localization---applying causal testing, causal contribution scores, or causal debugging to identify root causes of failures---accounts for 13 papers, representing a research thread that applies causal reasoning to software analysis rather than to empirical research methodology.
 Regression-based causal inference (14 papers) includes studies that use regression or observational analysis with explicit causal intent, such as controlling for confounders or using causal-adjacent language, but without formal identification strategies.
 
 \begin{table}[t]
@@ -280,10 +280,11 @@ The graphical causal model tradition is better represented (7 papers using causa
 Structural equation modeling (2 papers), Granger causality (2 papers), and causal impact analysis (1 paper) round out the remaining categories.
 
 \paragraph{Implications.}
-Two patterns emerge from this analysis.
+Three patterns emerge from this analysis.
 First, when SE researchers employ causal methods, they overwhelmingly use randomized controlled experiments, regression-based causal inference, or causal fault localization---methods that are important but insufficient for a large family of intervention-outcome questions in the SE field.
 Second, the design-based methods that powered the credibility revolution---difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects---remain virtually unexplored in SE, despite the field's abundance of panel data (repositories with temporal structure, developers contributing across projects, tools adopted in staggered fashion) that is well suited to these methods.
-This tutorial aims to bridge that gap.
+Third and most importantly, there is a consistent gap between causal ambition and causal methods in empirical SE, and the room for improvement is huge.
+This tutorial aims to bridge this gap.
 
 \section{A Primer on Causal Inference for Software Engineering Researchers}
 \label{sec:primer}

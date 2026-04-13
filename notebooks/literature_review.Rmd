@@ -175,13 +175,13 @@ summary_by_year <- papers |>
     `All papers`             = n(),
     `Empirical SE`           = sum(is_empirical == TRUE, na.rm = TRUE),
 #    `MSR papers`             = sum(is_msr == TRUE, na.rm = TRUE),
-    `Asking intervention-outcome RQs`      = sum(causal_type %in% c("claim", "both"), na.rm = TRUE),
+    `Having causal motivation`            = sum(causal_type %in% c("claim", "both"), na.rm = TRUE),
     `Using causal methods`   = sum(!is.na(causal_method_class_corrected) & causal_method_class_corrected != ""),
   ) |>
   pivot_longer(-year, names_to = "category", values_to = "count") |>
   mutate(category = factor(category,
     levels = c("All papers", "Empirical SE", "MSR papers",
-               "Asking intervention-outcome RQs", "Using causal methods")))
+               "Having causal motivation", "Using causal methods")))
 
 labels_bottom <- summary_by_year |>
   filter(category %in% c("Using causal methods"))
@@ -197,7 +197,7 @@ p_trends <- ggplot(summary_by_year, aes(year, count, colour = category, shape = 
   scale_colour_manual(values = c("All papers" = "grey40",
                                  "Empirical SE" = "#0072B2",
                                  "MSR papers" = "#009E73",
-                                 "Asking intervention-outcome RQs" = "#E69F00",
+                                 "Having causal motivation" = "#E69F00",
                                  "Using causal methods" = "#D55E00")) +
   labs(
     x = NULL, y = "Number of Papers", colour = NULL, shape = NULL
