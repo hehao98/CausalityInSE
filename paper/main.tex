@@ -426,8 +426,9 @@ Every arrow is a substantive claim; every absent arrow asserts no direct effect.
 This transparency is the central value of DAGs for applied research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
 %In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
 As a pedagogical example (without aiming for completeness), Figure~\ref{fig:ai-dag} presents a plausible DAG for the causal question of whether adopting AI coding tools affects a project's development velocity.
-In this DAG, AI Tool Adoption affects Dev.\ Velocity through two \emph{mediators}---Code Generation and Workflow Automation; Domain, Team Skill, Org Culture, and Project Maturity each influence both AI Tool Adoption and Dev.\ Velocity, making them \emph{confounders}; and both AI Tool Adoption and Dev.\ Velocity influence Stars, making Stars a \emph{collider}.
-Since we care about the AI tools--velocity question, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.\footnote{The sharp reader may have already noticed the fact that the DAG presented in Figure~\ref{fig:ai-dag} is ambiguous without considering the temporal nature of software engineering data: For example, the number of stars received can be a confounder \emph{before} AI tools adoption (more popular projects both exhibit higher velocity and are more likely to adopt AI tools) and a collider \emph{after} AI tools adoption (higher-velocity and AI-enabled projects are more likely to receive more stars). We construct the proper temporal DAG and diagnose this problem formally in Section~\ref{sec:temporal-dag}.}
+In this DAG, AI Tool Adoption affects Dev.\ Velocity through two \emph{mediators}---Code Generation and Workflow Automation; Team Size, Prog.\ Language, Team Skill, and Project Maturity each influence both AI Tool Adoption and Dev.\ Velocity, making them \emph{confounders}; and both AI Tool Adoption and Dev.\ Velocity influence Stars, making Stars a \emph{collider}.
+Since we care about the AI tools--velocity question, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.\footnote{The sharp reader may have already noticed the fact that the DAG presented in Figure~\ref{fig:ai-dag} is ambiguous without considering the temporal nature of software engineering data: For example, the number of stars received can be a confounder \emph{before} AI tools adoption (more popular projects both exhibit higher velocity and are more likely to adopt AI tools) and a collider \emph{after} AI tools adoption (higher-velocity and AI-enabled projects are more likely to receive more stars).
+We construct the proper temporal DAG and diagnose this problem formally in Section~\ref{sec:temporal-dag}.}
 
 \begin{figure}[t]
 \centering
@@ -441,9 +442,9 @@ Since we care about the AI tools--velocity question, we do not show other potent
 \node[var] (workflow) at (5.2, -0.45) {Workflow Autom.};
 \node[var] (outcome) at (10.4, 0) {Dev.\ Velocity};
 % Confounders (top row)
-\node[var] (org) at (0, 2) {Org Culture};
-\node[var] (skill) at (3.5, 2) {Team Skill};
-\node[var] (domain) at (6.9, 2) {Domain};
+\node[var] (skill) at (0, 2) {Team Skill};
+\node[var] (lang) at (3.5, 2) {Prog.\ Language};
+\node[var] (teamsize) at (6.9, 2) {Team Size};
 \node[var] (maturity) at (10.4, 2) {Project Maturity};
 % Collider (bottom)
 \node[var] (stars) at (5.2, -1.7) {Stars};
@@ -453,14 +454,14 @@ Since we care about the AI tools--velocity question, we do not show other potent
 \draw[arr] (codegen) -- (outcome);
 \draw[arr] (workflow) -- (outcome);
 % Confounders → Treatment
-\draw[arr] (org) -- (treat);
 \draw[arr] (skill) -- (treat);
-\draw[arr] (domain) -- (treat);
+\draw[arr] (lang) -- (treat);
+\draw[arr] (teamsize) -- (treat);
 \draw[arr] (maturity) -- (treat);
 % Confounders → Outcome
-\draw[arr] (org) -- (outcome);
 \draw[arr] (skill) -- (outcome);
-\draw[arr] (domain) -- (outcome);
+\draw[arr] (lang) -- (outcome);
+\draw[arr] (teamsize) -- (outcome);
 \draw[arr] (maturity) -- (outcome);
 % Collider paths
 \draw[arr] (treat) -- (stars);
@@ -470,20 +471,20 @@ Since we care about the AI tools--velocity question, we do not show other potent
 Arrows represent hypothesized direct causal effects.
 The causal paths of interest run through two mediators: AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Dev.\ Velocity.
 Back-door paths through common causes (e.g., AI Tool Adoption $\leftarrow$ Team Skill $\to$ Dev.\ Velocity) must be blocked for causal identification.
-In this graph, we consider the number of stars received as a \emph{collider} (AI Tool Adoption $\to$ Stars $\leftarrow$ Dev.\ Velocity): Conditioning on it opens a spurious path and must be avoided.}
+Stars is a \emph{collider} (AI Tool Adoption $\to$ Stars $\leftarrow$ Dev.\ Velocity): Conditioning on it opens a spurious path and must be avoided.}
 \label{fig:ai-dag}
 \end{figure}
 
 \paragraph{Back-Door Paths and the Back-Door Criterion.}
 In a DAG, \emph{causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:ai-dag}, the causal paths run AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Dev.\ Velocity.
 These paths transmit the genuine causal effect.
-A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, AI Tool Adoption $\leftarrow$ Team Skill $\to$ Dev.\ Velocity.
+A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, AI Tool Adoption $\leftarrow$ Team Skill $\rightarrow$ Dev.\ Velocity.
 These back-door paths transmit spurious associations: Even if AI tools had zero effect on Dev.\ Velocity, the fact that skilled teams both adopt AI tools earlier and inherently exhibit higher velocity creates an observed correlation between AI adoption and development velocity.
 A naive comparison conflates the genuine causal effect that flows through the causal paths with the spurious associations that flow through the back-door paths.
 
 The \emph{back-door criterion}~\cite{pearl2009causality} provides a principled rule for which variables to condition on in order to block all back-door paths without inadvertently blocking the causal paths.
 A set $Z$ satisfies the criterion if (1)~no variable in $Z$ is a descendant of the treatment, and (2)~conditioning on $Z$ blocks every back-door path.
-In Figure~\ref{fig:ai-dag}, $Z = \{\text{Domain},\, \text{Team Skill},\, \text{Org Culture},\, \text{Project Maturity}\}$ satisfies this criterion: Each is a common cause of AI Tool Adoption and Dev.\ Velocity, and conditioning on all four blocks every spurious path.
+In Figure~\ref{fig:ai-dag}, $Z = \{\text{Team Size},\, \text{Prog.\ Language},\, \text{Team Skill},\, \text{Project Maturity}\}$ satisfies this criterion: Each is a common cause of AI Tool Adoption and Dev.\ Velocity, and conditioning on all four blocks every spurious path.
 Two types of variables must \emph{not} be included in $Z$.
 Code Generation and Workflow Automation are \emph{mediators} on the causal path: Conditioning on either blocks the very effect the researcher seeks to estimate.
 Stars is a \emph{collider}: Conditioning on it \emph{opens} a spurious path rather than closing one.

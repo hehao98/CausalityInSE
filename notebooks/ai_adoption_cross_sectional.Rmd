@@ -17,9 +17,10 @@ it fails, and shows that switching estimators cannot help:
   pre-treatment and post-treatment states of time-varying covariates
   (stars, PRs, issues, CI, size, releases) into a single node, destroying
   the acyclicity that DAGs require and making covariate selection
-  incoherent.  Only *structurally pre-treatment* covariates (repo age,
-  language, org type) are defensible controls.  The pre-treatment-only
-  estimate is large but fragile under sensitivity analysis.
+  incoherent.  We derive a **temporal DAG** from the paper's Figure 3 and
+  use the panel dataset to recover genuinely pre-treatment values of
+  time-varying covariates, yielding a DAG-justified adjustment set that
+  goes far beyond the three structural covariates alone.
 - **Stage 3** shows that OLS, PSM, and IPW converge on the same estimate
   under pre-treatment covariates --- the estimator is not the bottleneck;
   the identifying assumption is.
@@ -32,8 +33,8 @@ can make progress (Section 4.2).
 
 ```{r setup, message=FALSE, warning=FALSE}
 required_pkgs <- c("dplyr", "tidyr", "ggplot2", "knitr", "kableExtra",
-                   "lmtest", "sandwich", "sensemakr", "MatchIt", "cobalt",
-                   "showtext", "scales")
+                   "lmtest", "sandwich", "MatchIt", "cobalt",
+                   "showtext", "scales", "dagitty")
 missing_pkgs <- required_pkgs[!sapply(required_pkgs, requireNamespace, quietly = TRUE)]
 if (length(missing_pkgs) > 0) {
   install.packages(missing_pkgs, repos = "https://cloud.r-project.org")
@@ -46,11 +47,11 @@ library(knitr)
 library(kableExtra)
 library(lmtest)
 library(sandwich)
-library(sensemakr)
 library(MatchIt)
 library(cobalt)
 library(showtext)
 library(scales)
+library(dagitty)
 
 font_add("Linux Libertine", regular = "LinLibertine_Rah.ttf")
 showtext_auto()
@@ -104,6 +105,81 @@ df$log_total_window_commits <- log1p(df$total_window_commits)
 cat(sprintf("Treatment (L2+): %d  |  Control (L1): %d\n",
             sum(df$treated == 1), sum(df$treated == 0)))
 cat(sprintf("Treatment prevalence: %.1f%%\n", mean(df$treated) * 100))
+```
+
+## Compute Pre-Treatment Covariates from Panel Data
+
+The panel dataset provides monthly observations (commits, stars, issues,
+forks, PRs merged, releases, active contributors) for each repository
+across the full observation window (Jan 2024 -- Mar 2026).  For treated
+repos the exact treatment month is known; for control repos all months
+are pre-treatment.  We aggregate only pre-treatment months to obtain
+genuinely pre-treatment values of time-varying covariates that the
+cross-sectional snapshot collapses.
+
+```{r panel_pre_treatment, message=FALSE, warning=FALSE}
+panel <- read.csv("../data/ai_adoption_panel.csv", stringsAsFactors = FALSE)
+
+pre_treat_covs <- panel %>%
+  group_by(full_name) %>%
+  mutate(
+    repo_trt_month = first(na.omit(
+      ifelse(treatment_month == "", NA_character_, treatment_month)
+    ))
+  ) %>%
+  ungroup() %>%
+  mutate(
+    is_pre = is.na(repo_trt_month) | month < repo_trt_month
+  ) %>%
+  filter(is_pre) %>%
+  group_by(full_name) %>%
+  summarise(
+    pre_stars        = sum(new_stars, na.rm = TRUE),
+    pre_issues       = sum(new_issues, na.rm = TRUE),
+    pre_forks        = sum(new_forks, na.rm = TRUE),
+    pre_prs_merged   = sum(prs_merged, na.rm = TRUE),
+    pre_releases     = sum(new_releases, na.rm = TRUE),
+    pre_avg_contribs = mean(active_contributors, na.rm = TRUE),
+    pre_avg_commits  = mean(commits, na.rm = TRUE),
+    pre_months       = n(),
+    .groups = "drop"
+  )
+
+df <- df %>%
+  left_join(pre_treat_covs, by = "full_name") %>%
+  mutate(
+    log_pre_stars    = log1p(pre_stars),
+    log_pre_issues   = log1p(pre_issues),
+    log_pre_forks    = log1p(pre_forks),
+    log_pre_prs      = log1p(pre_prs_merged),
+    log_pre_releases = log1p(pre_releases),
+    log_pre_contribs = log1p(pre_avg_contribs),
+    log_pre_commits  = log1p(pre_avg_commits)
+  )
+
+n_matched  <- sum(!is.na(df$pre_stars))
+n_missing  <- sum(is.na(df$pre_stars))
+n_miss_trt <- sum(is.na(df$pre_stars) & df$treated == 1)
+n_miss_ctl <- sum(is.na(df$pre_stars) & df$treated == 0)
+
+cat(sprintf("Repos with panel-derived pre-treatment covariates: %d of %d\n",
+            n_matched, nrow(df)))
+cat(sprintf("Repos missing panel data: %d (treated: %d, control: %d)\n",
+            n_missing, n_miss_trt, n_miss_ctl))
+if (n_matched < nrow(df)) {
+  cat("  -> These repos are either absent from the panel dataset or\n")
+  cat("     were treated in the first panel month (no pre-treatment data).\n")
+  cat("  -> DAG-justified analyses will use the matched subset.\n")
+}
+cat(sprintf("Treated repos — median pre-treatment months: %.0f\n",
+            median(df$pre_months[df$treated == 1], na.rm = TRUE)))
+cat(sprintf("Control repos — median pre-treatment months: %.0f\n",
+            median(df$pre_months[df$treated == 0], na.rm = TRUE)))
+
+# Clean subset for DAG-justified analyses
+df_dag <- df %>% filter(!is.na(log_pre_stars))
+cat(sprintf("DAG-justified analysis sample: %d repos (%d treated, %d control)\n",
+            nrow(df_dag), sum(df_dag$treated == 1), sum(df_dag$treated == 0)))
 ```
 
 # Stage 1: What Would a Typical SE Researcher Do?
@@ -196,11 +272,11 @@ table1_df %>%
   select(
     Variable = label,
     `Temporal Status` = temporal,
-    `Control (L1)` = control_mean,
-    `Treated (L2+)` = treated_mean,
+    `Control (L1) Mean` = control_mean,
+    `Treated (L2+) Mean` = treated_mean,
     SMD = smd
   ) %>%
-  kable(caption = "Table 1: Descriptive Comparison by AI Adoption Status") %>%
+  kable(caption = "Table 1: Descriptive Comparison by AI Adoption Status (means and SMDs)") %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
@@ -343,30 +419,194 @@ classif %>%
 ```
 
 **Consequence:** Only the three structurally pre-treatment covariates
-(repo age, language, organization type) are defensible controls.
-Restricting to pre-treatment covariates eliminates mediator bias entirely
-(pre-treatment variables cannot be caused by treatment) and reduces
-collider risk to the minor M-bias scenario.
+(repo age, language, organization type) are defensible controls *in the
+cross-sectional snapshot*.  But with access to the panel dataset, we can
+recover genuinely pre-treatment values of time-varying covariates,
+restoring the clean temporal structure that the snapshot destroyed.
 
-## 2.3 Pre-Treatment vs. Kitchen-Sink OLS (Table 2)
+## 2.3 Temporal DAG and Panel-Derived Pre-Treatment Covariates
 
-We now compare three specifications: the bivariate regression (no
-controls), the pre-treatment-only model (the only defensible
-specification), and the kitchen-sink model from Stage 1.
+The paper's DAG (Figure 3) identifies confounders and a collider
+(Stars).  As noted in the paper, Stars' role is temporally ambiguous: it
+is a confounder *before* adoption (popular repos attract contributors
+and adopt tools) and a collider *after* (both adoption and velocity
+increase visibility).  The same ambiguity applies to all time-varying
+characteristics of a project.
+
+The **temporal DAG** resolves this by grouping time-varying covariates
+into four high-level concepts --- **Popularity** (stars), **Demand**
+(issues), **Activity** (forks, PRs, commits, releases), and **Team
+Size** (active contributors) --- and splitting each into a pre-treatment
+node (confounder) and a post-treatment node (collider).  The back-door
+criterion applied to this temporal DAG yields an unambiguous adjustment
+set.
+
+```{r temporal_dag, fig.width=8, fig.height=6}
+temporal_dag <- dagitty('dag {
+  bb="0,0,1,1"
+
+  "AI Adoption" [exposure, pos="0.30,0.45"]
+  "Dev Velocity" [outcome, pos="0.70,0.45"]
+
+  "Domain" [pos="0.08,0.05"]
+  "Organization" [pos="0.28,0.05"]
+  "Team Skill" [pos="0.50,0.05"]
+  "Proj Maturity" [pos="0.72,0.05"]
+
+  "Popularity_pre" [pos="0.15,0.22"]
+  "Demand_pre" [pos="0.38,0.22"]
+  "Activity_pre" [pos="0.62,0.22"]
+  "Team Size_pre" [pos="0.85,0.22"]
+
+  "Code Gen" [pos="0.45,0.55"]
+  "Workflow" [pos="0.55,0.55"]
+
+  "Popularity_post" [pos="0.15,0.75"]
+  "Demand_post" [pos="0.38,0.75"]
+  "Activity_post" [pos="0.62,0.75"]
+  "Team Size_post" [pos="0.85,0.75"]
+
+  "Domain" -> "AI Adoption"
+  "Domain" -> "Dev Velocity"
+  "Organization" -> "AI Adoption"
+  "Organization" -> "Dev Velocity"
+  "Team Skill" -> "AI Adoption"
+  "Team Skill" -> "Dev Velocity"
+  "Proj Maturity" -> "AI Adoption"
+  "Proj Maturity" -> "Dev Velocity"
+
+  "Popularity_pre" -> "AI Adoption"
+  "Popularity_pre" -> "Dev Velocity"
+  "Demand_pre" -> "AI Adoption"
+  "Demand_pre" -> "Dev Velocity"
+  "Activity_pre" -> "AI Adoption"
+  "Activity_pre" -> "Dev Velocity"
+  "Team Size_pre" -> "AI Adoption"
+  "Team Size_pre" -> "Dev Velocity"
+
+  "AI Adoption" -> "Code Gen" -> "Dev Velocity"
+  "AI Adoption" -> "Workflow" -> "Dev Velocity"
+
+  "AI Adoption" -> "Popularity_post"
+  "Dev Velocity" -> "Popularity_post"
+  "AI Adoption" -> "Demand_post"
+  "Dev Velocity" -> "Demand_post"
+  "AI Adoption" -> "Activity_post"
+  "Dev Velocity" -> "Activity_post"
+  "AI Adoption" -> "Team Size_post"
+  "Dev Velocity" -> "Team Size_post"
+}')
+
+plot(temporal_dag)
+```
+
+Applying the **back-door criterion** to the temporal DAG:
+
+```{r adjustment_sets}
+adj_sets <- adjustmentSets(temporal_dag, type = "minimal")
+cat("Minimal sufficient adjustment sets (back-door criterion):\n")
+print(adj_sets)
+```
+
+Every pre-treatment node (both structurally pre-treatment and
+panel-derived) is a confounder that blocks a back-door path.  Code Gen
+and Workflow are mediators (on the causal path).  Every \*\_post node is a
+collider --- conditioning on any of them would *open* a spurious path.
+
+The key insight: **Team Skill remains entirely unobserved** --- no
+variable in the panel or cross-sectional data captures developer skill
+or expertise.  The panel-derived pre-treatment covariates (Popularity,
+Demand, Activity, Team Size) absorb more of the selection than the
+structurally pre-treatment variables alone, but Team Skill is the
+confounder that no GitHub API data can address.
+
+### Mapping DAG Nodes to Observable Covariates
+
+```{r dag_mapping}
+dag_map <- data.frame(
+  `DAG Node` = c("Domain", "Organization", "Proj Maturity",
+                 "Team Skill",
+                 "Popularity_pre", "Demand_pre",
+                 "Activity_pre", "Activity_pre", "Activity_pre", "Activity_pre",
+                 "Team Size_pre"),
+  `Observable Covariate` = c(
+    "queried_language",
+    "is_org",
+    "repo_age_yr",
+    "Unobserved",
+    "log_pre_stars",
+    "log_pre_issues",
+    "log_pre_forks", "log_pre_prs", "log_pre_commits", "log_pre_releases",
+    "log_pre_contribs"
+  ),
+  `DAG Role` = c(rep("Confounder", 11)),
+  `Source` = c(rep("Cross-sectional (structural)", 3),
+               "Unobserved",
+               rep("Panel-derived (pre-treatment)", 7)),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+dag_map %>%
+  kable(caption = "Mapping Temporal DAG Nodes to Observable Covariates") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+### DAG-Justified Regression
+
+With the panel-derived pre-treatment covariates, we can now run a
+regression that conditions on the full DAG-justified adjustment set
+(minus Team Skill, which remains unobserved):
+
+```{r dag_justified_regression}
+m_dag <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
+              queried_language + is_org +
+              log_pre_stars + log_pre_issues + log_pre_forks +
+              log_pre_prs + log_pre_releases + log_pre_contribs +
+              log_pre_commits,
+            data = df_dag)
+
+dag_result <- extract_treated(m_dag, "DAG-justified (panel pre-treatment)")
+
+dag_result %>%
+  mutate(
+    coef  = sprintf("%.3f", coef),
+    se    = sprintf("%.3f", se),
+    p_val = ifelse(as.numeric(p_val) < 0.001, "<0.001", sprintf("%.3f", p_val)),
+    r2    = sprintf("%.3f", r2)
+  ) %>%
+  select(Model = model, Coefficient = coef, `Robust SE` = se,
+         `p-value` = p_val, `R²` = r2, N = n) %>%
+  kable(caption = "DAG-Justified OLS: Pre-Treatment Covariates from Panel Data") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+The DAG-justified specification controls for substantially more of the
+selection mechanism than the three structural covariates alone.
+Pre-treatment Activity is particularly important: it captures baseline
+development velocity, the strongest predictor of both AI adoption
+(high-velocity projects have incentive to adopt) and future velocity
+(persistence).  Including it effectively asks: *conditional on repos
+having similar pre-treatment activity, popularity, demand, and team
+size, do AI-adopting repos subsequently exhibit higher commit rates?*
+Team Skill remains entirely unobserved --- no covariate in the data
+captures developer expertise.
+
+## 2.4 Bivariate, Kitchen-Sink, and DAG-Justified OLS (Table 2)
+
+We compare three specifications: the bivariate regression (no controls),
+the kitchen-sink model from Stage 1 (all available cross-sectional
+covariates, many temporally ambiguous), and the DAG-justified model
+(only pre-treatment covariates backed by the temporal DAG).
 
 ```{r ols_comparison}
 # Bivariate
 m_bivariate <- lm(log_avg_monthly_commits ~ treated, data = df)
 
-# Pre-treatment only: the only defensible specification
-m_pretreat <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
-                   queried_language + is_org,
-                 data = df)
-
 ols_results <- bind_rows(
   extract_treated(m_bivariate, "Bivariate (no controls)"),
-  extract_treated(m_pretreat,  "Pre-treatment covariates only"),
-  extract_treated(m_kitchen,   "Kitchen-sink (all covariates)")
+  extract_treated(m_kitchen,   "Kitchen-sink (all covariates)"),
+  extract_treated(m_dag,       "DAG-justified (panel pre-treatment)")
 )
 
 ols_results %>%
@@ -382,102 +622,29 @@ ols_results %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
-The coefficient attenuates monotonically as controls are added.  The
-drop from bivariate to pre-treatment is defensibly attributed to
-confounding removal (these are unambiguously pre-treatment variables).
-The further drop from pre-treatment to kitchen-sink is
-**uninterpretable**: the collapsed graph is not a DAG, so no adjustment
-formula tells us whether we are removing confounding or blocking causal
-paths through temporally ambiguous variables.
+The bivariate coefficient is enormous, reflecting raw selection.  The
+kitchen-sink coefficient attenuates after adding all available covariates,
+but its interpretation is **uninterpretable**: the collapsed cross-sectional
+graph is not a DAG, so no adjustment formula tells us whether we are
+removing confounding or blocking causal paths through temporally ambiguous
+variables.  The DAG-justified specification conditions only on covariates
+that the temporal DAG identifies as pre-treatment confounders --- each
+computed from panel data before the treatment month.  This is the only
+specification with a principled justification from the back-door criterion.
 
-## 2.4 Coefficient Stability Across Specifications
+## 2.5 Sensitivity Analysis: Oster Proportional Selection Bounds
 
-```{r coefficient_stability, fig.width=8, fig.height=3}
-formulas <- list(
-  "Bivariate"                          = log_avg_monthly_commits ~ treated,
-  "+ Age + Language"                    = log_avg_monthly_commits ~ treated +
-                                           repo_age_yr + queried_language,
-  "Pre-treatment (+ Org)"              = log_avg_monthly_commits ~ treated +
-                                           repo_age_yr + queried_language + is_org,
-  "+ CI, Size, Releases"               = log_avg_monthly_commits ~ treated +
-                                           repo_age_yr + queried_language + is_org +
-                                           has_ci + log_size + log_releases,
-  "Kitchen-sink (+ Stars, ...)"        = log_avg_monthly_commits ~ treated +
-                                           repo_age_yr + queried_language + is_org +
-                                           has_ci + log_size + log_releases +
-                                           log_stars + log_forks + log_total_prs +
-                                           log_total_issues
-)
+How robust is the DAG-justified estimate to unobserved confounding?
+We apply the Oster (2019) proportional selection method, which asks:
+*given how much the coefficient changed when we added observable
+controls, how strong would selection on unobservables need to be ---
+relative to that same selection on observables --- to drive the
+coefficient all the way to zero?*
 
-stability <- lapply(names(formulas), function(label) {
-  mod <- lm(formulas[[label]], data = df)
-  ct <- coeftest(mod, vcov = vcovHC(mod, type = "HC1"))
-  idx <- which(rownames(ct) == "treated")
-  data.frame(spec = label, coef = ct[idx, 1], se = ct[idx, 2],
-             stringsAsFactors = FALSE)
-}) %>%
-  bind_rows() %>%
-  mutate(spec = factor(spec, levels = names(formulas)))
-
-pre_idx     <- which(levels(stability$spec) == "Pre-treatment (+ Org)")
-kitchen_idx <- which(levels(stability$spec) == "Kitchen-sink (+ Stars, ...)")
-
-ggplot(stability, aes(x = spec, y = coef)) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
-  annotate("rect",
-           xmin = pre_idx - 0.4, xmax = pre_idx + 0.4,
-           ymin = -Inf, ymax = Inf,
-           fill = "steelblue", alpha = 0.12) +
-  annotate("rect",
-           xmin = kitchen_idx - 0.4, xmax = kitchen_idx + 0.4,
-           ymin = -Inf, ymax = Inf,
-           fill = "darkorange", alpha = 0.10) +
-  geom_pointrange(aes(ymin = coef - 1.96 * se, ymax = coef + 1.96 * se), size = 0.5) +
-  labs(x = NULL, y = "Coefficient on AI Adoption (treated)",
-       title = "Coefficient Stability Across Specifications",
-       caption = paste("Blue: pre-treatment covariates only (defensible).",
-                       "Orange: kitchen-sink (temporally ambiguous).",
-                       "95% CI with HC1 SEs.")) +
-  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank())
-```
-
-The trajectory is monotonically downward.  The blue-shaded pre-treatment
-specification is the only defensible one; everything to its right adds
-temporally ambiguous covariates whose inclusion is unjustified by any
-valid DAG.  The coefficient *keeps falling*, and the question is whether
-the unobserved confounders (developer skill, team culture) --- which are
-plausibly *more* strongly associated with both treatment and outcome than
-any observed covariate --- would continue the downward trajectory to zero.
-
-## 2.5 Sensitivity Analysis
-
-### Cinelli & Hazlett (sensemakr) on Pre-Treatment Model
-
-```{r sensemakr_pretreat}
-sense_pre <- sensemakr(m_pretreat, treatment = "treated",
-                       benchmark_covariates = c("repo_age_yr", "is_org"),
-                       kd = 1:3)
-
-cat("=== Pre-treatment model: Sensitivity analysis ===\n")
-summary(sense_pre)
-```
-
-```{r sensemakr_plot, fig.width=8, fig.height=5}
-plot(sense_pre, sensitivity.of = "estimate")
-```
-
-The robustness value (RV) tells us how strong a single unobserved
-confounder would need to be --- in terms of partial R-squared with both
-treatment and outcome --- to nullify the estimate.  Consider "developer
-skill" as a confounder: skilled developers are more likely to adopt AI
-tools (early adopters, careful tooling configuration) *and* more likely
-to commit frequently (more productive).  A confounder this strong is not
-only plausible --- it is expected.
-
-### Oster Proportional Selection Bounds
+The key quantity is $\delta^*$.  The conventional threshold is
+$\delta^* \geq 1$: if unobservables would need to be *at least as
+strong as* all the observables combined to eliminate the effect, the
+result is considered robust.  If $\delta^* < 1$, the result is fragile.
 
 ```{r oster_bounds}
 oster_delta <- function(model_restricted, model_full, r_max_multiplier = 1.3) {
@@ -498,11 +665,11 @@ oster_delta <- function(model_restricted, model_full, r_max_multiplier = 1.3) {
   ))
 }
 
-oster_pre <- oster_delta(m_bivariate, m_pretreat)
+oster_dag <- oster_delta(m_bivariate, m_dag)
 
-oster_pre %>%
+oster_dag %>%
   mutate(across(where(is.numeric), ~sprintf("%.3f", .))) %>%
-  mutate(comparison = "Bivariate -> Pre-treatment") %>%
+  mutate(comparison = "Bivariate -> DAG-justified (panel)") %>%
   select(Comparison = comparison, `beta restricted` = beta_restricted,
          `beta full` = beta_full, `R2 restricted` = R2_restricted,
          `R2 full` = R2_full, `R2 max` = R2_max, `delta*` = delta_star) %>%
@@ -510,15 +677,26 @@ oster_pre %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
-The delta\* for bivariate -> pre-treatment may appear large, suggesting
-robustness.  But this is misleading: the pre-treatment confounders (age,
-language, org type) absorb only a modest share of the raw gap (the R-squared
-increase is small), so the "ruler" against which delta\* is measured is
-short.  A large delta\* does not mean the estimate is safe --- it means the
-pre-treatment confounders are simply not very informative about the
-selection process.  The most important confounders (developer skill, team
-culture, organizational resources) are precisely the ones we cannot observe
-from GitHub API data.
+The $\delta^*$ is well below 1, indicating that the estimate is **not
+robust** to unobserved confounding.  Three reinforcing factors drive
+this result:
+
+1. **Massive coefficient drop**: the coefficient falls substantially
+   from the bivariate to the DAG-justified model, meaning the
+   observables already "explain away" most of the naive effect.
+2. **Very high $R^2$**: the DAG-justified model explains most of the
+   outcome variance, leaving little residual room for any additional
+   variable --- observed or unobserved --- to exploit.
+3. **Large $R^2$ jump**: the observables increase explanatory power
+   dramatically from the bivariate to the full model, inflating the
+   denominator and further shrinking $\delta^*$.
+
+In plain language: given how much the coefficient already dropped and
+how much variance the observables already explain, even a relatively
+weak unobserved confounder could eliminate the remaining effect.  The
+most important confounders --- developer skill and team culture --- are
+precisely the ones we cannot observe from GitHub API data, and they are
+plausibly strong enough to account for the residual association.
 
 # Stage 3: Can a Better Estimator Help?
 
@@ -529,15 +707,18 @@ help.  If the problem is unobserved confounding, all three estimators will
 converge on the same biased answer --- because they share the same
 identifying assumption (conditional ignorability given observables).
 
-We use only the pre-treatment covariates, since they are the only
-defensible adjustment set.
+We use only the DAG-justified pre-treatment covariates, since they are
+the only defensible adjustment set.
 
 ## 3.1 Propensity Score Matching
 
 ```{r psm_estimation}
-ps_formula <- treated ~ repo_age_yr + queried_language + is_org
+ps_formula_dag <- treated ~ repo_age_yr + queried_language + is_org +
+                    log_pre_stars + log_pre_issues + log_pre_forks +
+                    log_pre_prs + log_pre_releases + log_pre_contribs +
+                    log_pre_commits
 
-m_ps <- matchit(ps_formula, data = df, method = "nearest",
+m_ps <- matchit(ps_formula_dag, data = df_dag, method = "nearest",
                 distance = "glm", ratio = 1, replace = FALSE)
 
 summary(m_ps)
@@ -547,7 +728,10 @@ summary(m_ps)
 matched_data <- match.data(m_ps)
 
 m_psm <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
-               queried_language + is_org,
+               queried_language + is_org +
+               log_pre_stars + log_pre_issues + log_pre_forks +
+               log_pre_prs + log_pre_releases + log_pre_contribs +
+               log_pre_commits,
              data = matched_data, weights = weights)
 
 psm_ct <- coeftest(m_psm, vcov = vcovHC(m_psm, type = "HC1"))
@@ -565,19 +749,23 @@ psm_result <- data.frame(
 ## 3.2 Inverse Probability Weighting
 
 ```{r ipw}
-df$ps <- predict(glm(ps_formula, data = df, family = binomial), type = "response")
+df_dag$ps <- predict(glm(ps_formula_dag, data = df_dag, family = binomial),
+                     type = "response")
 
-# IPW weights for ATT: treated get weight 1, controls get PS/(1-PS)
-df$ipw_weight <- ifelse(df$treated == 1, 1, df$ps / (1 - df$ps))
+df_dag$ipw_weight <- ifelse(df_dag$treated == 1, 1,
+                            df_dag$ps / (1 - df_dag$ps))
 
-ess_control <- sum(df$ipw_weight[df$treated == 0])^2 /
-               sum(df$ipw_weight[df$treated == 0]^2)
+ess_control <- sum(df_dag$ipw_weight[df_dag$treated == 0])^2 /
+               sum(df_dag$ipw_weight[df_dag$treated == 0]^2)
 cat(sprintf("IPW effective sample size (controls): %.0f of %d\n",
-            ess_control, sum(df$treated == 0)))
+            ess_control, sum(df_dag$treated == 0)))
 
 m_ipw <- lm(log_avg_monthly_commits ~ treated + repo_age_yr +
-               queried_language + is_org,
-             data = df, weights = ipw_weight)
+               queried_language + is_org +
+               log_pre_stars + log_pre_issues + log_pre_forks +
+               log_pre_prs + log_pre_releases + log_pre_contribs +
+               log_pre_commits,
+             data = df_dag, weights = ipw_weight)
 
 ipw_ct <- coeftest(m_ipw, vcov = vcovHC(m_ipw, type = "HC1"))
 idx <- which(rownames(ipw_ct) == "treated")
@@ -587,7 +775,7 @@ ipw_result <- data.frame(
   coef   = ipw_ct[idx, 1],
   se     = ipw_ct[idx, 2],
   p_val  = ipw_ct[idx, 4],
-  n      = nrow(df)
+  n      = nrow(df_dag)
 )
 ```
 
@@ -596,12 +784,12 @@ ipw_result <- data.frame(
 ```{r three_estimator_comparison}
 all_results <- bind_rows(
   ols_results %>%
-    filter(model == "Pre-treatment covariates only") %>%
-    transmute(method = "OLS (pre-treatment)", coef, se, p_val, n),
+    filter(model == "DAG-justified (panel pre-treatment)") %>%
+    transmute(method = "OLS (DAG-justified)", coef, se, p_val, n),
   psm_result,
   ipw_result
 ) %>%
-  mutate(method = factor(method, levels = c("OLS (pre-treatment)",
+  mutate(method = factor(method, levels = c("OLS (DAG-justified)",
                                             "PSM (1:1 NN)", "IPW (ATT)")))
 
 all_results %>%
@@ -612,99 +800,19 @@ all_results %>%
   ) %>%
   select(Method = method, Coefficient = coef, `Robust SE` = se,
          `p-value` = p_val, N = n) %>%
-  kable(caption = "Table 3: Three Estimators, Same Pre-Treatment Covariates") %>%
+  kable(caption = "Table 3: Three Estimators, Same DAG-Justified Pre-Treatment Covariates") %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
-```{r three_estimator_plot, fig.width=8, fig.height=3}
-ggplot(all_results, aes(x = method, y = coef)) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
-  geom_pointrange(aes(ymin = coef - 1.96 * se, ymax = coef + 1.96 * se,
-                      color = method),
-                  size = 0.8) +
-  scale_color_manual(values = c("OLS (pre-treatment)" = "#4E79A7",
-                                "PSM (1:1 NN)"        = "#59A14F",
-                                "IPW (ATT)"           = "#F28E2B")) +
-  labs(x = NULL, y = "Coefficient on AI Adoption",
-       title = "Three Estimators Converge Under Pre-Treatment Covariates",
-       caption = "All use pre-treatment covariates only. 95% CI with HC1 robust SEs.") +
-  theme_minimal(base_size = 13, base_family = "Linux Libertine") +
-  theme(legend.position = "none",
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank())
-```
-
-The three estimators converge tightly.  Switching from regression to
-matching to weighting changes nothing because all three share the same
-identifying assumption --- conditional ignorability given pre-treatment
-covariates --- and that assumption is violated by the unobserved
-confounders that no GitHub API data can capture.  **Using PSM or IPW does
-not automatically make a study "causal inference."**
-
-# Synthesis: The Cross-Sectional Ceiling
-
-```{r summary_table}
-b_biv  <- sprintf("%.2f", coef(m_bivariate)["treated"])
-b_pre  <- sprintf("%.2f", coef(m_pretreat)["treated"])
-b_kit  <- sprintf("%.2f", coef(m_kitchen)["treated"])
-drop_pct <- sprintf("%.0f", (1 - coef(m_pretreat)["treated"] /
-                                  coef(m_bivariate)["treated"]) * 100)
-d_pre  <- sprintf("%.2f", oster_pre$delta_star)
-
-summary_stages <- data.frame(
-  Stage = c("Stage 1: Naive analysis",
-            "Stage 2: Temporal collapse diagnosis",
-            "Stage 3: Estimator convergence"),
-  Finding = c(
-    paste0("L2+ repos have dramatically more monthly commits than L1 repos, ",
-           "with massive imbalance on every covariate (all SMDs exceed +/-0.1). ",
-           "Kitchen-sink OLS yields a positive, significant coefficient (",
-           b_kit, "). A naive analyst might stop here."),
-    paste0("Temporal collapse makes DAG-based covariate selection incoherent: ",
-           "time-varying covariates (stars, PRs, CI, ...) are simultaneously ",
-           "confounders and colliders in the collapsed graph. Only pre-treatment ",
-           "covariates (age, language, org type) are defensible. Pre-treatment ",
-           "coefficient (", b_pre, ") is ", drop_pct, "% below bivariate (",
-           b_biv, ") but fragile: Oster delta* = ", d_pre,
-           " (large because the pre-treatment covariates are weak proxies, ",
-           "not because the estimate is robust)."),
-    paste0("OLS, PSM, and IPW converge tightly under pre-treatment covariates ",
-           "--- the estimator is not the bottleneck; the identifying assumption is.")
-  )
-)
-
-summary_stages %>%
-  kable(caption = "Cross-Sectional Diagnostic Summary") %>%
-  kable_styling(bootstrap_options = "striped", full_width = FALSE)
-```
-
-## Why the coefficient survives controls
-
-It is tempting to interpret the persistently significant coefficient as
-evidence of a genuine causal effect.  But the persistence is *exactly*
-what selection bias predicts:
-
-- **Developer skill** (unobserved) is plausibly the strongest confounder.
-  Skilled developers both commit more code *and* adopt AI tools earlier.
-  No GitHub API covariate captures this.
-- **Organizational investment** (unobserved) drives both tooling adoption
-  and development velocity.  Being organization-owned (which we observe)
-  is a crude proxy; the actual confounders are team size, budget, and
-  engineering culture.
-- **Reverse causality** compounds the problem: high-velocity projects
-  have more reason to invest in AI tooling, so the causal arrow may
-  run from productivity to adoption rather than the reverse.
-
-The observables we control for are *proxies* for the true confounders, not
-the confounders themselves.  The proxies absorb some but not all of the
-selection, which is why the coefficient attenuates but does not vanish.
-
-## The bridge to longitudinal data
-
-Cross-sectional data cannot separate "AI tools increase productivity"
-from "productive teams adopt AI tools."  The identifying variation must
-come from *within-repo temporal changes* --- comparing the same project
-before and after AI adoption, so that all time-invariant confounders
-(developer skill, org culture, project domain) are absorbed by
-construction.  This is precisely what the longitudinal analysis in
-Section 4.2 provides.
+The three estimators target slightly different estimands --- OLS
+approximates the ATE while PSM and IPW estimate the ATT --- and operate
+on different effective samples (PSM discards unmatched controls; IPW
+reweights them).  These differences account for the modest variation in
+point estimates, but all three coefficients are positive, significant,
+and their confidence intervals overlap.  The substantive conclusion is
+the same: switching from regression to matching to weighting changes
+nothing because all three share the same identifying assumption ---
+conditional ignorability given pre-treatment covariates --- and that
+assumption is violated by the unobserved confounders that no GitHub API
+data can capture.  **Using PSM or IPW does not automatically make a study
+"causal inference."**
