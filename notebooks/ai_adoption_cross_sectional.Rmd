@@ -205,10 +205,21 @@ compute_smd <- function(data, var, treat_col = "treated") {
   (mean(t_vals, na.rm = TRUE) - mean(c_vals, na.rm = TRUE)) / pooled_sd
 }
 
+# Create language dummy variables
+languages <- sort(unique(df$queried_language))
+for (lang in languages) {
+  col_name <- paste0("lang_", gsub("[^A-Za-z]", "", lang))
+  df[[col_name]] <- as.integer(df$queried_language == lang)
+}
+lang_vars <- paste0("lang_", gsub("[^A-Za-z]", "", languages))
+lang_labels <- setNames(languages, lang_vars)
+lang_temporal <- setNames(rep("Pre-treatment", length(languages)), lang_vars)
+
 # Define variables, labels, and temporal status
 table1_vars <- c(
   "avg_monthly_commits",
   "repo_age_yr", "is_org",
+  lang_vars,
   "log_stars", "log_forks", "log_size",
   "log_total_commits", "log_total_prs", "log_total_issues",
   "log_releases", "log_open_issues",
@@ -219,6 +230,7 @@ table1_labels <- c(
   "avg_monthly_commits" = "Avg monthly commits",
   "repo_age_yr"         = "Repo age (years)",
   "is_org"              = "Organization owner",
+  lang_labels,
   "log_stars"           = "log(Stars)",
   "log_forks"           = "log(Forks)",
   "log_size"            = "log(Size KB)",
@@ -236,6 +248,7 @@ table1_temporal <- c(
   "avg_monthly_commits" = "Outcome",
   "repo_age_yr"         = "Pre-treatment",
   "is_org"              = "Pre-treatment",
+  lang_temporal,
   "log_stars"           = "Time-varying",
   "log_forks"           = "Time-varying",
   "log_size"            = "Time-varying",
@@ -287,10 +300,9 @@ differences --- they reflect a coherent selection mechanism:
 well-resourced, actively maintained, organization-backed projects are the
 ones that adopt AI tools.
 
-Note: the primary language is not shown in the table but is another
-important pre-treatment covariate.  TypeScript (53% treated) and Go (31%)
-have strong AI tooling ecosystems, while C (9%) and Swift (13%) barely
-participate.
+The programming language distribution also differs markedly: TypeScript
+and Go repositories are heavily represented among adopters, while C and
+Swift barely participate.
 
 ## 1.2 Kitchen-Sink Regression
 

@@ -20,6 +20,7 @@
 \usepackage{tikz}
 \usepackage{enumitem}
 \usepackage{booktabs}
+\usepackage{threeparttable}
 
 \usetikzlibrary{positioning}
 \graphicspath{{../plots/}}
@@ -779,47 +780,312 @@ Whether the same dynamics hold for smaller, less visible, or proprietary project
 \subsection{Cross-Sectional Methods}
 \label{sec:cross-sectional}
 
-\TODO{Introductory paragraph: We start from the approach most SE researchers would take and progressively diagnose its failures using the toolkit from Section~\ref{sec:primer}.}
+We begin with the approach commonly seen in mining software repositories studies, in which the researcher may: (1) start with a comparison of treated and control repositories using a cross-sectional snapshot, and then (2) run a regression with all available covariates, and interpret the surviving coefficient as suggestive evidence of an effect.
+We then use the toolkit from Section~\ref{sec:primer} to diagnose the problems with this approach and show a DAG-justified regression with pre-treatment covariates and the use of two more sophisticated estimators (i.e., propensity score matching and inverse probability weighting).
+Finally, we will use the same toolkit to demostrate the foundamental limitation of unobserved confounders to motivate the use of longitudinal data and design based identification.
 
 \paragraph{Na\"ive Group Comparison.}
 \label{sec:naive-comparison}
 
-\TODO{Compare raw outcome means between treated and control repositories. Document the large raw difference in monthly commits and the massive covariate imbalance across all dimensions (Table: descriptive comparison). A na\"ive analyst might interpret this as evidence of an AI tool effect, but Section~\ref{sec:primer-naive} explained why such comparisons conflate genuine effects with selection bias.}
+Following the approach outlined in Section~\ref{sec:primer-naive}, we start by comparing the treated (repositories with AI configuration files) and control (repositories without) groups on the outcome and all available covariates.
+Table~\ref{tab:descriptive} presents this comparison, with covariates classified by their temporal status---a distinction we motivate below.
+The raw gap is enormous: Treated repositories average 412 monthly commits versus 71 for controls---a nearly 6$\times$ difference (SMD $= 0.31$).
+But the imbalance extends far beyond the outcome.
+Every covariate exceeds the conventional $\pm 0.1$ SMD threshold for balance, with many far exceeding it.
+Treated repositories are younger (7.7 vs.\ 9.4 years), larger in codebase size (SMD $= 0.75$), and more likely to be organization-owned (81\% vs.\ 65\%); they have more stars, forks, pull requests (SMD $= 0.91$), issues, and releases; and they are far more likely to have CI/CD pipelines (96\% vs.\ 80\%).
+The programming language distribution also differs markedly: TypeScript and Go repositories are heavily represented among adopters, while C and Swift barely participate.
+These are not random differences but rather reflect a coherent selection mechanism: Well-resourced, actively maintained, organization-backed projects are the ones that adopt AI tools.
+A na\"ive analyst might interpret the raw gap in monthly commits as evidence that AI tools boost productivity, but Section~\ref{sec:primer-naive} explained why such comparisons conflate any genuine effect with selection bias.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Descriptive comparison of treated (AI config present) and control (no AI config) repositories.
+SMD = standardized mean difference.
+Covariates are classified by temporal status: ``pre-treatment'' variables are determined at creation and cannot be affected by AI adoption under any timing; ``time-varying'' variables accumulate before and after adoption, making their cross-sectional values temporally ambiguous (Section~\ref{sec:temporal-collapse}).
+All count variables are log-transformed with $\log(1+x)$.}
+\label{tab:descriptive}
+\small
+\begin{tabular}{lrrrlrrr}
+\toprule
+\multicolumn{4}{c}{Pre-treatment\tnote{a}} & \multicolumn{4}{c}{Time-varying} \\
+\cmidrule(r){1-4} \cmidrule(l){5-8}
+Variable & Control Mean & Treated Mean & SMD & Variable & Control Mean & Treated Mean & SMD \\
+\midrule
+Repo age (yr) & 9.36 & 7.73 & $-$0.370 & \textbf{Avg monthly commits} & \textbf{71.38} & \textbf{412.38} & \textbf{0.309} \\
+Org.\ owner\tnote{b} & 0.65 & 0.81 & 0.366 & log(Stars) & 10.32 & 10.66 & 0.441 \\
+C & 0.12 & 0.04 & $-$0.294 & log(Forks) & 8.15 & 8.57 & 0.388 \\
+C++ & 0.11 & 0.07 & $-$0.115 & log(Size KB) & 10.47 & 11.88 & 0.754 \\
+Go & 0.09 & 0.14 & 0.148 & log(Total commits) & 7.89 & 9.06 & 0.743 \\
+Java & 0.11 & 0.06 & $-$0.201 & log(Total PRs) & 6.78 & 8.35 & 0.911 \\
+JavaScript & 0.11 & 0.07 & $-$0.115 & log(Total issues) & 6.92 & 7.85 & 0.461 \\
+Python & 0.10 & 0.11 & 0.023 & log(Releases) & 3.12 & 4.32 & 0.610 \\
+Ruby & 0.10 & 0.09 & $-$0.034 & log(Open issues) & 5.13 & 5.78 & 0.378 \\
+Rust & 0.09 & 0.13 & 0.130 & Has CI/CD & 0.80 & 0.96 & 0.540 \\
+Swift & 0.11 & 0.06 & $-$0.201 & Has wiki & 0.58 & 0.40 & $-$0.348 \\
+TypeScript & 0.06 & 0.23 & 0.499 & Has discussions & 0.53 & 0.64 & 0.223 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item[a] We make a simplying assumption that organization ownership and primary language is pre-treatment with the intuition that both should be very rare for mature and established repositories in our observed time window (2024 - 2026). Technically, both can change over time (repositories may transfer between owners, and the primary language label may shift as the codebase evolves).
+\item[b] Proportion of repositories owned by a GitHub organization rather than a personal account.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
 
 \paragraph{Kitchen-Sink Regression.}
 \label{sec:kitchen-sink}
 
-\TODO{Add all available covariates to an OLS regression. The coefficient on AI adoption remains highly significant and ``looks'' robust. A researcher following standard MSR practice might stop here. But should we trust this estimate?}
+A typical SE researcher would now run a multivariate regression controlling for everything available---the ``kitchen-sink'' approach.
+We regress $\log(\text{monthly commits})$ on the treatment indicator and all cross-sectional covariates: repository age, programming language, organization ownership, CI/CD presence, stars, forks, repository size, pull requests, issues, and releases.
+The coefficient on AI adoption is $0.946$ ($\text{SE} = 0.116$, $p < 0.001$, $R^2 = 0.59$), surviving a battery of controls.
+A researcher following standard MSR practice might stop here and conclude that \emph{there is suggestive correlational evidence that AI adoption is associated with \textbf{157.5\%} (i.e., $e^{0.946} - 1$) higher development velocity, holding all observables constant}.
+In this tutorial, we are going to push one step further: \textbf{Under what assumptions can this 157.5\% estimate be interpreted as a causal effect? Are these assumptions plausible?}
 
-\paragraph{The Temporal DAG.}
+\paragraph{The Temporal DAG}
 \label{sec:temporal-dag}
 
-\TODO{Construct the true temporal DAG for this setting. Time-index each variable: $\text{Stars}_{t-1} \to \text{Adoption}_t$, $\text{Stars}_{t-1} \to \text{Commits}_t$, $\text{Adoption}_t \to \text{Stars}_{t+1}$, $\text{Commits}_t \to \text{Stars}_{t+1}$. In this DAG, covariate roles are unambiguous: Pre-treatment stars are a confounder, post-treatment stars are a collider, and the back-door adjustment set is clear. Connect to Figure~\ref{fig:ai-dag} and elaborate on the footnote there about temporal ambiguity.}
+Recall in Section~\ref{sec:primer-po} that the formal identifying assumption for linear regressions to carry a causal interpretation is conditional ignorability according to the potential outcomes framework.
+Also recall in Section~\ref{sec:primer-dags} that causal DAGs and the back-door criterion provides a principled rule for the researcher to argue whether the covariates have been appropriately selected to satisfy the conditional ignorability assumption.
+To answer this question, we apply the DAG framework from Section~\ref{sec:primer-dags}.
+Recall that Figure~\ref{fig:ai-dag} presented a plausible DAG for the AI tools--velocity question, with a footnote noting that the role of Stars is temporally ambiguous.
+We now resolve this ambiguity by constructing the proper \emph{temporal DAG} that time-indexes each variable.
+
+Consider Stars as an example.
+In the true data-generating process, stars accumulate over time, so the actual causal DAG has time-indexed nodes:
+\begin{itemize}[leftmargin=15pt]
+    \item $\text{Stars}_{t-1}$ (\emph{before} AI adoption) is a \textbf{confounder}: Popular projects attract AI-savvy contributors ($\text{Stars}_{t-1} \to \text{Adoption}_t$) \emph{and} have more active contributor bases ($\text{Stars}_{t-1} \to \text{Commits}_t$).
+    \item $\text{Stars}_{t+1}$ (\emph{after} AI adoption) is a \textbf{collider}: Both AI adoption and high commit activity increase a project's visibility ($\text{Adoption}_t \to \text{Stars}_{t+1} \leftarrow \text{Commits}_t$).
+\end{itemize}
+In this temporal DAG, the adjustment set is unambiguous: Condition on $\text{Stars}_{t-1}$, never on $\text{Stars}_{t+1}$.
+The same logic applies to every time-varying characteristic: Issues, forks, PRs, releases, repository size, and contributor count are each confounders in their pre-treatment incarnation and colliders in their post-treatment incarnation.
+
+Figure~\ref{fig:temporal-dag} presents the full temporal DAG for our setting.
+We group the time-varying covariates into four high-level concepts---\emph{Popularity} (stars), \emph{Demand} (issues), \emph{Activity} (forks, PRs, commits, releases), and \emph{Team Size} (active contributors)---and split each into a pre-treatment node (confounder) and a post-treatment node (collider).
+The structurally pre-treatment confounders---Domain (programming language), Organization (owner type), and Project Maturity (repo age)---remain as in Figure~\ref{fig:ai-dag}, along with Team Skill, which is entirely unobserved.
+The causal paths run through two mediators: Code Generation and Workflow Automation.
+Applying the back-door criterion (Section~\ref{sec:primer-dags}) to this temporal DAG yields an unambiguous adjustment set: All pre-treatment nodes (both structurally pre-treatment and time-varying-before-treatment) are confounders that must be conditioned on; all post-treatment nodes are colliders that must not be conditioned on; and the mediators must not be conditioned on because they lie on the causal path.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+    var/.style={draw, rounded corners, minimum width=2.2cm, minimum height=0.5cm, font=\scriptsize, align=center},
+    unobs/.style={draw, rounded corners, dashed, minimum width=2.2cm, minimum height=0.5cm, font=\scriptsize, align=center},
+    arr/.style={->, >=stealth, thin},
+    scale=0.95, transform shape
+]
+% Structural pre-treatment confounders (top row)
+\node[var] (domain) at (0, 3.5) {Domain};
+\node[var] (org) at (2.8, 3.5) {Organization};
+\node[unobs] (skill) at (5.6, 3.5) {Team Skill};
+\node[var] (maturity) at (8.4, 3.5) {Proj.\ Maturity};
+
+% Pre-treatment time-varying confounders (second row)
+\node[var] (pop_pre) at (0, 2) {Popularity$_{t\text{-}1}$};
+\node[var] (demand_pre) at (2.8, 2) {Demand$_{t\text{-}1}$};
+\node[var] (activity_pre) at (5.6, 2) {Activity$_{t\text{-}1}$};
+\node[var] (team_pre) at (8.4, 2) {Team Size$_{t\text{-}1}$};
+
+% Main causal chain (middle)
+\node[var] (treat) at (1.4, 0.5) {AI Adoption};
+\node[var] (codegen) at (4.6, 0.3) {Code Gen.};
+\node[var] (workflow) at (4.6, 0.8) {Workflow};
+\node[var] (outcome) at (7.7, 0.5) {Dev.\ Velocity};
+
+% Post-treatment colliders (bottom row)
+\node[var] (pop_post) at (0, -1) {Popularity$_{t\text{+}1}$};
+\node[var] (demand_post) at (2.8, -1) {Demand$_{t\text{+}1}$};
+\node[var] (activity_post) at (5.6, -1) {Activity$_{t\text{+}1}$};
+\node[var] (team_post) at (8.4, -1) {Team Size$_{t\text{+}1}$};
+
+% Structural confounders -> treatment and outcome
+\draw[arr] (domain) -- (treat);
+\draw[arr] (domain.south) to[bend right=10] (outcome.north);
+\draw[arr] (org) -- (treat);
+\draw[arr] (org) -- (outcome);
+\draw[arr] (skill) -- (treat);
+\draw[arr] (skill) -- (outcome);
+\draw[arr] (maturity) -- (treat);
+\draw[arr] (maturity) -- (outcome);
+
+% Pre-treatment confounders -> treatment and outcome
+\draw[arr] (pop_pre) -- (treat);
+\draw[arr] (pop_pre.east) to[bend left=8] (outcome);
+\draw[arr] (demand_pre) -- (treat);
+\draw[arr] (demand_pre) -- (outcome);
+\draw[arr] (activity_pre) -- (treat);
+\draw[arr] (activity_pre) -- (outcome);
+\draw[arr] (team_pre) -- (treat);
+\draw[arr] (team_pre) -- (outcome);
+
+% Mediators
+\draw[arr] (treat) -- (codegen);
+\draw[arr] (treat) -- (workflow);
+\draw[arr] (codegen) -- (outcome);
+\draw[arr] (workflow) -- (outcome);
+
+% Collider paths
+\draw[arr] (treat) -- (pop_post);
+\draw[arr] (outcome) -- (pop_post);
+\draw[arr] (treat) -- (demand_post);
+\draw[arr] (outcome) -- (demand_post);
+\draw[arr] (treat) -- (activity_post);
+\draw[arr] (outcome) -- (activity_post);
+\draw[arr] (treat) -- (team_post);
+\draw[arr] (outcome) -- (team_post);
+\end{tikzpicture}
+\caption{Temporal DAG for the AI coding tools and development velocity problem, resolving the temporal ambiguity noted in Figure~\ref{fig:ai-dag}.
+Each time-varying covariate is split into a pre-treatment node (confounder, solid border) and a post-treatment node (collider, solid border).
+Team Skill (dashed border) is entirely unobserved.
+The back-door criterion yields an unambiguous adjustment set: Condition on all pre-treatment nodes; never condition on post-treatment nodes or mediators.}
+\label{fig:temporal-dag}
+\end{figure}
 
 \paragraph{Temporal Collapse in Cross-Sectional Data.}
 \label{sec:temporal-collapse}
 
-\TODO{Show that a cross-sectional snapshot collapses time-indexed nodes into a single ``stars'' node with both incoming and outgoing arrows---a cyclic graph, not a DAG. This is pervasive in MSR studies that rely on snapshot data. Connect to Hern\'{a}n \& Robins (Ch.~20) on treatment-confounder feedback. Consequence: Only \emph{structurally pre-treatment} covariates (repo age, language, org type---determined at creation, cannot be affected by adoption under any timing) are defensible controls. All time-varying covariates are temporally ambiguous.}
+The temporal DAG makes covariate roles unambiguous---but it requires time-indexed variables.
+A typical MSR study queries the GitHub API once at the time of the study, obtaining a single \emph{snapshot} value for each covariate.
+This snapshot \emph{collapses} the time-indexed nodes into a single atemporal variable.
+For Stars, the snapshot merges $\text{Stars}_{t-1}$ (confounder) and $\text{Stars}_{t+1}$ (collider) into a single ``Stars'' node.
+In the resulting graph, Stars has both incoming and outgoing arrows to both treatment and outcome---the graph is \emph{cyclic}, not a DAG, and no adjustment formula applies.
+
+This temporal collapse is not specific to Stars: Every time-varying covariate in our dataset---PRs, issues, forks, repository size, releases, CI/CD presence, contributor count---suffers from the same problem.
+The snapshot value includes both pre-treatment variation (which should be conditioned on) and post-treatment variation (which should not), and the two are inextricably mixed.
+This connects to a recognized problem in the causal inference literature: \citet[Ch.~20]{hernan2020causal} describe this as ``treatment-confounder feedback,'' where time-varying covariates are simultaneously confounders and descendants of treatment.
+
+Table~\ref{tab:covariate-classification} classifies the available covariates by temporal status.
+Only three covariates are \emph{structurally pre-treatment}: Repository age (determined at creation), primary programming language (determined at creation), and organization ownership (determined at creation).
+These cannot be affected by AI adoption under any plausible timing and are therefore defensible controls in the cross-sectional snapshot.
+All remaining covariates are \emph{temporally ambiguous}: Their snapshot values contain both pre-treatment and post-treatment variation, and conditioning on them may introduce collider bias, block causal paths, or both.
+
+\begin{table}[t]
+\centering
+\caption{Classification of covariates by temporal status.
+Only structurally pre-treatment covariates are defensible controls in a cross-sectional analysis; time-varying covariates are temporally ambiguous because their snapshot values mix pre-treatment (confounder) and post-treatment (collider) variation.}
+\label{tab:covariate-classification}
+\small
+\begin{tabular}{lll}
+\toprule
+Covariate & Temporal Status & Justification \\
+\midrule
+Repo age & Pre-treatment & Determined at creation \\
+Primary language & Pre-treatment & Determined at creation \\
+Organization owner & Pre-treatment & Determined at creation \\
+\midrule
+Stars, Forks & Temporally ambiguous & Accumulate before and after adoption \\
+Total commits, PRs, Issues & Temporally ambiguous & Include post-adoption activity \\
+Releases & Temporally ambiguous & Include post-adoption releases \\
+Repo size (KB) & Temporally ambiguous & Includes post-adoption code growth \\
+CI/CD, Wiki, Discussions & Temporally ambiguous & May change as part of adoption wave \\
+Open issues & Temporally ambiguous & Snapshot mixes pre/post-adoption state \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{DAG-Justified Regression.}
 \label{sec:dag-justified}
 
-\TODO{Table: Compare kitchen-sink regression vs.\ regression restricted to structurally pre-treatment covariates. Coefficient attenuates as controls are added, but the drop from pre-treatment to kitchen-sink is uninterpretable---the collapsed graph is not a DAG, so no adjustment formula applies. Apply the back-door criterion (Section~\ref{sec:primer-dags}) to the temporal DAG to justify the pre-treatment-only specification.}
+Armed with the temporal DAG, we can now construct a principled regression specification.
+But the three structurally pre-treatment covariates available in the cross-sectional snapshot (repo age, language, organization) are weak proxies for the confounders that drive selection into AI adoption.
+The temporal DAG identifies the full adjustment set---all pre-treatment values of time-varying covariates---but the cross-sectional snapshot destroys them.
+
+Fortunately, our panel dataset (Section~\ref{sec:study-setting}) provides monthly observations for each repository.
+For treated repositories, we know the exact treatment month; for control repositories, all months are pre-treatment.
+We aggregate only pre-treatment months to recover genuinely pre-treatment values of the time-varying covariates: pre-treatment stars, issues, forks, PRs merged, releases, average active contributors, and average monthly commits.
+This restores the clean temporal structure that the snapshot destroyed and allows us to condition on the full DAG-justified adjustment set---minus Team Skill, which remains entirely unobserved.
+
+Table~\ref{tab:ols-comparison} compares three OLS specifications: the bivariate regression (no controls), the kitchen-sink model (all snapshot covariates, many temporally ambiguous), and the DAG-justified model (only pre-treatment covariates backed by the temporal DAG).
+The bivariate coefficient is $2.314$ ($R^2 = 0.21$), reflecting raw selection.
+The kitchen-sink coefficient attenuates to $0.946$ ($R^2 = 0.59$) after adding all available controls, but its interpretation is incoherent: The collapsed cross-sectional graph is not a DAG, so no adjustment formula tells us whether we are removing confounding bias, blocking causal paths through mediators, or opening spurious paths through colliders.
+The DAG-justified specification further attenuates to $0.696$ ($R^2 = 0.83$), conditioning only on covariates that the temporal DAG identifies as pre-treatment confounders, each computed from panel data before the treatment month.
+This is the only specification with a principled justification from the back-door criterion (Section~\ref{sec:primer-dags}).
+
+Pre-treatment Activity is the most important addition: It captures baseline development velocity, the strongest predictor of both AI adoption (high-velocity projects have incentive to adopt) and future velocity (persistence).
+Including it effectively asks: \emph{Conditional on repositories having similar pre-treatment activity, popularity, demand, and team size, do AI-adopting repositories subsequently exhibit higher commit rates?}
+
+\begin{table}[t]
+\centering
+\caption{OLS estimates of the AI adoption effect on $\log(\text{monthly commits})$.
+The bivariate coefficient reflects raw selection.
+The kitchen-sink coefficient adds all snapshot covariates but is uninterpretable because the collapsed graph is cyclic.
+The DAG-justified specification conditions only on pre-treatment confounders identified by the temporal DAG (Figure~\ref{fig:temporal-dag}).
+All standard errors are heteroscedasticity-robust (HC1).}
+\label{tab:ols-comparison}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Model & Coeff.\ & Robust SE & $p$-value & $R^2$ \\
+\midrule
+Bivariate (no controls) & 2.314 & 0.124 & ${<}0.001$ & 0.210 \\
+Kitchen-sink (all snapshot covariates) & 0.946 & 0.116 & ${<}0.001$ & 0.591 \\
+DAG-justified (panel pre-treatment) & 0.696 & 0.090 & ${<}0.001$ & 0.827 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{Sensitivity Analysis.}
 \label{sec:cross-sectional-sensitivity}
 
-\TODO{Apply Oster bounds and sensemakr (robustness values from Section~\ref{sec:primer-po}) to the pre-treatment-only estimate. Show that the estimate is fragile: Structurally pre-treatment covariates are weak proxies for the real confounders (developer skill, team culture), and a moderate amount of unmeasured confounding would explain away the result.}
+The DAG-justified estimate is the most principled cross-sectional specification we can construct, but the temporal DAG reveals an important gap: Team Skill remains entirely unobserved.
+No variable in the GitHub API data captures developer expertise, team culture, or organizational practices---the confounders most plausibly responsible for the residual association between AI adoption and development velocity.
+How robust is the DAG-justified estimate to this unobserved confounding?
+
+We apply the Oster~\cite{oster2019unobservable} proportional selection method (Section~\ref{sec:primer-po}), which asks: Given how much the treatment coefficient changed when we added the observable pre-treatment controls, how strong would selection on unobservables need to be---relative to that same selection on observables---to drive the coefficient all the way to zero?
+The key quantity is $\delta^*$.
+The conventional threshold is $\delta^* \geq 1$: If unobservables would need to be \emph{at least as strong as} all the observables combined to eliminate the effect, the result is considered robust.
+
+Moving from the bivariate to the DAG-justified specification, $\delta^* = 0.12$---far below the robustness threshold of~1.
+Three reinforcing factors drive this fragility:
+\begin{enumerate}[leftmargin=15pt]
+    \item \textbf{Massive coefficient drop.} The treatment coefficient falls from $2.314$ to $0.696$---the observables already explain away 70\% of the na\"ive effect.
+    \item \textbf{High $R^2$.} The DAG-justified model explains 83\% of the outcome variance, leaving little residual room for any additional variable to exploit.
+    \item \textbf{Large $R^2$ jump.} The observables increase $R^2$ from $0.21$ to $0.83$, inflating the denominator of $\delta^*$.
+\end{enumerate}
+In plain language: Given how much the coefficient already dropped and how much variance the observables already explain, even a relatively weak unobserved confounder could eliminate the remaining effect.
+The most plausible candidate---developer skill and team culture---is precisely the confounder that no GitHub API data can address, and it is plausibly strong enough to account for the residual association.
 
 \paragraph{Estimator Convergence: OLS, PSM, and IPW.}
 \label{sec:estimator-convergence}
 
-\TODO{Table: OLS, propensity score matching (PSM), and inverse probability weighting (IPW) using the same pre-treatment covariates yield nearly identical estimates. The estimator is not the bottleneck; the identifying assumption is. Using PSM or IPW does not automatically make a study ``causal inference''---if the conditional ignorability assumption fails, all three estimators are biased in the same direction.}
+A natural response to the fragility of the OLS estimate might be to try a ``better'' estimator.
+Propensity score matching (PSM) and inverse probability weighting (IPW) are increasingly popular in SE research, sometimes presented as though they automatically confer causal credibility.
+If the problem were model misspecification---nonlinearity, poor functional form, or lack of overlap---these methods might indeed help, because they relax the linearity assumptions of OLS\@.
+But if the problem is unobserved confounding, all three estimators will converge on the same biased answer, because they share the same identifying assumption: conditional ignorability given the observed pre-treatment covariates.
+
+Table~\ref{tab:three-estimators} confirms this prediction.
+Using the same DAG-justified pre-treatment covariates, OLS ($\hat{\tau} = 0.696$), 1:1 nearest-neighbor propensity score matching ($\hat{\tau} = 0.574$), and ATT-targeted inverse probability weighting ($\hat{\tau} = 0.509$) yield point estimates that are all positive, statistically significant ($p < 0.001$), and have overlapping confidence intervals.
+The three estimators target slightly different estimands---OLS approximates the ATE while PSM and IPW estimate the ATT---and operate on different effective samples (PSM retains 456 matched observations from the 999 available), which accounts for the modest variation in point estimates.
+But the substantive conclusion is identical: \emph{Switching from regression to matching to weighting changes nothing because all three share the same identifying assumption, and that assumption is violated by the unobserved confounders that no GitHub API data can capture.}
+Using PSM or IPW does not automatically make a study ``causal inference.''
+
+\begin{table}[t]
+\centering
+\caption{Three estimators using the same DAG-justified pre-treatment covariates.
+All three yield positive, significant estimates with overlapping confidence intervals, confirming that the estimator is not the bottleneck---the identifying assumption is.
+All standard errors are heteroscedasticity-robust (HC1).}
+\label{tab:three-estimators}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Method & Coeff.\ & Robust SE & $p$-value & $N$ \\
+\midrule
+OLS (DAG-justified) & 0.696 & 0.090 & ${<}0.001$ & 999 \\
+PSM (1:1 nearest neighbor) & 0.574 & 0.094 & ${<}0.001$ & 456 \\
+IPW (ATT) & 0.509 & 0.091 & ${<}0.001$ & 999 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{Cross-Sectional Takeaway.}
 \label{sec:cross-sectional-takeaway}
 
-\TODO{Cross-sectional MSR data suffers from temporal collapse: The measurement design destroys the temporal ordering that DAGs require, making principled covariate selection impossible for time-varying covariates. Even restricting to structurally pre-treatment covariates yields fragile estimates due to unobserved confounders. Only within-repo longitudinal variation---comparing the same project before and after adoption---can make progress on identification.}
+The cross-sectional analysis demonstrates a general problem for MSR studies that seek causal conclusions from snapshot data.
+Cross-sectional designs suffer from \emph{temporal collapse}: The measurement design destroys the temporal ordering that DAGs require, making principled covariate selection impossible for time-varying covariates.
+Even when panel data are available to recover pre-treatment covariate values, the resulting estimates remain fragile to unobserved confounding by unmeasurable factors such as developer skill and team culture.
+And switching to a more sophisticated selection-on-observables estimator (PSM, IPW) does not help, because the bottleneck is the identifying assumption---conditional ignorability given observables---not the choice of estimator.
+Only within-repository longitudinal variation---comparing the \emph{same} project before and after adoption, thereby absorbing all time-invariant confounders---can make progress on identification.
+We turn to this approach in Section~\ref{sec:longitudinal}.
 
 \subsection{Longitudinal Methods}
 \label{sec:longitudinal}
