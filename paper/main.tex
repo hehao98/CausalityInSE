@@ -227,7 +227,7 @@ The ratio of causal motivation to causal inference methods has remained roughly 
 \centering
 \includegraphics[width=\columnwidth]{causal_trends.pdf}
 \caption{Publication trends at ICSE, FSE, and ASE (2015--2025).
-The top two lines show total publications and empirical SE papers; the bottom two show papers asking intervention-outcome research questions (RQs) versus papers employing causal inference methods.
+The top two lines show total publications and empirical SE papers; the bottom two show papers having a causal motivation versus papers employing causal inference methods.
 The persistent gap between RQs and methods quantifies the disconnect between causal ambition and methodological practice.}
 \label{fig:causal-trends}
 \end{figure}
@@ -275,7 +275,7 @@ Causal Fault Localization         & 13 & Causal testing, contribution scores, or
 \end{table}
 
 The methods central to the credibility revolution in economics and political science are nearly absent.
-Only 6 papers employ quasi-experimental or natural experiment designs; propensity score methods and difference-in-differences are used at most one or two times; and no paper in our corpus uses instrumental variables or regression discontinuity as a primary identification strategy.\footnote{A small number of SE studies outside our corpus label their design as ``regression discontinuity'', including the authors' own prior work---e.g., \citet{DBLP:conf/wcre/CasseeVS20} on CI adoption and code reviews, \citet{DBLP:journals/tse/HeHZZ23} on Dependabot adoption---but these use \emph{time} as the running variable, with all units experiencing the treatment simultaneously at a calendar cutoff.
+Only 6 papers employ quasi-experimental or natural experiment designs; propensity score methods and difference-in-differences are used at most one or two times; and no paper in our corpus uses instrumental variables or regression discontinuity as a primary identification strategy.\footnote{A small number of SE studies label their design as ``regression discontinuity'', including the authors' own prior work---e.g., \citet{DBLP:conf/wcre/CasseeVS20} on CI adoption and code reviews, \citet{DBLP:journals/tse/HeHZZ23} on Dependabot adoption---but these use \emph{time} as the running variable, with all units experiencing the treatment simultaneously at a calendar cutoff.
 As \citet{hausman2018regression} discuss, such temporal designs are more accurately characterized as \emph{interrupted time series} (ITS) analyses: True regression discontinuity exploits quasi-random variation near a threshold of a continuous assignment variable, whereas ITS designs face confounding from concurrent events and lack the cross-sectional variation that gives RDD its identification power.}
 The graphical causal model tradition is better represented (7 papers using causal DAGs, 3 using causal discovery algorithms, 4 using interventional or do-calculus reasoning), consistent with \citeauthor{DBLP:journals/infsof/Siebert23}'s~\cite{DBLP:journals/infsof/Siebert23} observation that Pearl's framework has gained some traction in SE\@.
 Structural equation modeling (2 papers), Granger causality (2 papers), and causal impact analysis (1 paper) round out the remaining categories.
@@ -334,7 +334,7 @@ Two common strategies---comparing outcomes across groups and adding regression c
 Consider the AI tools question again: Suppose a researcher compares monthly commits in a group of projects that adopted AI coding tools against a group of projects that did not and finds that AI-adopting projects have more commits.
 Can this comparison support the claim that AI tools \emph{cause} higher development velocity?
 Almost certainly not, because the two groups were never comparable to begin with.
-It is very likely that projects that adopt AI coding tools differ systematically from those that do not---they may have more active maintainers, more resources, more disciplined development practices, and may belong to organizations that invest more in developer productivity.
+It is very likely that projects that adopt AI coding tools differ systematically from those that do not---they may be using more AI-friendly programming languages (e.g., TypeScript and Python), have more active maintainers, more community attention, more disciplined development practices, and may belong to organizations that invest more in developer productivity.
 These characteristics are \emph{confounders}: They influence both the decision to adopt AI tools (the treatment) and development velocity (the outcome), creating an association between AI tools and higher velocity even if the tools themselves have zero causal effect.
 The observed difference in commit rates is a mixture of any genuine AI tool effect and the \emph{selection bias} arising from systematic differences between the compared groups---and a simple group comparison cannot disentangle the two.
 
@@ -368,7 +368,6 @@ This strategy is by far the most common approach to causal questions in empirica
 Despite these concerns, multivariate regression is not inherently incapable of supporting causal claims---under specific conditions, it can be a valid identification strategy~\cite{angrist2009mostly, cunningham2021causal}.
 However, determining whether those conditions hold requires the formal frameworks introduced in Section~\ref{sec:primer-toolkit}: The \emph{potential outcomes framework} (Section~\ref{sec:primer-po}) defines precisely what causal quantity the researcher seeks to estimate, and the \emph{graphical causal model} framework (Section~\ref{sec:primer-dags}) provides a principled basis---through the \emph{back-door criterion}---for determining which covariates must be included, which must be excluded, and whether the remaining assumptions are plausible.
 We defer the technical details to those sections, where the formalisms make the conditions precise and where design-based alternatives (Section~\ref{sec:primer-design}) offer a path forward for the many SE settings in which the regression requirements cannot be plausibly met.
-
 
 \subsection{The Causal Inference Toolkit}
 \label{sec:primer-toolkit}
@@ -471,7 +470,7 @@ Since we care about the AI tools--velocity question, we do not show other potent
 Arrows represent hypothesized direct causal effects.
 The causal paths of interest run through two mediators: AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Dev.\ Velocity.
 Back-door paths through common causes (e.g., AI Tool Adoption $\leftarrow$ Team Skill $\to$ Dev.\ Velocity) must be blocked for causal identification.
-Stars is a \emph{collider} (AI Tool Adoption $\to$ Stars $\leftarrow$ Dev.\ Velocity): Conditioning on it opens a spurious path and must be avoided.}
+In this graph, we consider the number of stars received as a \emph{collider} (AI Tool Adoption $\to$ Stars $\leftarrow$ Dev.\ Velocity): Conditioning on it opens a spurious path and must be avoided.}
 \label{fig:ai-dag}
 \end{figure}
 
@@ -502,7 +501,7 @@ When $Z$ satisfies the back-door criterion, it provides a justifiable basis that
 Three limitations deserve mention.
 First, DAGs require \emph{domain knowledge} to construct---they encode the researcher's assumptions about the data-generating process, not knowledge derived from the data itself.\footnote{Causal discovery algorithms~\cite{spirtes2001causation} attempt to learn DAG structure directly from data, but they require their own strong assumptions (faithfulness, causal sufficiency) and remain fragile in practice.
 In SE specifically, \citet{journals/ese/HulseEM25} showed that causal graph generators are unstable, with over half the discovered edges changing across minor data perturbations.
-We take the stance that domain knowledge remains essential for constructing credible DAGs, though data-driven methods can complement expert judgment by suggesting edges to investigate.}
+We take the stance that domain knowledge remains essential for constructing credible DAGs, though data-driven methods are an important research frontier that can complement expert judgment by suggesting edges to investigate.}
 Second, a DAG's validity depends on the completeness of the variables included; omitting an important confounder renders the back-door criterion unreliable.\footnote{Sensitivity analysis tools partially address this limitation by quantifying how strong an unmeasured confounder would need to be to alter a study's conclusions---see Rosenbaum bounds~\cite{rosenbaum2002observational}, coefficient stability~\cite{oster2019unobservable}, and the robustness value~\cite{cinelli2020making}, discussed in detail in Section~\ref{sec:primer-po}.}
 Third, DAGs encode qualitative causal structure (which variables affect which) but say nothing about the \emph{magnitude} or functional form of effects.\footnote{Pearl's broader structural causal model (SCM) framework~\cite{pearl2009causality} augments the qualitative DAG with functional equations and derives nonparametric identification formulas via the do-calculus.
 Semiparametric estimators such as double/debiased machine learning~\cite{chernozhukov2018double} can then estimate these quantities without imposing strong functional form assumptions, bridging the gap between qualitative causal structure and quantitative effect estimation.}
@@ -516,12 +515,14 @@ When identification instead derives from features of the research design (Sectio
 The preceding section showed how DAGs guide covariate selection for regression and matching---methods that identify causal effects under the assumption that \emph{all} confounders are observed and adjusted for.
 In many SE settings, where key confounders such as developer skill, team culture, and organizational practices are largely unmeasurable from repository data, justifying this assumption is challenging.
 \emph{Design-based identification} takes a fundamentally different approach: Rather than attempting to measure and adjust for all confounders, it exploits features of the research setting---temporal variation, natural experiments, assignment thresholds---that provide quasi-random variation in treatment assignment.
-The credibility of these methods derives not from the completeness of the covariate set but from the transparency and partial testability of their design-specific assumptions~\cite{angrist2010credibility}.
+This essentially creates a \emph{natural experiment} setting that would approximate the ideal target trial~\cite{dunning2012natural,hernan2020causal}.
+The credibility of these methods derives not from the completeness of the causal theory but from the transparency and partial testability of their design-specific assumptions~\cite{angrist2010credibility}.
 
 \begin{table}[t]
 \centering
 \caption{Common causal inference methods, their target estimands, and key identification assumptions under the potential outcomes framework.
-ATE = Average Treatment Effect; ATT = Average Treatment Effect on the Treated; LATE = Local Average Treatment Effect.}
+ATE = Average Treatment Effect; ATT = Average Treatment Effect on the Treated; LATE = Local Average Treatment Effect.
+We use precise terminologies in this table; see the references for detailed explanations of these terminologies.}
 \label{tab:methods-summary}
 \footnotesize
 \begin{tabular}{@{} p{3.2cm} p{1.6cm} p{8.2cm} @{}}
@@ -530,27 +531,27 @@ ATE = Average Treatment Effect; ATT = Average Treatment Effect on the Treated; L
 \midrule
 Randomized Controlled Trial
   & ATE
-  & Random assignment: $(Y(1), Y(0)) \perp D$; SUTVA; full compliance \\
+  & Random assignment: $(Y(1), Y(0)) \perp D$; SUTVA; full compliance \cite[Ch.~4]{cunningham2021causal} \\
 \addlinespace
 Selection on Observables {\scriptsize (Regression, Matching, IPW)}
   & ATE / ATT
-  & Conditional ignorability: $(Y(1), Y(0)) \perp D \mid X$; overlap; correct functional form for parametric estimators \\
+  & Conditional ignorability: $(Y(1), Y(0)) \perp D \mid X$; overlap; correct functional form for parametric estimators \cite[Ch.~3]{angrist2009mostly}, \cite[Ch.~5]{cunningham2021causal} \\
 \addlinespace
 Difference-in-Differences
   & ATT
-  & Parallel trends: absent treatment, treated and control groups would have followed the same trajectory; no anticipation; SUTVA \\
+  & Parallel trends: absent treatment, treated and control groups would have followed the same trajectory; no anticipation; SUTVA \cite[Ch.~5]{angrist2009mostly}, \cite[Ch.~9]{cunningham2021causal} \\
 \addlinespace
 Instrumental Variables
   & LATE
-  & Relevance: instrument $Z$ affects treatment; exclusion: $Z$ affects outcome only through treatment; independence; monotonicity (no defiers) \\
+  & Relevance: instrument $Z$ affects treatment; exclusion: $Z$ affects outcome only through treatment; independence; monotonicity (no defiers) \cite[Ch.~4]{angrist2009mostly}, \cite[Ch.~7]{cunningham2021causal} \\
 \addlinespace
 Regression Discontinuity
   & LATE \scriptsize{(at cutoff)}
-  & Continuity of potential outcomes at threshold; no precise manipulation of running variable; no compound treatments at cutoff \\
+  & Continuity of potential outcomes at threshold; no precise manipulation of running variable; no compound treatments at cutoff \cite[Ch.~6]{angrist2009mostly}, \cite[Ch.~6]{cunningham2021causal} \\
 \addlinespace
 Panel Fixed Effects
   & ATE \scriptsize{(within-unit)}
-  & Strict exogeneity: conditional on unit FE, treatment is uncorrelated with time-varying unobservables; no time-varying confounders \\
+  & Strict exogeneity: conditional on unit FE, treatment is uncorrelated with time-varying unobservables; no time-varying confounders \cite[Ch.~5]{angrist2009mostly}, \cite[Ch.~8]{cunningham2021causal} \\
 %\addlinespace
 %Synthetic Control
 %  & ATT \scriptsize{(treated unit)}
@@ -567,8 +568,8 @@ In this section, we illustrate the high-level idea of each method with SE exampl
     DiD compares changes in outcomes over time between a treated group and a control group, e.g., comparing development velocity trends before and after AI tool adoption in treatment repositories versus comparable repositories that did not adopt.
     The key assumption---\emph{parallel trends}---requires that, absent the adoption, both groups would have followed the same outcome trajectory.
     This assumption can be partially assessed using pre-treatment trend tests, and modern estimators leverage staggered adoption to construct natural experiments among treated units with different adoption timings~\cite {callaway2021difference, roth2023whats}.
-    The DiD methodology has been successfully applied in SE settings to study the impact of social media promotion on open-source project popularity and contributor attraction~\cite{DBLP:conf/icse/FangLHV22}, the impact of core contributor disengagement on open-source project workflows~\cite{DBLP:conf/icse/ChenSSGT26}, and the impact of LLM coding agent adoption on development velocity and code quality~\cite{DBLP:conf/msr/HeMAKV26}.
-    We apply staggered DiD to the AI coding tools question in Section~\ref{sec:staggered-did}.
+    The DiD methodology has been successfully applied in SE settings to study the impact of social media promotion on open-source project popularity and contributor attraction~\cite{DBLP:conf/icse/FangLHV22}, the impact of core contributor disengagement on open-source project workflows~\cite{DBLP:conf/icse/ChenSSGT26}, and the impact of Cursor adoption on development velocity and code quality~\cite{DBLP:conf/msr/HeMAKV26}.
+    As a tutorial example, we will apply staggered DiD to the AI coding tools question in Section~\ref{sec:staggered-did}.
 
     \item \emph{Instrumental Variables (IV).}
     IV uses an \emph{instrument}---a variable that affects the treatment but influences the outcome only through the treatment---to isolate exogenous variation.
@@ -586,7 +587,7 @@ In this section, we illustrate the high-level idea of each method with SE exampl
     For example, observing the same repository before and after AI tool adoption removes confounding from all time-invariant repository characteristics---codebase domain, long-term team composition, organizational practices---that cross-sectional comparisons cannot address.
     The identifying assumption is \emph{strict exogeneity}: Conditional on unit fixed effects, the treatment is uncorrelated with time-varying unobservables (i.e., no time-varying confounders that are left unmeasured).\footnote{This assumption differs from the conditional ignorability assumption from selection-on-observables methods: Panel fixed effects automatically absorb all time-invariant confounders without requiring them to be measured, but the researcher must still argue---using domain knowledge or a DAG---that no unmeasured time-varying confounders remain and that past outcomes do not feed back into future treatment assignment.}
     Panel fixed effects models have been applied in SE settings to study the causal impact of code quality on developer productivity at Google~\cite{DBLP:conf/sigsoft/ChengMCJGKZ022}.
-    We apply TWFE to the AI coding tools question in Section~\ref{sec:twfe}.
+    They are also often used as a baseline model for DiD designs (see Section~\ref{sec:twfe} for an example).
 
 %    \item \emph{Synthetic Control.}
 %    Synthetic control constructs a weighted combination of untreated units to serve as a counterfactual for a single treated unit.
