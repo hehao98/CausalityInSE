@@ -784,7 +784,7 @@ We begin with the approach commonly seen in mining software repositories studies
 We then use the toolkit from Section~\ref{sec:primer} to diagnose the problems with this approach and show a DAG-justified regression with pre-treatment covariates and the use of two more sophisticated estimators (i.e., propensity score matching and inverse probability weighting).
 Finally, we will use the same toolkit to demostrate the foundamental limitation of unobserved confounders to motivate the use of longitudinal data and design based identification.
 
-\paragraph{Na\"ive Group Comparison.}
+\subsubsection{Na\"ive Group Comparison}
 \label{sec:naive-comparison}
 
 \begin{table}[t]
@@ -842,7 +842,7 @@ The coefficient on AI adoption is $0.946$ ($\text{SE} = 0.116$, $p < 0.001$, $R^
 A researcher following standard empirical SE practice might stop here and conclude that \emph{AI adoption is associated with \textbf{157.5\%} (i.e., $e^{0.946} - 1$) higher development velocity, holding all observables constant}, with a disclaimer in the limitation section to note that correlation does not imply causation and the evidence presented is only suggestive.
 In this tutorial, we are going to push one step further: \textbf{Under what assumptions can this 157.5\% estimate be interpreted as a causal effect? Are these assumptions plausible?}
 
-\paragraph{The Temporal DAG}
+\subsubsection{The Temporal DAG}
 \label{sec:temporal-dag}
 
 Recall in Section~\ref{sec:primer-po} that the formal identifying assumption for linear regressions to carry a causal interpretation is conditional ignorability according to the potential outcomes framework.
@@ -944,7 +944,7 @@ The back-door criterion yields an unambiguous adjustment set: Condition on all p
 \label{fig:temporal-dag}
 \end{figure}
 
-\paragraph{Temporal Collapse in Cross-Sectional Data.}
+\subsubsection{Temporal Collapse in Cross-Sectional Data}
 \label{sec:temporal-collapse}
 
 The temporal DAG makes covariate roles unambiguous---but it requires time-indexed variables.
@@ -978,7 +978,7 @@ Open issues & Temporally ambiguous & Snapshot mixes pre/post-adoption state \\
 \end{tabular}
 \end{table}
 
-\paragraph{DAG-Justified Regression.}
+\subsubsection{DAG-Justified Regression}
 \label{sec:dag-justified}
 
 Armed with the temporal DAG, we can now construct a principled regression specification.
@@ -1012,7 +1012,7 @@ DAG-justified (panel pre-treatment) & 0.696 & 0.090 & ${<}0.001$ & 0.827 \\
 \end{tabular}
 \end{table}
 
-\paragraph{Sensitivity Analysis.}
+\subsubsection{Sensitivity Analysis}
 \label{sec:cross-sectional-sensitivity}
 
 The DAG-justified estimate is the most principled cross-sectional specification we can construct, but the temporal DAG reveals an important gap: Team Skill remains entirely unobserved.
@@ -1034,7 +1034,7 @@ The Oster method's $\delta^* \geq 1$ threshold is a widely used heuristic, not a
 Alternative approaches---such as the E-value~\cite{vanderweele2017sensitivity} and partial-$R^2$ robustness value~\cite{cinelli2020making}---parameterize confounding strength differently, and each rests on its own assumptions.
 No single sensitivity measure is definitive; the pragmatic recommendation is to report multiple measures, state their assumptions transparently, and ultimately rely on domain knowledge to judge whether the unobserved confounders in a given SE setting are plausibly strong enough to alter the conclusions.}
 
-\paragraph{Comparing Estimators: Regression, PSM, and IPW}
+\subsubsection{Comparing Estimators: Regression, PSM, and IPW}
 \label{sec:estimator-convergence}
 
 Another common response to the limitations of linear regression is to try a ``better'' estimator that are ``known to be a causal inference method,'' among which two popular methods are propensity score matching (PSM)~\cite{rosenbaum1983central} and inverse probability weighting (IPW)~\cite{horvitz1952generalization}.
@@ -1070,7 +1070,7 @@ Table~\ref{tab:three-estimators} compares the three estimators using the same DA
 The three estimators target slightly different estimands---OLS approximates the ATE while PSM and IPW estimate the ATT---and operate on different effective samples (PSM retains 456 matched observations from the 999 available), which accounts for the variation in effect estimates.
 However, if we compare the estimates with the DiD estimates in Section~\ref{sec:did}, it would be reasonable to infer that the OLS, PSM, and IPW estimators are all still inflated because of the unobserved confounders like Team Skill.
 
-\paragraph{Cross-Sectional Takeaway.}
+\subsubsection{Cross-Sectional Takeaway}
 \label{sec:cross-sectional-takeaway}
 
 The cross-sectional analysis illustrates two challenges that empirical SE researchers should be aware of when drawing causal conclusions from cross-sectional snapshot data.
@@ -1084,15 +1084,13 @@ We turn to this approach in Section~\ref{sec:longitudinal}.
 \subsection{Longitudinal Methods}
 \label{sec:longitudinal}
 
-The cross-sectional analysis in Section~\ref{sec:cross-sectional} revealed that the estimator is not the bottleneck---unobserved confounders are.
-OLS, PSM, and IPW all converged to similar estimates (66--101\%) because none can address time-invariant unobservables like team skill.
-The problem is identification, not estimation.
-
-We now exploit the panel structure of our data---observing the \emph{same} repositories over time---to address this limitation.
-Instead of comparing \emph{different} repositories (cross-section), we compare the \emph{same} repository before and after it adopts AI tools.
+The cross-sectional analysis in Section~\ref{sec:cross-sectional} revealed an important bottleneck in selection-on-observable methods: \emph{unobserved confounders}, which may be plausible and strong in many empirical SE settings (e.g., team skill, project culture, individual motivation).
+One powerful way to address this limitation is to exploit \emph{longitudinal} data and its panel structure.
+Specifically, instead of comparing \emph{different} repositories (cross-section), we compare the \emph{same} repository before and after it adopts AI coding tools.
 When we look at the same repository over time, every time-invariant characteristic---team skill, project culture, codebase complexity, programming language---is held constant by construction.
-We do not need to measure or control for these factors; they cancel out in the within-unit comparison.
-This is the fundamental advantage of panel data and the core idea behind design-based identification (Section~\ref{sec:primer-design}).
+This high-level idea motivates longitudinal statisical modeling methods such as the interrupted time series (ITS) analyses and two-way fixed effect (TWFE) models.
+More importantly, the limitations of these methods motivates a powerful design-based identification idea (Section~\ref{sec:primer-design}), \emph{difference in differences}.
+We will cover all of them in this section.
 
 Our panel consists of 999 repositories observed over 27 months (January 2024 to March 2026), of which 240 adopted AI tools at staggered times (Figure~\ref{fig:treatment-timing}).
 We progress through three increasingly credible designs: (1)~a na\"ive before/after comparison, (2)~interrupted time series with repository fixed effects, and (3)~modern difference-in-differences.
@@ -1107,25 +1105,22 @@ The 759 repositories that never adopted during the observation window serve as t
 \label{fig:treatment-timing}
 \end{figure}
 
-\paragraph{Before-and-After Comparison.}
+\subsubsection{Before-and-After Comparison}
 \label{sec:before-after}
 
 The simplest within-unit estimator compares, for each treated repository, mean monthly commits (log-scale) before versus after the first AI configuration file commit.
 This is the longitudinal analogue of the raw group comparison in Section~\ref{sec:naive-comparison}, but now within-unit rather than across units.
-
 A paired $t$-test yields a mean change of $0.940$ (95\% CI $[0.710, 1.180]$), i.e., treated repositories see a 156\% ($\pm$31\%) increase in monthly commits after adoption.
 The within-unit pairing absorbs all time-invariant confounders that plagued the cross-section---team skill, project type, organizational practices.
 These factors are identical before and after adoption for the same repository, so they cannot drive the observed change.
-This is exactly the shift from selection-on-observables to design-based identification that Section~\ref{sec:primer-design} advocates.
-
-However, the only way this estimate is causal is if \emph{nothing else} about the treated repositories changed between the pre and post periods, besides the treatment itself.
+However, this estimate is causal only if \emph{nothing else} about the treated repositories changed between the pre and post periods, besides the treatment itself.
 In other words, the counterfactual outcome---what commits would have looked like without AI adoption---must have stayed flat.
 This is a very strong assumption.
 If all repositories are growing over 2024--2026 (e.g., due to platform growth, seasonal effects, or the general rise of AI-assisted development), then the before/after estimate captures the treatment effect \emph{plus} the secular trend.
 The 156\% figure is almost certainly too high.
-This motivates modeling the trend explicitly.
+This motivates interrupted time series (ITS) analysis that models the trend explicitly.
 
-\paragraph{Interrupted Time Series.}
+\subsubsection{Interrupted Time Series (ITS)}
 \label{sec:its}
 
 ITS addresses the before/after comparison's key weakness by explicitly modeling the pre-treatment trend.
@@ -1142,34 +1137,38 @@ The time trend $\beta \cdot t$ models a common linear secular trend, so the esti
 ITS thus addresses \emph{two} of the cross-section's core problems simultaneously.
 The coefficient $\delta$ tests for a discrete level shift at adoption, while $\gamma$ tests whether the post-treatment growth rate differs from the pre-treatment trend.
 
-The level-shift estimate is $\hat{\delta} = 0.790$ (95\% CI $[0.550, 1.020]$), i.e., a 120\% ($\pm$26\%) increase.
-This is lower than the before/after estimate (156\%), confirming that some of the before/after effect was driven by secular trends that ITS now absorbs.
-
 \begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{../plots/its_boxplot.pdf}
-\caption{Distribution of $\log(1 + \text{monthly commits})$ by event time for treated repositories.
-Timelines are artificially aligned to each repository's own adoption date.
-ITS models the pre-treatment trend and tests for a level shift at adoption, but lacks a control group to distinguish the treatment effect from contemporaneous shocks.}
-\label{fig:its-boxplot}
+  \centering
+  \includegraphics[width=\columnwidth]{../plots/its_boxplot.pdf}
+  \caption{Distribution of $\log(1 + \text{monthly commits})$ by event time for treated repositories.
+  Timelines are artificially aligned to each repository's own adoption date.
+  ITS models the pre-treatment trend and tests for a level shift at adoption, but lacks a control group to distinguish the treatment effect from contemporaneous shocks.}
+  \label{fig:its-boxplot}
 \end{figure}
 
+The level-shift estimate is $\hat{\delta} = 0.790$ (95\% CI $[0.550, 1.020]$), i.e., a 120\% ($\pm$26\%) increase.
+This is lower than the before/after estimate (156\%), confirming that some of the before/after effect was driven by secular trends that ITS now absorbs.
 For $\hat{\delta}$ to have a causal interpretation, the pre-treatment linear trend must be correctly specified, and no other event must systematically coincide with AI adoption.
 Unlike the before/after comparison, ITS allows for a secular trend---but it assumes the trend is linear and that the \emph{only} thing that changes at the adoption date is the treatment itself.
 Since ITS uses only treated repositories---there is no control group---any shock that happens around the adoption date is indistinguishable from the treatment effect: a team expansion, a major release, a GitHub platform change, or a field-wide shift in development practices.
 If such events systematically co-occur with AI adoption, $\hat{\delta}$ absorbs them.
-Additionally, if the true pre-treatment dynamics are nonlinear (e.g., accelerating growth), the linear trend specification may itself be misspecified.
+Additionally, if the true pre-treatment dynamics are nonlinear (e.g., accelerating growth from AI or decreasing effectiveness of AI), the linear trend specification may itself be misspecified.
 
-Unlike DiD, ITS does not have a standard formalization through the potential outcomes framework~\cite{angrist2009mostly, cunningham2021causal}.
-The assumptions are stated as restrictions on the regression model rather than as properties of potential outcomes, which is one reason ITS is considered a weaker identification strategy---the assumptions are harder to state precisely and harder to test.
-No amount of trend modeling can substitute for the absence of a control group.
-This motivates the key design-based insight: we need a \emph{control group} to difference out common shocks.
+One could address this limitation by adding a control group to the ITS specification---a design known as \emph{controlled interrupted time series} (CITS)~\cite{bernal2017interrupted}---but identification would still depend on correctly specifying the functional form of the trend for both groups.
+Difference-in-differences offers a design-based alternative: Rather than modeling the trend explicitly, DiD \emph{differences out} common trends entirely in a natural experiment setting.
+The parallel trends assumption (Section~\ref{sec:did}) requires only that treated and control units follow the \emph{same} trend---not that the trend take any particular functional form---making it less demanding than the parametric assumptions underlying ITS and CITS.
 
-\paragraph{Difference-in-Differences.}
+\subsubsection{Difference-in-Differences.}
 \label{sec:did}
 
-We now add a control group of 759 repositories that never adopted AI tools during the observation window.
-The key idea is simple but powerful: any time-varying shock that affects both treated and control repositories equally is differenced out, \emph{even without modeling it explicitly}.
+We now add an additional ``control'' group of 759 repositories that never adopted AI tools during the observation window.
+An immediate objection arises: The na\"ive comparison in Section~\ref{sec:naive-comparison} showed that adopters and non-adopters differ dramatically in size, activity, and visibility.
+How can such different repositories serve as a valid control group?
+The answer lies in what DiD actually requires.
+Because DiD compares \emph{changes} within each group, all time-invariant differences between groups---no matter how large---cancel out in the differencing.
+A small hobbyist project and a large enterprise repository can serve as valid comparisons as long as their commit \emph{trends} would have evolved in parallel absent treatment.
+DiD does not require the groups to look alike; it requires them to \emph{trend} alike (see a more formal discussion below).
+The key idea is that any time-varying shock that affects both treated and control repositories equally is differenced out, \emph{even without modeling it explicitly}.
 
 In the simplest case (one treatment group, one control group, two periods), the DiD estimator is:
 \begin{equation}
@@ -1178,14 +1177,14 @@ In the simplest case (one treatment group, one control group, two periods), the 
 \end{equation}
 The first difference (within each pair of parentheses) removes unit fixed effects---just like the before/after comparison.
 The second difference (between the two parentheses) removes common time shocks---exactly what ITS cannot do.
-The double difference isolates the treatment effect.
+The double difference isolates the treatment effect (which is why it is called \emph{difference in differences}).
 
 The two-way fixed effects (TWFE) regression specification expresses the same idea compactly:
 \begin{equation}
 \label{eq:twfe}
 Y_{it} = \alpha_i + \gamma_t + \tau D_{it} + \varepsilon_{it}
 \end{equation}
-where $\alpha_i$ absorbs all time-invariant confounders (like ITS), $\gamma_t$ absorbs \emph{common time shocks}---the new element that the control group provides---and $\hat{\tau}$ is the DiD estimate.
+where $\alpha_i$ is an intercept (or fixed effect term) per repository and absorbs all time-invariant confounders (like ITS), $\gamma_t$ is a intercept per time period and absorbs \emph{common time shocks}, and $\hat{\tau}$ is the DiD estimate.
 We present this specification for intuition only and do not report its estimate, for reasons we explain below.
 
 The identifying assumption is \emph{parallel trends}:
@@ -1193,9 +1192,8 @@ The identifying assumption is \emph{parallel trends}:
 \label{eq:parallel-trends}
 E[Y_{it}(0) - Y_{is}(0) \mid \text{treated}] = E[Y_{it}(0) - Y_{is}(0) \mid \text{control}] \quad \forall\, t, s
 \end{equation}
-In plain language: absent treatment, treated and control repositories would have followed the same \emph{trend} in outcomes.
-This does not require the two groups to have the same \emph{level} of commits---only the same trend.
-Parallel trends is strictly weaker than the ITS assumption: common shocks are fine as long as they affect both groups similarly.
+In plain language: absent treatment, treated and control repositories would have followed the same \emph{trend} in outcomes---so matching two groups on levels would be unnecessary if we can show that this assumption is plausible.
+Parallel trends is weaker than the ITS assumption: Common shocks are fine as long as they affect both groups similarly.
 It is also weaker than the before/after assumption: arbitrary trends are allowed, as long as they are parallel across groups.
 We also require a \emph{no-anticipation assumption}: repositories do not change their behavior before they adopt AI tools.
 
@@ -1203,7 +1201,6 @@ In our setting, repositories adopt at different months, creating a \emph{stagger
 Classic TWFE (Equation~\ref{eq:twfe}) implicitly uses already-treated repositories as controls for later-treated ones.
 When treatment effects vary across cohorts or over time, this produces negative weights on some group-time ATTs, biasing $\hat{\tau}$~\cite{goodman2021difference, dechaisemartin2020two}.
 This well-documented problem (see \citet{roth2023whats} for a survey) motivates modern estimators designed for staggered adoption with heterogeneous effects.
-
 We apply two complementary modern DiD estimators that avoid the negative-weighting problem.
 
 \textbf{Callaway \& Sant'Anna (2021) DiD}~\cite{callaway2021difference} is the most direct extension of the 2$\times$2 idea: it estimates separate treatment effects for each adoption cohort (group of repositories adopting in the same month), then aggregates.
@@ -1216,32 +1213,49 @@ This is a difference in outcome changes between cohort-$g$ repositories and neve
 We use no covariates, so this reduces to simple differences in means---the same double-differencing logic as Equation~\ref{eq:did-2x2}, applied separately to each cohort.
 The overall ATT averages the group-time effects, weighting by cohort size.
 The estimate is $\hat{\tau} = 0.416$ ($\text{SE} = 0.090$), i.e., 52\% ($\pm$14\%).
-
 This unconditional specification relies on parallel trends holding \emph{without} conditioning on covariates.
-A natural question arises: can we sharpen the estimate by conditioning on time-varying repository characteristics---contributor counts, stars, issues---to make the parallel trends assumption more plausible?
+The CS estimator also allows an alternative specification that conditions on pre-treatment covariates, which we do not report in this paper because of pre-trend violations.
 
-\textbf{Borusyak et al.\ (2024) imputation DiD}~\cite{borusyak2024revisiting} does exactly this.
-Rather than differencing group means, it estimates what outcomes \emph{would have been} without treatment, using a covariate-adjusted counterfactual model, then compares to what actually happened.
+\textbf{Borusyak et al.\ (2024) imputation DiD}~\cite{borusyak2024revisiting} estimates what outcomes \emph{would have been} without treatment, using a covariate-adjusted counterfactual model, then compares to what actually happened.
 The procedure has three steps.
-First, fit a counterfactual model on all untreated observations (never-treated repositories plus pre-treatment periods of treated repositories):
+First, it fits a counterfactual model on all untreated observations (never-treated repositories plus pre-treatment periods of treated repositories):
 \begin{equation}
 \label{eq:borusyak-first-stage}
 Y_{it} = \alpha_i + \gamma_t + X_{it}\beta + \varepsilon_{it} \quad \text{for all } (i,t) \text{ with } D_{it} = 0
 \end{equation}
 This includes time-varying covariates $X_{it}$: $\log$ of contributors, stars, issues, forks, and releases.
-Second, for each treated observation, plug in the estimated coefficients to predict the counterfactual: $\hat{Y}_{it}(0) = \hat{\alpha}_i + \hat{\gamma}_t + X_{it}\hat{\beta}$.
-Third, compute the ATT as the average residual $\hat{\tau} = \text{mean}(Y_{it} - \hat{Y}_{it}(0))$ across all treated observations, weighting each treated (repository, month) cell equally.
+Second, for each treated observation, it plugs in the estimated coefficients to predict the counterfactual: $\hat{Y}_{it}(0) = \hat{\alpha}_i + \hat{\gamma}_t + X_{it}\hat{\beta}$.
+Third, it computes the ATT as the average residual $\hat{\tau} = \text{mean}(Y_{it} - \hat{Y}_{it}(0))$ across all treated observations, weighting each treated (repository, month) cell equally.
 Only untreated observations contribute to the counterfactual model; treated cells are never used as controls for other treated cells, avoiding the negative-weighting problem of TWFE\@.
 The estimate is $\hat{\tau} = 0.281$ ($\text{SE} = 0.060$), i.e., 32\% ($\pm$8\%).
 
-Surprisingly, adding covariates \emph{lowers} the estimate rather than sharpening it.
-CS without covariates gives 52\%; Borusyak with covariates gives 32\%.
-This counterintuitive result motivates closer inspection of what the covariates are doing.
-Note also that the two estimators weight heterogeneous cohort-level effects differently: CS gives each \emph{cohort} equal per-unit weight, while Borusyak gives each \emph{treated cell} equal weight.
-With heterogeneous effects, different weights produce different aggregates.
+\paragraph{Event Study and Pre-Trends Assessment.}
+\label{sec:event-study}
+Importantly, both estimators support event-study decompositions that estimate a separate treatment effect $\tau_k$ for each month~$k$ relative to adoption, which can be used to probe whether the parallel trend assumption is plausible (i.e., pre-trend tests).
+Specifically, pre-treatment coefficients ($k < 0$) serve as a diagnostic and should be roughly around zero under parallel trends.
+Post-treatment coefficients ($k \geq 0$) trace the dynamic treatment effect over time.
 
-\paragraph{Why the Estimates Diverge.}
-\label{sec:divergence}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{../plots/event_study_comparison.pdf}
+  \caption{Combined event study overlaying both DiD estimators.
+  Pre-treatment coefficients near zero for both estimators support the parallel trends assumption.
+  Post-treatment coefficients show the CS estimate (no covariates) consistently above the Borusyak estimate (with covariates), consistent with the covariate attenuation mechanism discussed in Section~\ref{sec:divergence}.
+  Error bars show 95\% confidence intervals.}
+  \label{fig:event-study}
+  \end{figure}
+
+Figure~\ref{fig:event-study} overlays the event-study estimates from both approaches.
+Pre-treatment coefficients cluster near zero for both estimators, supporting the parallel trends assumption.
+We assess pre-trends formally with two complementary tests.
+For CS, we use simultaneous confidence bands from the \Code{did} package~\cite{callaway2021difference}, which control the family-wise error rate across all pre-treatment periods---a more conservative test than pointwise confidence intervals; 0 of 12 periods are significant under simultaneous bands.
+For Borusyak, a joint Wald test pools the 12 pre-treatment coefficients ($H_0\!: \tau_{-12} = \cdots = \tau_{-1} = 0$; $p = 0.70$).\footnote{
+It is important to note that passing a pre-trends test does not \emph{prove} parallel trends~\cite{roth2022pretest}.
+A more principled alternative is the sensitivity analysis framework of \citet{rambachan2023more}, which asks: How large could post-treatment violations of parallel trends be, relative to any pre-trends we observe, before the conclusion reverses?
+This shifts the burden from a binary pass/fail test to a continuous assessment of robustness.
+}
+
+\paragraph{Why Does the CS and Borusyak Estimator Diverge?}
 
 The primary explanation is \textbf{covariate attenuation}---a direct application of the DAG reasoning from Section~\ref{sec:primer-dags}.
 In the imputation step (Equation~\ref{eq:borusyak-first-stage}), the Borusyak model plugs in the \emph{post-treatment} values of the covariates $X_{it}$ to predict the counterfactual $\hat{Y}_{it}(0)$.
@@ -1253,64 +1267,35 @@ The CS specification omits covariates entirely, so it is unaffected by this mech
 Its estimate of 52\% targets the total effect under unconditional parallel trends---but this comes with its own trade-off: if parallel trends holds only \emph{conditional} on covariates, the unconditional estimate may be biased.
 
 A secondary factor is \textbf{aggregation weights}: even without covariate attenuation, the two estimators would differ because they weight heterogeneous cohort-level effects differently---a well-known issue in the recent DiD literature~\cite{roth2023whats}.
-Together, the pair of estimates brackets a plausible ATT range of 32--52\%.
-The divergence is informative, not a failure: it teaches readers that methodological choices about covariate handling and aggregation have substantive consequences.
-
-\paragraph{Event Study and Pre-Trends Assessment.}
-\label{sec:event-study}
-
-Both estimators support event-study decompositions that estimate a separate treatment effect $\tau_k$ for each month~$k$ relative to adoption.
-Pre-treatment coefficients ($k < 0$) should be zero under parallel trends---they serve as a diagnostic.
-Post-treatment coefficients ($k \geq 0$) trace the dynamic treatment effect over time.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{../plots/event_study_comparison.pdf}
-\caption{Combined event study overlaying both DiD estimators.
-Pre-treatment coefficients near zero for both estimators support the parallel trends assumption.
-Post-treatment coefficients show the CS estimate (no covariates) consistently above the Borusyak estimate (with covariates), consistent with the covariate attenuation mechanism discussed in Section~\ref{sec:divergence}.
-Error bars show 95\% confidence intervals.}
-\label{fig:event-study}
-\end{figure}
-
-Figure~\ref{fig:event-study} overlays the event-study estimates from both approaches.
-Pre-treatment coefficients cluster near zero for both estimators, supporting the parallel trends assumption.
-We assess pre-trends formally with two complementary tests.
-For CS, we use simultaneous confidence bands from the \texttt{did} package~\cite{callaway2021difference}, which control the family-wise error rate across all pre-treatment periods---a more conservative test than pointwise confidence intervals; 0 of 12 periods are significant under simultaneous bands.
-For Borusyak, a joint Wald test pools the 12 pre-treatment coefficients ($H_0\!: \tau_{-12} = \cdots = \tau_{-1} = 0$; $p = 0.70$).
-Post-treatment coefficients show the CS estimate consistently above Borusyak, consistent with the covariate attenuation mechanism.
-We note that passing a pre-trends test does not \emph{prove} parallel trends~\cite{roth2022pretest}---it only fails to reject a necessary condition.
+Together, the pair of estimates brackets a plausible ATT range of 32--52\%, showing how methodological choices about covariate handling and aggregation can have substantive consequences.
 
 \paragraph{Robustness.}
 \label{sec:robustness}
 
-We probe two concerns about control group composition.
+We additionally probe two concerns about control group composition.
 First, we trim structurally inactive repositories (fewer than 10 total commits) from the control group, since repositories with flat outcomes may violate parallel trends by failing to track the counterfactual trend of treated repositories.
 The Borusyak ATT barely changes ($0.281 \to 0.280$), suggesting the result is not driven by inactive controls.
 Second, we restrict the control group to repositories matched on pre-treatment observables via propensity score matching, yielding a similar estimate ($0.301$).
 Both checks confirm that the DiD estimates are robust to control group composition.\footnote{Full details of the trimming and matching procedures are available in the replication notebook (Section~\ref{sec:data-availability}).}
-These robustness checks probe specific threats to internal validity but cannot prove the identifying assumptions; they are best understood as ruling out specific alternative explanations.
+These robustness checks probe specific threats to internal validity but cannot prove the identifying assumptions; they are best understood as ruling out specific alternative explanations (i.e., inactive controls or uncomparable control groups) as advocated in Section~\ref{sec:primer-stance}.
 
 \paragraph{Longitudinal Takeaway.}
 \label{sec:longitudinal-takeaway}
 
 The longitudinal analysis demonstrates the power of design-based identification: by comparing the \emph{same} repository before and after AI adoption, every time-invariant confounder---team skill, project culture, codebase complexity---cancels out by construction, eliminating the single biggest threat to the cross-sectional analysis.
 The three-stage progression from before/after (156\%) through ITS (120\%) to DiD (32--52\%) shows that each additional design element---trend modeling, a control group---shrinks the estimate substantially, indicating that secular trends and common shocks inflated the simpler estimates.
-Within DiD, the CS--Borusyak comparison (52\% vs.\ 32\%) illustrates a subtle but important lesson: conditioning on post-treatment covariates that lie on the causal pathway attenuates the total effect---a concrete instance of the mediator bias from Section~\ref{sec:primer-dags}.
+Within DiD, the CS--Borusyak comparison (52\% vs.\ 32\%) illustrates a subtle but important lesson: conditioning on post-treatment covariates that lie on the causal pathway attenuates the total effect---an instance of the mediator bias from Section~\ref{sec:primer-dags}.
 The remaining threats---parallel trends violations, anticipation effects, and SUTVA violations---are \emph{more transparent and partially testable} (via event studies and pre-trends tests) than the ``all confounders measured'' assumption required by cross-sectional methods.
 This transparency is the central advantage of design-based identification.
 
 \subsection{Summary}
 \label{sec:summary}
 
-Table~\ref{tab:all-estimates} compares all estimates from Sections~\ref{sec:cross-sectional} and~\ref{sec:longitudinal}, along with each method's identifying assumption and its key vulnerability.
-Two lessons emerge from this progression.
-
 \begin{table*}[t]
 \centering
 \caption{Summary of all effect estimates from the cross-sectional (Section~\ref{sec:cross-sectional}) and longitudinal (Section~\ref{sec:longitudinal}) analyses.
 The estimate is on the $\log(1 + \text{monthly commits})$ scale; the percentage change is $(e^{\text{Estimate}} - 1) \times 100\%$, with $\pm$ computed via the delta method ($e^{\text{Estimate}} \times \text{SE} \times 100\%$).
-All OLS specifications approximate the ATE; PSM and IPW target the ATT; all longitudinal methods target the ATT.}
+All OLS specifications approximate the ATE; PSM, IPW, and all longitudinal methods target the ATT.}
 \label{tab:all-estimates}
 \small
 \begin{tabular}{llrrr}
@@ -1333,35 +1318,94 @@ DiD: Borusyak (with covariates) & Parallel trends (conditional on $X_{it}$) & 0.
 \end{tabular}
 \end{table*}
 
-First, the \emph{design} matters more than the estimator.
+Table~\ref{tab:all-estimates} compares all estimates from Sections~\ref{sec:cross-sectional} and~\ref{sec:longitudinal}, along with each method's identifying assumption and its key vulnerability.
+It is important to note that the \emph{design} matters more than the estimator.
 The na\"ive comparison ($+911\%$) drops to $+158\%$ once we add snapshot controls, and further to $+101\%$ once we condition only on pre-treatment confounders justified by the temporal DAG---each step removes a different source of bias.
-Yet within the DAG-justified cross-section, switching from OLS to PSM to IPW barely moves the estimate (66--101\%): all three share the conditional ignorability assumption, so the estimator is not the bottleneck.
-Across designs, the estimates change dramatically: the before/after estimate (156\%) drops to 120\% with ITS (which absorbs secular trends) and further to 32--52\% with DiD (which absorbs common shocks via a control group).
+Yet within the DAG-justified cross-section, switching from OLS to PSM to IPW still yields esimates higher than the DiD estimates: All three share the conditional ignorability assumption which is violated by the unobserved confounders that no GitHub API data can capture.
+Across longitudinal designs, the estimates change dramatically: the before/after estimate (156\%) drops to 120\% with ITS (which absorbs secular trends) and further to 32--52\% with DiD (which absorbs common shocks via a control group).
 Each step trades a strong assumption for a weaker one, and the estimates shrink accordingly.
-The gap between the before/after estimate and the DiD range quantifies how much of the na\"ive effect was driven by trends and selection, not treatment.
-The further gap between the cross-sectional estimates (66--101\%) and the DiD range (32--52\%) quantifies the magnitude of selection bias in the cross-section---the residual confounding by time-invariant unobservables like team skill that no cross-sectional method could address.
+The identifying assumption is progressively weaker and more plausible as we move from the cross-sectional to the longitudinal designs.
 
-Second, within DiD, the CS--Borusyak gap (52\% vs.\ 32\%) illustrates the mediator bias from Section~\ref{sec:primer-dags}: conditioning on post-treatment covariates that lie on the causal pathway attenuates the total effect estimate.
-This is a concrete, numbers-in-hand demonstration of the DAG reasoning applied to a real analysis, reinforcing the practical importance of distinguishing confounders from mediators when selecting covariates.
-
-The remaining threats to the DiD estimates---parallel trends violations (partially testable via event studies but never provable), anticipation effects, and SUTVA violations---are \emph{more transparent and partially testable} than the ``all confounders measured'' assumption required by cross-sectional methods.
-This transparency is the central advantage of design-based identification: it makes the identification strategy open to scrutiny, so the community can constructively engage with its assumptions and iteratively develop stronger designs---which is the central thesis of this paper.
-
-\section{Discussion and Conclusion}
+\section{Discussion}
 \label{sec:discussion}
 
-% TODO: Write discussion and conclusion.
-% - For reviewers: If a clear intervention-outcome RQ is posed, we should stop
-%   accepting correlation analyses without an explicit discussion of the extent
-%   to which they may support a causal claim and the assumptions under which
-%   they do so.
-% - For researchers: Clear directions and pointers for learning these methods.
-%   It is much more accessible nowadays for researchers with a CS background,
-%   with all the advances in AI and agents.
-% - Important limitation: Even if we raise the empirical standard, we cannot
-%   prevent people from pretending to use better methods (analogous to the
-%   grounded theory adoption problem in SE).
+This tutorial argued that the SE community should adopt the modern causal inference toolkit as the standard for intervention-outcome questions involving observational data.
+We now reflect on what the worked example reveals about current practice, discuss implications for different audiences, and acknowledge limitations and open frontiers.
 
+\subsection{Lessons from the Worked Example}
+
+The progression of estimates in Table~\ref{tab:all-estimates} is the paper's most concrete argument for why identification strategy matters.
+The na\"ive cross-sectional comparison yields $+911\%$; adding snapshot controls reduces this to $+158\%$; conditioning only on DAG-justified pre-treatment covariates further reduces it to $+101\%$; and the staggered DiD estimates land at $+32\%$ to $+52\%$.
+Each step removes a specific, named source of bias---temporal ambiguity, collider conditioning, time-invariant confounding, secular trends, common shocks---and each reduction is substantial.
+The design, not the estimator, drives the change: Within the cross-sectional family, switching from OLS to PSM to IPW may improve the estimate but they are all plagued by the same conditional ignorability assumption violated by unmeasured confounders.
+
+This pattern is unlikely to be unique to our setting.
+Many MSR studies query the GitHub API once, obtain a cross-sectional snapshot, regress an outcome on a treatment indicator with available controls, and report the surviving coefficient as suggestive of an effect.
+The temporal DAG analysis (Section~\ref{sec:temporal-collapse}) revealed that this workflow destroys the temporal ordering required for principled covariate selection: Variables that are confounders in their pre-treatment incarnation become colliders in their post-treatment incarnation, and a single snapshot conflates the two.
+A practical recommendation follows: MSR researchers should invest in constructing longitudinal datasets---mining git histories, leveraging GHArchive time series, recording adoption timing---rather than relying on atemporal snapshots.
+The marginal cost of building a panel is modest; the marginal gain in identification is large.
+
+The worked example also produces a substantive finding.
+Under the staggered DiD design, systematic AI coding tool adoption---as signaled by AI configuration files committed to the repository---is associated with a 32--52\% increase in monthly commits (ATT).
+This estimates the effect of the \emph{entire bundle}: The AI tools themselves, the workflow reorganization that accompanies structured adoption, and the team characteristics that lead to early integration (Section~\ref{sec:study-setting}).
+It does not isolate the effect of AI code generation alone.
+Pre-treatment trend tests support the parallel trends assumption, but the estimate is likely conservative due to control-group contamination: Individual developers using AI tools without project-level configuration files are unobservable, blurring the treated--control contrast and attenuating the estimate toward zero.
+We offer this as a credible first estimate that future work can refine with richer treatment definitions, complementary identification strategies, or alternative outcome measures.
+
+\subsection{Implications}
+
+\paragraph{For Reviewers and Editors.}
+When a paper poses an intervention-outcome research question, reviewers should require an explicit discussion of the extent to which the evidence supports a causal claim and the assumptions under which it does so.
+A regression coefficient presented as ``the effect of $X$ on $Y$'' without an identification argument is not a causal finding---it is a descriptive association whose causal content is unknown.
+The empirical standard in Appendix~\ref{sec:appendix-standard} provides a concrete checklist: Does the study state its causal question? Articulate a target trial? Define the estimand? Name the identification strategy and its assumptions? Conduct sensitivity analysis? Engage with alternative explanations?
+We encourage editorial boards of SE venues to formally adopt this standard---or one like it---into the ACM SIGSOFT Empirical Standards collection, following the precedent of editor-endorsed guidance in respiratory and critical care medicine~\cite{lederer2019control} and emerging norms in psychology~\cite{grosz2020taboo} and epidemiology~\cite{hernan2018cword}.
+This does not mean that every empirical SE paper must become a causal study; descriptive, predictive, and qualitative studies remain indispensable.
+The standard applies specifically when a study asks a causal question, and a lot more empirical SE papers can possibly reframe their research question to be causal, as many of them already have a causal motivation in mind (see Section~\ref{sec:bg-adoption}).
+
+\paragraph{For Researchers.}
+The causal inference toolkit can seem daunting, but the barrier to entry is lower than it appears.
+The pragmatic stance in Section~\ref{sec:guide} provides a workflow; the FAQ in Appendix~\ref{sec:appendix-faq} addresses common objections and recommends software tools; and a new generation of accessible textbooks~\cite{cunningham2021causal, huntingtonklein2021effect, hernan2020causal, angrist2009mostly} makes self-study feasible.
+The most important first step is not mastering a specific method but adopting a way of thinking: Before fitting a model, articulate the target trial, sketch a DAG, ask what variation in the data identifies the causal effect, and reason whether the identification assumption would be plausible in the specific study setting.
+This exercise alone---even without changing the statistical method---often reveals problems invisible to the standard regression workflow: a key covariate is a mediator, the treatment is poorly defined, or the research question conflates two distinct estimands.
+Causal inquiry is inherently iterative: The first identification strategy will have gaps, and revision is the norm, not the exception.
+
+\subsection{SE's Advantages for Causal Inference}
+
+Our message is not that SE is behind---it is that SE has untapped potential.
+Several structural features of SE data make it unusually well suited to the design-based methods this tutorial advocates.
+First, SE data is inherently \emph{panel data}: Repositories have commit histories spanning years, developers contribute across projects over time, and tools and practices are adopted in staggered fashion---precisely the structure that DiD, panel fixed effects, and synthetic control designs exploit.
+Second, SE has the data infrastructure---version control systems, public repositories, platform event streams---that researchers in economics, psychology, or epidemiology often cannot access.
+Finally, SE ecosystems generate rich \emph{quasi-experimental variation}: Platform policies (GitHub Actions rollout, npm security mandates, language deprecation announcements), organizational mandates, and ecosystem-wide shocks create exogenous variation that resembles natural experiments.
+The field is rich in settings where design-based identification is feasible; it has simply not been exploited at scale.
+
+The causal inference framework also creates a productive bridge between qualitative and quantitative SE research.
+Every step of a causal inquiry---framing the question, proposing a DAG, choosing covariates, interpreting results---requires \emph{domain knowledge} that cannot be derived from data alone (Section~\ref{sec:stance-prior-research}).
+Interviews, case studies, practitioner postmortems, and gray literature become the theory-generating engine that proposes causal structures; rigorous quantitative designs then test them; and the findings refine theory for the next iteration.
+Far from marginalizing qualitative research, the toolkit makes its role in theory-building explicit and essential.
+
+\subsection{Limitations and Open Frontiers}
+
+Raising empirical standards cannot prevent the superficial or ritualistic adoption of methods---applying DiD without understanding parallel trends, or drawing a DAG without genuine engagement with the causal structure.
+This concern is not hypothetical: The SE community has experienced analogous problems with the adoption of qualitative methods, where the label is adopted but the disciplined reasoning behind the method is not~\cite{DBLP:journals/tosem/RobillardAEGLNNSSS24}.
+The antidote is peer review informed by the empirical standard (Appendix~\ref{sec:appendix-standard}) and a culture of substantive engagement with identification assumptions---evaluating whether a study's parallel trends argument is plausible, not merely whether the words ``parallel trends'' appear.
+
+Several SE-specific challenges deserve particular attention as open research frontiers.
+First, SE treatments are often \emph{compound}: ``Adopting AI coding tools'' bundles the tools themselves, the workflow reorganization, and the team characteristics that drive adoption (Section~\ref{sec:study-setting}).
+Developing decomposition strategies for disentangling bundled interventions in SE settings is an important methodological direction.
+Second, interconnected software ecosystems create \emph{SUTVA violations}: Shared libraries propagate effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
+Adapting causal inference methods under network interference~\cite{savje2021average, forastiere2021identification} to SE's sociotechnical dependency structures is an open frontier where SE-specific methodological contributions could flow back to the broader causal inference community.
+Finally, even as the community improves identification, corresponding investment in measurement validity---construct definition, proxy validation, and triangulation across multiple outcome measures~\cite{lawlor2016triangulation}---is essential.
+A perfectly identified design with a bad outcome proxy still produces misleading conclusions.
+Identification and measurement are orthogonal challenges (Section~\ref{sec:primer-stance}); this tutorial addresses the former, but the latter demands equal attention.
+
+\section{Conclusion}
+
+No single observational study resolves a causal question definitively.
+The field builds general causal knowledge through \emph{triangulation}: accumulating credible local estimates across complementary designs, data sources, and populations~\cite{shadish2002experimental}---just as economics built its evidence base on minimum wage effects and returns to education through dozens of independent, credible studies that converged~\cite{angrist2010credibility}.
+SE's diversity of ecosystems---different languages, platforms, team structures, development cultures---makes it well suited to this strategy: The same causal question can be studied in many independent settings, each with its own identification strategy, and convergence across them is far more persuasive than any single study claiming a universal effect.
+
+The causal inference toolkit's greatest contribution to SE is not a specific method but a way of thinking: making identifying assumptions \emph{transparent and open to scrutiny} so that the strength of evidence is clearly communicated and the field can iteratively develop stronger designs.
+We envision this adoption bringing productive advancements on a broad range of important intervention-outcome questions---from the effect of AI coding tools to the impact of development practices, governance structures, and ecosystem policies---moving the field from the blanket disclaimer that ``correlation does not imply causation'' toward the constructive discipline of asking: \emph{Under what assumptions does this evidence support a causal interpretation, and how can the next study relax those assumptions?}
 
 \section*{Data Availability}
 \label{sec:data-availability}

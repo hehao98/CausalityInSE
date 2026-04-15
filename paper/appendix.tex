@@ -165,7 +165,7 @@ Both identification families benefit from making assumptions visual and debatabl
 Two things: discipline and tools:
 \begin{enumerate}[leftmargin=15pt]
     \item \emph{Discipline}:
-    Causal inference forces the researcher to define the estimand before choosing a method (Section~\ref{sec:guide-question}), construct a DAG that makes every assumption explicit, and justify each covariate on causal---not statistical---grounds.
+    Causal inference forces the researcher to define the estimand before choosing a method (Section~\ref{sec:primer-stance}), construct a DAG that makes every assumption explicit, and justify each covariate on causal---not statistical---grounds.
     This discipline routinely reveals problems invisible to the standard regression workflow: The study answers a different question than intended (e.g., ATT when the research question concerns ATE), a key covariate is a mediator whose inclusion blocks the effect of interest, or a ``control variable'' is a collider whose inclusion opens a spurious path.
     The estimand-first principle~\cite{lundberg2021estimand} ensures that the statistical procedure is evaluated against a well-defined target quantity, not assessed only on internal statistical criteria.
     \item \emph{Tools}:
@@ -239,7 +239,7 @@ A study that does so is harder to criticize, more likely to produce durable find
 
 \subsection{SE data is noisy and poorly measured. How can any quasi-experimental design be credible here?}
 
-SE data has genuine measurement challenges---noisy defect proxies, construct validity issues, potential SUTVA violations in interconnected ecosystems---and this tutorial acknowledges them honestly (Section~\ref{sec:guide-credibility}).
+SE data has genuine measurement challenges---noisy defect proxies, construct validity issues, potential SUTVA violations in interconnected ecosystems---and this tutorial acknowledges them honestly (Section~\ref{sec:primer-stance}).
 But SE data also has \emph{structural advantages} that many social science fields lack.
 We have a vast corpus of open-source repositories with fine-grained temporal and semantic data; we observe developers contributing across projects which creates within-person panel variation; SE tools and practices are adopted in staggered waves, creating natural difference-in-differences settings; platform policies---e.g., GitHub Actions rollout, npm security mandates, language deprecation announcements---create exogenous shocks that resemble natural experiments.
 The question is not whether SE data is as clean as a minimum-wage natural experiment~\cite{card1994minimum} but whether the available variation, combined with domain knowledge and sensitivity analysis, supports a credible argument.
@@ -342,7 +342,7 @@ The remaining options are:
 (1)~Selection-on-observables (regression, matching, IPW) with a carefully justified DAG and sensitivity analysis~\cite{cinelli2020making}---but you must honestly acknowledge that the no-unmeasured-confounders assumption is strong and likely violated in most SE settings where key confounders are unmeasurable from repository data.
 (2)~Instrumental variables, if you can find a plausible instrument.
 (3)~Regression discontinuity, if the setting features a threshold-based assignment mechanism.
-Often, the most productive response is to \emph{reformulate the question} to exploit available variation (Section~\ref{sec:guide-neither}).
+Often, the most productive response is to \emph{reformulate the question} to exploit available variation (Section~\ref{sec:primer-stance}).
 Can you collect panel data instead of cross-sectional data?
 Can you identify migration or adoption events that create before/after variation?
 The guide's most creative contribution is often in transforming an intractable cross-sectional question into a tractable longitudinal one---for example, ``Does language affect code quality?'' becomes ``Does adopting a type system reduce defects?'' when migration events are observable.
