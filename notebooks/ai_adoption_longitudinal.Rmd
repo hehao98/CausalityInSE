@@ -19,18 +19,23 @@ The notebook follows a **progression of increasingly credible designs**:
 
 - **Stage 0**: Naive before/after (no control group, no trend adjustment)
 - **Stage 1**: Interrupted time series (trend-adjusted, no control group)
-- **Stage 2**: TWFE DiD without time-varying covariates
-- **Stage 3**: TWFE DiD with time-varying covariates
-- **Stage 4**: Borusyak et al. imputation DiD (modern staggered estimator)
+- **Stage 2**: Modern staggered DiD with control group --- Borusyak et al.
+  (2024) imputation estimator *and* Callaway & Sant'Anna (2021)
+  outcome-regression estimator
 
-Each stage builds on the previous one's limitations.
+Each stage builds on the previous one's limitations.  We skip the classic
+TWFE DiD estimator because it has known problems under staggered treatment
+with heterogeneous effects (Goodman-Bacon 2021; de Chaisemartin &
+D'Haultfoeuille 2020) and go directly to modern estimators.  Using two
+complementary approaches lets us assess sensitivity to how covariates are
+handled (global imputation vs. group-time outcome regression).
 
 # Setup
 
 ```{r setup, message=FALSE, warning=FALSE}
 required_pkgs <- c("dplyr", "tidyr", "ggplot2", "knitr", "kableExtra",
-                   "fixest", "didimputation", "showtext", "scales",
-                   "MatchIt", "cobalt", "data.table")
+                   "fixest", "didimputation", "clock", "recipes", "did", 
+                   "showtext", "scales", "MatchIt", "cobalt", "data.table")
 missing_pkgs <- required_pkgs[!sapply(required_pkgs, requireNamespace,
                                        quietly = TRUE)]
 if (length(missing_pkgs) > 0) {
@@ -44,6 +49,7 @@ library(knitr)
 library(kableExtra)
 library(fixest)
 library(didimputation)
+library(did)
 library(showtext)
 library(scales)
 library(MatchIt)
@@ -51,6 +57,9 @@ library(cobalt)
 
 font_add("Linux Libertine", regular = "LinLibertine_Rah.ttf")
 showtext_auto()
+
+plots_dir <- file.path(dirname(getwd()), "plots")
+if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
 
 # Shared theme for all plots
 theme_panel <- function(base_size = 13) {
@@ -158,17 +167,23 @@ cohort_counts <- panel %>%
   distinct(full_name, treatment_month) %>%
   count(treatment_month, name = "n_repos")
 
-ggplot(cohort_counts, aes(x = treatment_month, y = n_repos)) +
+p_timing <- ggplot(cohort_counts, aes(x = treatment_month, y = n_repos)) +
   geom_col(fill = "steelblue", alpha = 0.8) +
-  labs(x = "Treatment Month", y = "Number of Repos",
-       title = "Staggered AI Tool Adoption Timing") +
+  geom_text(aes(label = n_repos), vjust = -0.4, size = 3.5,
+            family = "Linux Libertine") +
+  labs(x = "Treatment Month", y = "Number of Repos") +
   theme_panel() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(p_timing)
+
+ggsave(file.path(plots_dir, "treatment_timing.pdf"),
+       p_timing, width = 8, height = 3, device = cairo_pdf)
 ```
 
 Treatment adoption is staggered across 2024-11 through 2026-03, with the
 bulk of adoption occurring in 2025 and early 2026.  This staggered structure
-is what motivates the modern DiD estimator in Stage 4.
+is what motivates the modern DiD estimator in Stage 2.
 
 ## Average Trajectories
 
@@ -347,34 +362,32 @@ summary(its_model)
 ```
 
 ```{r stage1_plot, fig.width=8, fig.height=3}
-# Average trajectory for treated repos, centred on event time
-its_trajectory <- panel %>%
+# Distribution of log(commits) by event time for treated repos
+its_boxdata <- panel %>%
   filter(ever_treated == 1, !is.na(event_time),
          event_time >= -12, event_time <= 12) %>%
-  group_by(event_time) %>%
-  summarise(mean_log = mean(log_commits, na.rm = TRUE),
-            se = sd(log_commits, na.rm = TRUE) / sqrt(n()),
-            n = n(),
-            .groups = "drop")
+  mutate(period = ifelse(event_time < 0, "Pre-treatment", "Post-treatment"),
+         period = factor(period, levels = c("Pre-treatment", "Post-treatment")))
 
-ggplot(its_trajectory, aes(x = event_time, y = mean_log)) +
-  geom_vline(xintercept = -0.5, linetype = "dashed", color = "grey50") +
-  geom_ribbon(aes(ymin = mean_log - 1.96 * se,
-                  ymax = mean_log + 1.96 * se),
-              alpha = 0.2, fill = "steelblue") +
-  geom_line(color = "steelblue", linewidth = 0.8) +
-  geom_point(color = "steelblue", size = 1.5) +
-  annotate("text", x = -6, y = max(its_trajectory$mean_log),
-           label = "Pre-treatment", family = "Linux Libertine",
-           size = 3.5, color = "grey40") +
-  annotate("text", x = 6, y = max(its_trajectory$mean_log),
-           label = "Post-treatment", family = "Linux Libertine",
-           size = 3.5, color = "grey40") +
-  labs(x = "Months Since AI Tool Adoption",
-       y = "Mean log(1 + Commits)",
-       title = "ITS: Average Trajectory of Treated Repos Around Adoption",
-       caption = "No control group. Vertical dashed line = treatment onset.") +
-  theme_panel()
+p_its <- ggplot(its_boxdata, aes(x = factor(event_time), y = log_commits,
+                                 fill = period)) +
+  geom_boxplot(outlier.size = 0.5, outlier.alpha = 0.3, linewidth = 0.3) +
+  geom_vline(xintercept = 12.5, linetype = "dashed", color = "grey50") +
+  scale_fill_manual(values = c("Pre-treatment" = "grey80",
+                               "Post-treatment" = "steelblue")) +
+  labs(x = "Months Since AI Tool Adoption (Event Time)",
+       y = "log(1 + Commits)",
+       fill = NULL,
+       caption = paste0("Treated repos only (n = 240). Each repo's timeline is ",
+                        "aligned to its own adoption date.\n",
+                        "No control group; contemporaneous shocks remain confounded.")) +
+  theme_panel() +
+  theme(axis.text.x = element_text(size = rel(0.75)))
+
+print(p_its)
+
+ggsave(file.path(plots_dir, "its_boxplot.pdf"),
+       p_its, width = 8, height = 3, device = cairo_pdf)
 ```
 
 The ITS level-shift coefficient (`post`) tests whether commits jump
@@ -383,141 +396,17 @@ whether the post-treatment trajectory differs from the pre-treatment trend.
 However, without a control group, we cannot rule out that a contemporaneous
 shock (e.g., a GitHub platform change, a seasonal pattern) drives the result.
 
-# Stage 2: TWFE DiD Without Time-Varying Covariates
+# Stage 2: Borusyak et al. Imputation DiD
 
-The classic two-way fixed effects specification absorbs all time-invariant
-repo heterogeneity (α_i) and all common temporal shocks (γ_t).
+Unlike the classic TWFE DiD estimator---which suffers from negative-weighting
+bias under staggered treatment with heterogeneous effects (Goodman-Bacon
+2021; de Chaisemartin & D'Haultfoeuille 2020; see Roth et al. 2023 for a
+survey)---the imputation estimator of Borusyak, Jaravel, and Spiess (2024)
+avoids this problem entirely.  It fits a model for Y(0) using only untreated
+observations (never-treated + not-yet-treated), imputes the counterfactual
+for each treated (i, t) cell, and averages the residuals.
 
-```{r stage2_static}
-# Static TWFE
-twfe_base <- feols(
-  log_commits ~ treated | repo_id + month_idx,
-  data = panel,
-  cluster = ~repo_id
-)
-
-cat("=== TWFE DiD (No Covariates) ===\n")
-summary(twfe_base)
-```
-
-```{r stage2_event, fig.width=8, fig.height=4}
-# Event study: use sunab() for clean staggered event study in fixest
-# sunab(cohort, event_time) implements Sun & Abraham (2021) decomposition
-# but we use i() for the classic TWFE event study first
-twfe_es <- feols(
-  log_commits ~ i(event_time, ref = -1) | repo_id + month_idx,
-  data = panel %>% filter(is.na(event_time) |
-                          (event_time >= -12 & event_time <= 12)),
-  cluster = ~repo_id
-)
-
-cat("=== TWFE Event Study (No Covariates) ===\n")
-summary(twfe_es)
-```
-
-```{r stage2_esplot, fig.width=8, fig.height=4}
-iplot(twfe_es,
-      main = "TWFE Event Study: No Covariates",
-      xlab = "Months Since AI Tool Adoption",
-      ylab = "Coefficient (log commits)")
-```
-
-```{r stage2_pretrends}
-# Pre-trends F-test: joint test that all pre-treatment coefficients = 0
-pre_coefs <- grep("event_time::-[0-9]", names(coef(twfe_es)), value = TRUE)
-# Exclude the reference period (-1) which is dropped
-pre_coefs <- setdiff(pre_coefs, "event_time::-1")
-
-if (length(pre_coefs) > 0) {
-  pre_test <- wald(twfe_es, pre_coefs)
-  cat(sprintf("Pre-trends F-test: F = %.2f, p = %.4f\n",
-              pre_test$stat, pre_test$p))
-}
-```
-
-The event study plot shows coefficients relative to the month before adoption
-(k = -1).  Pre-treatment coefficients near zero support the parallel trends
-assumption.  Post-treatment coefficients show the dynamic treatment effect.
-
-# Stage 3: TWFE DiD With Time-Varying Covariates
-
-Adding time-varying controls absorbs repo-specific shocks that vary over
-time --- the remaining threat after repo FE absorbs time-invariant
-confounders and month FE absorbs common shocks.
-
-We include: `log1p(active_contributors)`, `log1p(new_stars)`,
-`log1p(new_issues)`, `log1p(new_forks)`, `log1p(new_releases)`.
-We exclude `prs_merged` because PRs are mechanistically downstream of
-commits (merging a PR is committing), so conditioning on them risks blocking
-the causal path.
-
-```{r stage3_static}
-twfe_cov <- feols(
-  log_commits ~ treated + log_contributors + log_stars + log_issues +
-    log_forks + log_releases | repo_id + month_idx,
-  data = panel,
-  cluster = ~repo_id
-)
-
-cat("=== TWFE DiD (With Time-Varying Covariates) ===\n")
-summary(twfe_cov)
-```
-
-```{r stage3_event, fig.width=8, fig.height=4}
-twfe_cov_es <- feols(
-  log_commits ~ i(event_time, ref = -1) + log_contributors + log_stars +
-    log_issues + log_forks + log_releases | repo_id + month_idx,
-  data = panel %>% filter(is.na(event_time) |
-                          (event_time >= -12 & event_time <= 12)),
-  cluster = ~repo_id
-)
-
-cat("=== TWFE Event Study (With Covariates) ===\n")
-summary(twfe_cov_es)
-```
-
-```{r stage3_esplot, fig.width=8, fig.height=4}
-iplot(twfe_cov_es,
-      main = "TWFE Event Study: With Time-Varying Covariates",
-      xlab = "Months Since AI Tool Adoption",
-      ylab = "Coefficient (log commits)")
-```
-
-```{r stage3_pretrends}
-pre_coefs_cov <- grep("event_time::-[0-9]",
-                      names(coef(twfe_cov_es)), value = TRUE)
-pre_coefs_cov <- setdiff(pre_coefs_cov, "event_time::-1")
-
-if (length(pre_coefs_cov) > 0) {
-  pre_test_cov <- wald(twfe_cov_es, pre_coefs_cov)
-  cat(sprintf("Pre-trends F-test (with covariates): F = %.2f, p = %.4f\n",
-              pre_test_cov$stat, pre_test_cov$p))
-}
-```
-
-```{r stage23_comparison}
-# Side-by-side comparison
-etable(twfe_base, twfe_cov,
-       headers = c("TWFE (no covariates)", "TWFE (with covariates)"),
-       se.below = TRUE,
-       keep = "treated")
-```
-
-Adding time-varying covariates addresses observable repo-specific shocks.
-If the ATT changes substantially, time-varying confounders matter.  However,
-both TWFE specifications share a fundamental limitation under staggered
-treatment: already-treated units serve as implicit controls for later-treated
-units, and if treatment effects are heterogeneous, this can produce biased
-estimates with negative weights.  Stage 4 addresses this.
-
-# Stage 4: Borusyak et al. Imputation DiD
-
-The imputation estimator of Borusyak, Jaravel, and Spiess (2024) avoids the
-negative-weighting problem of TWFE.  It fits a model for Y(0) using only
-untreated observations (never-treated + not-yet-treated), imputes the
-counterfactual for each treated (i, t) cell, and averages the residuals.
-
-```{r stage4_prep}
+```{r stage2_prep}
 # didimputation requires: idname, tname, gname (cohort: 0 = never-treated),
 # yname, and optionally first_stage for covariates.
 # Ensure data types are correct
@@ -538,7 +427,7 @@ cat(sprintf("Treatment cohorts: %d (0 = never-treated)\n",
 
 ## Static ATT
 
-```{r stage4_static}
+```{r stage2_static}
 # Static ATT (single average treatment effect)
 did_static <- did_imputation(
   data = did_data,
@@ -557,7 +446,7 @@ print(did_static)
 
 ## Event Study
 
-```{r stage4_event}
+```{r stage2_event}
 # Event study with pre-trends
 did_es <- did_imputation(
   data = did_data,
@@ -576,55 +465,196 @@ cat("=== Borusyak et al. Event Study ===\n")
 print(did_es)
 ```
 
-```{r stage4_esplot, fig.width=8, fig.height=4}
-# Build event study plot from did_es output
-es_df <- as.data.frame(did_es) %>%
+```{r stage2_esplot_prep}
+# Prepare Borusyak event study data for combined plot
+es_borusyak <- as.data.frame(did_es) %>%
   mutate(
     event_time = as.integer(as.character(term)),
-    is_pre = event_time < 0
+    estimator = "Borusyak (with covariates)"
+  ) %>%
+  filter(event_time >= -12, event_time <= 12)
+```
+
+## Callaway & Sant'Anna (2021) DiD
+
+We now estimate the same ATT using the Callaway & Sant'Anna (2021)
+estimator **without covariates** (`xformla = ~1`).  This deliberately
+omits the time-varying covariates that Borusyak includes in its
+first-stage imputation model.  The comparison is informative: if the
+Borusyak estimate with time-varying covariates is substantially lower
+than the CS estimate without covariates, this is consistent with
+covariate attenuation --- the covariates absorb part of the causal
+pathway because they are post-treatment mediators, not pure confounders.
+
+We use the never-treated repos (n = 759) as the control group.
+Without covariates in the model, every treatment cohort --- regardless
+of size --- can be estimated as a simple difference in means, so no
+cohorts need to be dropped.
+
+```{r csdid_static}
+cs_att <- att_gt(
+  yname  = "log_commits",
+  tname  = "month_idx",
+  idname = "repo_id",
+  gname  = "treatment_cohort",
+  xformla = ~1,
+  data   = did_data,
+  est_method = "reg",
+  control_group = "nevertreated",
+  clustervars = "repo_id",
+  print_details = FALSE
+)
+
+cs_agg <- aggte(cs_att, type = "simple", na.rm = TRUE)
+cat("=== Callaway & Sant'Anna DiD: Aggregate ATT ===\n")
+summary(cs_agg)
+```
+
+```{r csdid_event}
+cs_es <- aggte(cs_att, type = "dynamic", na.rm = TRUE)
+cat("=== Callaway & Sant'Anna DiD: Event Study ===\n")
+summary(cs_es)
+```
+
+## Combined Event Study
+
+```{r combined_esplot, fig.width=8, fig.height=3}
+# Prepare CS event study data
+es_cs <- data.frame(
+  event_time = cs_es$egt,
+  estimate   = cs_es$att.egt,
+  std.error  = cs_es$se.egt
+) %>%
+  mutate(
+    conf.low  = estimate - 1.96 * std.error,
+    conf.high = estimate + 1.96 * std.error,
+    estimator = "Callaway & Sant'Anna (no covariates)"
   ) %>%
   filter(event_time >= -12, event_time <= 12)
 
-ggplot(es_df, aes(x = event_time, y = estimate)) +
+# Combine both estimators
+es_combined <- bind_rows(
+  es_borusyak %>% select(event_time, estimate, conf.low, conf.high, estimator),
+  es_cs       %>% select(event_time, estimate, conf.low, conf.high, estimator)
+)
+
+dodge <- position_dodge(width = 0.4)
+
+p_event <- ggplot(es_combined, aes(x = event_time, y = estimate,
+                                   color = estimator, fill = estimator)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
   geom_vline(xintercept = -0.5, linetype = "dashed", color = "grey70") +
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
-              alpha = 0.15, fill = "steelblue") +
-  geom_point(aes(color = is_pre), size = 2) +
-  geom_line(color = "steelblue", linewidth = 0.6) +
-  scale_color_manual(values = c("TRUE" = "grey50", "FALSE" = "steelblue"),
-                     labels = c("TRUE" = "Pre-treatment", "FALSE" = "Post-treatment"),
-                     name = NULL) +
+              alpha = 0.12, color = NA, position = dodge) +
+  geom_point(size = 1.8, position = dodge) +
+  geom_line(linewidth = 0.5, position = dodge) +
+  scale_color_manual(
+    values = c("Borusyak (with covariates)" = "steelblue",
+               "Callaway & Sant'Anna (no covariates)" = "#E15759")) +
+  scale_fill_manual(
+    values = c("Borusyak (with covariates)" = "steelblue",
+               "Callaway & Sant'Anna (no covariates)" = "#E15759")) +
   labs(x = "Months Since AI Tool Adoption",
        y = "Estimated Effect on log(1 + Commits)",
-       title = "Borusyak et al. Imputation DiD: Event Study",
-       caption = "95% CIs. Pre-treatment coefficients test parallel trends.") +
+       color = NULL, fill = NULL) +
   theme_panel()
+
+print(p_event)
+
+ggsave(file.path(plots_dir, "event_study_comparison.pdf"),
+       p_event, width = 8, height = 3, device = cairo_pdf)
 ```
 
 ## Pre-Trends Assessment
 
-```{r stage4_pretrends}
-pre_es <- es_df %>% filter(event_time < 0)
+We assess the parallel trends assumption for each estimator.  For
+Borusyak, we use a joint Wald test on the pre-treatment event-study
+coefficients (k = -12 to -1).  For Callaway & Sant'Anna, we use the
+package's built-in pre-test (`Wpval`), which accounts for the
+covariance structure across event-study coefficients and uses
+simultaneous confidence bands to control the family-wise error rate.
 
-if (nrow(pre_es) > 0) {
-  cat("Pre-treatment coefficients (Borusyak):\n")
-  cat(sprintf("  Max |coef|: %.4f (at k = %d)\n",
-              max(abs(pre_es$estimate)),
-              pre_es$event_time[which.max(abs(pre_es$estimate))]))
-  cat(sprintf("  Mean |coef|: %.4f\n", mean(abs(pre_es$estimate))))
+```{r pretrends_test}
+# --- Borusyak pre-trends ---
+pre_borusyak <- es_borusyak %>% filter(event_time < 0)
 
-  # Check how many pre-treatment CIs exclude zero
-  n_sig <- sum(pre_es$conf.low > 0 | pre_es$conf.high < 0)
-  cat(sprintf("  Pre-treatment periods with CI excluding zero: %d / %d\n",
-              n_sig, nrow(pre_es)))
+cat("=== Borusyak Pre-Trends (k = -12 to -1) ===\n")
+if (nrow(pre_borusyak) > 0) {
+  cat(sprintf("  Max |coef|:  %.4f (at k = %d)\n",
+              max(abs(pre_borusyak$estimate)),
+              pre_borusyak$event_time[which.max(abs(pre_borusyak$estimate))]))
+  cat(sprintf("  Mean |coef|: %.4f\n", mean(abs(pre_borusyak$estimate))))
+
+  n_sig_bj <- sum(pre_borusyak$conf.low > 0 | pre_borusyak$conf.high < 0)
+  cat(sprintf("  Periods with pointwise CI excluding zero: %d / %d\n",
+              n_sig_bj, nrow(pre_borusyak)))
+
+  pre_coefs_bj <- pre_borusyak$estimate
+  pre_se_bj    <- pre_borusyak$std.error
+  wald_bj <- sum((pre_coefs_bj / pre_se_bj)^2)
+  df_bj   <- length(pre_coefs_bj)
+  pval_bj <- pchisq(wald_bj, df = df_bj, lower.tail = FALSE)
+  cat(sprintf("  Joint Wald chi2(%d) = %.2f, p = %.4f\n", df_bj, wald_bj, pval_bj))
+}
+
+# --- CS pre-trends: use the did package's built-in pre-test ---
+cat("\n=== Callaway & Sant'Anna Pre-Trends ===\n")
+
+# Built-in Wald pre-test (may be NULL if covariance matrix is singular)
+if (!is.null(cs_es$Wpval)) {
+  cat(sprintf("  Built-in Wald pre-test p-value: %.4f\n", cs_es$Wpval))
+} else {
+  cat("  Built-in Wald pre-test: not available (singular covariance matrix)\n")
+}
+
+# Simultaneous confidence bands (critical value stored in cs_es$crit.val.egt)
+pre_cs <- es_cs %>% filter(event_time < 0)
+crit_val <- cs_es$crit.val.egt
+if (nrow(pre_cs) > 0) {
+  cat(sprintf("  Critical value for simultaneous bands: %.3f (vs. 1.96 pointwise)\n",
+              crit_val))
+  n_sig_simult <- sum(abs(pre_cs$estimate) > crit_val * pre_cs$std.error)
+  cat(sprintf("  Periods with simult. band excluding zero (k = -12 to -1): %d / %d\n",
+              n_sig_simult, nrow(pre_cs)))
+
+  cat(sprintf("  Max |coef|:  %.4f (at k = %d)\n",
+              max(abs(pre_cs$estimate)),
+              pre_cs$event_time[which.max(abs(pre_cs$estimate))]))
+  cat(sprintf("  Mean |coef|: %.4f\n", mean(abs(pre_cs$estimate))))
 }
 ```
+
+## Why Do Borusyak and CS Estimates Diverge?
+
+The two estimators differ along two dimensions that can each shift the
+point estimate.
+
+**Covariate attenuation in Borusyak.** The Borusyak first-stage model is
+$Y_{it} = \alpha_i + \delta_t + X_{it}\beta + \varepsilon_{it}$,
+estimated on untreated observations only.  When *imputing* the
+counterfactual $Y(0)$ for a treated $(i, t)$ cell, it plugs in the
+**post-treatment values** of $X_{it}$.  If AI adoption causes an
+increase in contributors or stars, and those in turn drive more commits,
+the imputed $Y(0)$ is inflated, shrinking the residual
+(actual $-$ imputed) and **attenuating** the ATT estimate.  The CS
+specification omits these covariates entirely, so it is unaffected by
+this mechanism.
+
+**Aggregation weights.** Borusyak weights each treated $(i, t)$ cell
+equally, while CS (`type = "simple"`) first averages within
+cohort-time cells, then across cohorts weighted by cohort size.  With
+heterogeneous effects across cohorts, different weighting schemes
+produce different aggregates.
+
+The gap between the Borusyak ATT and the CS ATT is consistent with
+both mechanisms: covariate attenuation pulls Borusyak down, and
+different aggregation weights shift the two estimates further apart.
+Together, the pair of estimates brackets a plausible range for the ATT.
 
 # Control Group Assessment
 
 Do we need to match the control group?  We assess this through three
-diagnostics: (1) the event-study pre-trends from Stages 2--4 (already shown),
+diagnostics: (1) the event-study pre-trends from Stage 2 (already shown),
 (2) pre-treatment trajectory comparison, and (3) robustness to trimming
 structurally inactive repos.
 
@@ -837,59 +867,12 @@ ggplot(matched_traj, aes(x = month_idx, y = mean_log,
   theme_panel()
 ```
 
-## TWFE DiD on PSM-Matched Panel (No Time-Varying Covariates)
-
-Matching handles selection on observables *before* the regression.  If the
-matched control group is comparable at baseline, even a simple TWFE without
-time-varying covariates may suffice --- the matching does the heavy lifting
-that covariates did in Stage 3.  Comparing this estimate with Stages 2--3
-disentangles the contribution of matching vs. covariate adjustment.
-
-```{r matched_twfe_static}
-twfe_matched <- feols(
-  log_commits ~ treated | repo_id + month_idx,
-  data = panel_matched,
-  cluster = ~repo_id
-)
-
-cat("=== TWFE DiD on PSM-Matched Sample (No Covariates) ===\n")
-summary(twfe_matched)
-```
-
-```{r matched_twfe_event, fig.width=8, fig.height=4}
-twfe_matched_es <- feols(
-  log_commits ~ i(event_time, ref = -1) | repo_id + month_idx,
-  data = panel_matched %>% filter(is.na(event_time) |
-                                  (event_time >= -12 & event_time <= 12)),
-  cluster = ~repo_id
-)
-
-iplot(twfe_matched_es,
-      main = "TWFE Event Study: PSM-Matched Sample, No Covariates",
-      xlab = "Months Since AI Tool Adoption",
-      ylab = "Coefficient (log commits)")
-```
-
-```{r matched_twfe_pretrends}
-pre_coefs_matched <- grep("event_time::-[0-9]",
-                          names(coef(twfe_matched_es)), value = TRUE)
-pre_coefs_matched <- setdiff(pre_coefs_matched, "event_time::-1")
-
-if (length(pre_coefs_matched) > 0) {
-  pre_test_matched <- wald(twfe_matched_es, pre_coefs_matched)
-  cat(sprintf("Pre-trends F-test (matched, no covariates): F = %.2f, p = %.4f\n",
-              pre_test_matched$stat, pre_test_matched$p))
-}
-```
-
-The key comparison: Stage 2 (TWFE, full sample, no covariates) vs. this
-specification (TWFE, matched sample, no covariates).  If the estimates
-differ substantially, the unmatched control group contained repos on
-different trajectories, and matching corrected for that.  If they are
-similar, the full control group was already adequate for the parallel
-trends assumption.
-
 ## Borusyak DiD on PSM-Matched Panel
+
+**Note:** This robustness check is included in the notebook for completeness
+but is *not* presented in the paper.  The paper reports Borusyak DiD on the
+full and trimmed samples; the matched-panel result is available here for
+readers who wish to assess sensitivity to control group composition further.
 
 ```{r matched_borusyak}
 did_data_matched <- did_data %>% filter(repo_id %in% matched_ids)
@@ -997,46 +980,10 @@ results <- rbind(results, data.frame(
   N_obs = nobs(its_model)
 ))
 
-# Stage 2: TWFE (no covariates)
-tw_ct <- summary(twfe_base)$coeftable
-tw_idx <- which(rownames(tw_ct) == "treated")
-results <- rbind(results, data.frame(
-  Design = "Stage 2: TWFE (no covariates)",
-  Estimate = tw_ct[tw_idx, "Estimate"],
-  SE = tw_ct[tw_idx, "Std. Error"],
-  CI_low = tw_ct[tw_idx, "Estimate"] - 1.96 * tw_ct[tw_idx, "Std. Error"],
-  CI_high = tw_ct[tw_idx, "Estimate"] + 1.96 * tw_ct[tw_idx, "Std. Error"],
-  N_obs = nobs(twfe_base)
-))
-
-# Stage 3: TWFE (with covariates)
-twc_ct <- summary(twfe_cov)$coeftable
-twc_idx <- which(rownames(twc_ct) == "treated")
-results <- rbind(results, data.frame(
-  Design = "Stage 3: TWFE (with covariates)",
-  Estimate = twc_ct[twc_idx, "Estimate"],
-  SE = twc_ct[twc_idx, "Std. Error"],
-  CI_low = twc_ct[twc_idx, "Estimate"] - 1.96 * twc_ct[twc_idx, "Std. Error"],
-  CI_high = twc_ct[twc_idx, "Estimate"] + 1.96 * twc_ct[twc_idx, "Std. Error"],
-  N_obs = nobs(twfe_cov)
-))
-
-# TWFE (matched, no covariates)
-twm_ct <- summary(twfe_matched)$coeftable
-twm_idx <- which(rownames(twm_ct) == "treated")
-results <- rbind(results, data.frame(
-  Design = "TWFE (PSM-matched, no covariates)",
-  Estimate = twm_ct[twm_idx, "Estimate"],
-  SE = twm_ct[twm_idx, "Std. Error"],
-  CI_low = twm_ct[twm_idx, "Estimate"] - 1.96 * twm_ct[twm_idx, "Std. Error"],
-  CI_high = twm_ct[twm_idx, "Estimate"] + 1.96 * twm_ct[twm_idx, "Std. Error"],
-  N_obs = nobs(twfe_matched)
-))
-
-# Stage 4: Borusyak (full sample)
+# Stage 2: Borusyak (full sample)
 bj <- as.data.frame(did_static)
 results <- rbind(results, data.frame(
-  Design = "Stage 4: Borusyak DiD (full)",
+  Design = "Stage 2: Borusyak DiD (full)",
   Estimate = bj$estimate[1],
   SE = bj$std.error[1],
   CI_low = bj$conf.low[1],
@@ -1044,10 +991,10 @@ results <- rbind(results, data.frame(
   N_obs = nrow(did_data)
 ))
 
-# Stage 4: Borusyak (trimmed)
+# Stage 2: Borusyak (trimmed)
 bt <- as.data.frame(did_trim)
 results <- rbind(results, data.frame(
-  Design = "Stage 4: Borusyak DiD (trimmed)",
+  Design = "Stage 2: Borusyak DiD (trimmed)",
   Estimate = bt$estimate[1],
   SE = bt$std.error[1],
   CI_low = bt$conf.low[1],
@@ -1055,15 +1002,27 @@ results <- rbind(results, data.frame(
   N_obs = nrow(did_data_trim)
 ))
 
-# Stage 4: Borusyak (matched)
+# Stage 2: Borusyak (matched) -- not in paper
 bm <- as.data.frame(did_matched)
 results <- rbind(results, data.frame(
-  Design = "Stage 4: Borusyak DiD (matched)",
+  Design = "Stage 2: Borusyak DiD (matched)*",
   Estimate = bm$estimate[1],
   SE = bm$std.error[1],
   CI_low = bm$conf.low[1],
   CI_high = bm$conf.high[1],
   N_obs = nrow(did_data_matched)
+))
+
+# Stage 2: Callaway & Sant'Anna
+cs_est <- cs_agg$overall.att
+cs_se  <- cs_agg$overall.se
+results <- rbind(results, data.frame(
+  Design = "Stage 2: Callaway & Sant'Anna DiD",
+  Estimate = cs_est,
+  SE = cs_se,
+  CI_low = cs_est - 1.96 * cs_se,
+  CI_high = cs_est + 1.96 * cs_se,
+  N_obs = nrow(did_data)
 ))
 
 results %>%
@@ -1074,7 +1033,7 @@ results %>%
     `N obs`  = format(N_obs, big.mark = ",")
   ) %>%
   select(Design, Estimate, SE, `95% CI`, `N obs`) %>%
-  kable(caption = "Summary: All Estimates of the ATT of AI Tool Adoption on log(1 + Monthly Commits)") %>%
+  kable(caption = "Summary: All Estimates of the ATT of AI Tool Adoption on log(1 + Monthly Commits). * = not presented in paper.") %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
@@ -1096,26 +1055,45 @@ ggplot(results, aes(x = Estimate, y = Design)) +
 
 # Interpretation
 
-The progression from Stage 0 to Stage 4 illustrates the tutorial's core
+The progression from Stage 0 to Stage 2 illustrates the tutorial's core
 message: *the design matters more than the estimator*.
 
-- **Stages 0--1** (no control group) produce estimates that confound the
-  treatment effect with secular trends.  They are the longitudinal analogue
-  of the bivariate cross-sectional comparison.
+- **Stage 0** (naive before/after) is the simplest longitudinal approach but
+  confounds the treatment effect with any secular trend.
 
-- **Stages 2--3** (TWFE DiD) absorb time-invariant confounders (repo FE) and
-  common shocks (month FE).  Adding time-varying covariates in Stage 3
-  addresses repo-specific shocks.  However, TWFE is biased under staggered
-  treatment with heterogeneous effects.
+- **Stage 1** (ITS) improves on Stage 0 by explicitly modeling the
+  pre-treatment trend, but still lacks a control group.  Without a
+  counterfactual from untreated units, the estimate cannot distinguish the
+  treatment effect from contemporaneous shocks (e.g., platform-wide changes,
+  seasonal patterns) that affect all repositories around the same time.
+  This limitation motivates the key insight of design-based identification:
+  *modeling alone cannot substitute for the right research design*.
 
-- **Stage 4** (Borusyak et al.) resolves the staggered-treatment bias and
-  provides clean event-study estimates.  The robustness of the ATT across
-  the full, trimmed, and matched samples addresses concerns about control
-  group composition.
+- **Stage 2** introduces a control group and exploits staggered adoption
+  as quasi-random variation, using two complementary modern DiD estimators
+  that avoid the negative-weighting problems of classic TWFE under
+  staggered treatment with heterogeneous effects.  The **Borusyak et al.
+  imputation estimator** fits an outcome model for $Y(0)$ and imputes
+  counterfactuals, while the **Callaway & Sant'Anna outcome-regression
+  estimator** conditions on covariate values at the pre-treatment base
+  period for each cohort.
 
-The event-study plots across Stages 2--4 serve a dual purpose: they test the
-parallel trends assumption (pre-treatment coefficients near zero) *and*
-visualise the dynamic treatment effect (post-treatment coefficients).
+  The divergence between the two estimates is informative:  Borusyak's
+  first-stage uses time-varying covariates that may be post-treatment
+  mediators (e.g., contributors and stars that *increase because of* AI
+  adoption), attenuating the ATT by absorbing part of the causal pathway.
+  The Callaway & Sant'Anna specification omits these covariates entirely,
+  so it is unaffected by this attenuation.  Additionally, the two
+  estimators use different aggregation weights for heterogeneous
+  cohort-level effects.  Together, the pair of estimates brackets a
+  plausible range for the ATT.
+
+  The robustness of the Borusyak ATT across the full, trimmed, and
+  PSM-matched samples addresses concerns about control group composition.
+
+The event-study plots serve a dual purpose: they test the parallel trends
+assumption (pre-treatment coefficients near zero) *and* visualise the
+dynamic treatment effect (post-treatment coefficients).
 
 Compare the final Borusyak ATT with the cross-sectional coefficients from
 the companion notebook.  The cross-sectional M_pretreat coefficient reflects

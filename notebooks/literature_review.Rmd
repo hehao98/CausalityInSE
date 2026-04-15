@@ -163,9 +163,6 @@ p_taxonomy <- taxonomy |>
   xlim(0, max(taxonomy$N) + 5)
 
 print(p_taxonomy)
-
-ggsave(file.path(plots_dir, "taxonomy_bar.pdf"),
-       p_taxonomy, width = 8, height = 3, device = cairo_pdf)
 ```
 
 ```{r causal-trends, fig.width=9, fig.height=5.5}

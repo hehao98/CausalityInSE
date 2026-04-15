@@ -571,7 +571,7 @@ In this section, we illustrate the high-level idea of each method with SE exampl
     The key assumption---\emph{parallel trends}---requires that, absent the adoption, both groups would have followed the same outcome trajectory.
     This assumption can be partially assessed using pre-treatment trend tests, and modern estimators leverage staggered adoption to construct natural experiments among treated units with different adoption timings~\cite {callaway2021difference, roth2023whats}.
     The DiD methodology has been successfully applied in SE settings to study the impact of social media promotion on open-source project popularity and contributor attraction~\cite{DBLP:conf/icse/FangLHV22}, the impact of core contributor disengagement on open-source project workflows~\cite{DBLP:conf/icse/ChenSSGT26}, and the impact of Cursor adoption on development velocity and code quality~\cite{DBLP:conf/msr/HeMAKV26}.
-    As a tutorial example, we will apply staggered DiD to the AI coding tools question in Section~\ref{sec:staggered-did}.
+    As a tutorial example, we will apply staggered DiD to the AI coding tools question in Section~\ref{sec:did}.
 
     \item \emph{Instrumental Variables (IV).}
     IV uses an \emph{instrument}---a variable that affects the treatment but influences the outcome only through the treatment---to isolate exogenous variation.
@@ -589,7 +589,7 @@ In this section, we illustrate the high-level idea of each method with SE exampl
     For example, observing the same repository before and after AI tool adoption removes confounding from all time-invariant repository characteristics---codebase domain, long-term team composition, organizational practices---that cross-sectional comparisons cannot address.
     The identifying assumption is \emph{strict exogeneity}: Conditional on unit fixed effects, the treatment is uncorrelated with time-varying unobservables (i.e., no time-varying confounders that are left unmeasured).\footnote{This assumption differs from the conditional ignorability assumption from selection-on-observables methods: Panel fixed effects automatically absorb all time-invariant confounders without requiring them to be measured, but the researcher must still argue---using domain knowledge or a DAG---that no unmeasured time-varying confounders remain and that past outcomes do not feed back into future treatment assignment.}
     Panel fixed effects models have been applied in SE settings to study the causal impact of code quality on developer productivity at Google~\cite{DBLP:conf/sigsoft/ChengMCJGKZ022}.
-    They are also often used as a baseline model for DiD designs (see Section~\ref{sec:twfe} for an example).
+    They are also often used as a baseline model for DiD designs (see Section~\ref{sec:did} for an example).
 
 %    \item \emph{Synthetic Control.}
 %    Synthetic control constructs a weighted combination of untreated units to serve as a counterfactual for a single treated unit.
@@ -733,7 +733,7 @@ To support the longitudinal analysis in Section~\ref{sec:longitudinal}, we const
 We clone each repository and mine its git history to extract two outcome measures per repository-month: the number of commits and the number of unique active contributors (distinct author email addresses).
 To identify treatment timing, we scan the git history for the earliest commit that added an AI configuration file, using the author date of that commit as the treatment date; this allows us to determine precisely when each repository transitioned from untreated to treated, which is essential for the before-and-after and difference-in-differences designs.
 We enrich the panel with time-varying covariates from the GHArchive public dataset via BigQuery, aggregating monthly counts of new stars, issues opened, forks, pull requests merged, and releases for each repository.
-These time-varying covariates serve dual roles in the analysis: as potential confounders in the longitudinal models (Section~\ref{sec:twfe-covariates}) and as concrete examples of the temporal collapse problem when measured cross-sectionally (Section~\ref{sec:temporal-collapse}).
+These time-varying covariates serve dual roles in the analysis: as potential confounders in the longitudinal models (Section~\ref{sec:did}) and as concrete examples of the temporal collapse problem when measured cross-sectionally (Section~\ref{sec:temporal-collapse}).
 All data collection scripts are available in the replication package (Section~\ref{sec:data-availability}).
 
 \paragraph{Treatment: Systematic AI Coding Tool Adoption.}
@@ -1068,7 +1068,7 @@ In other words, using PSM or IPW does not automatically make a study ``causal in
 
 Table~\ref{tab:three-estimators} compares the three estimators using the same DAG-justified pre-treatment covariates, in which OLS gets $\hat{\tau} = 0.696$ (+100.57\%), 1:1 nearest-neighbor propensity score matching gets $\hat{\tau} = 0.574$ (+77.54\%), and ATT-targeted inverse probability weighting gets $\hat{\tau} = 0.509$ (+66.36\%).
 The three estimators target slightly different estimands---OLS approximates the ATE while PSM and IPW estimate the ATT---and operate on different effective samples (PSM retains 456 matched observations from the 999 available), which accounts for the variation in effect estimates.
-However, if we compare the estimates with the DiD estimates in Section~\ref{sec:twfe}, it would be reasonable to infer that the OLS, PSM, and IPW esimaters are all still inflated because of the unobserved coundefenders like Team Skill.
+However, if we compare the estimates with the DiD estimates in Section~\ref{sec:did}, it would be reasonable to infer that the OLS, PSM, and IPW estimators are all still inflated because of the unobserved confounders like Team Skill.
 
 \paragraph{Cross-Sectional Takeaway.}
 \label{sec:cross-sectional-takeaway}
@@ -1091,25 +1091,28 @@ We turn to this approach in Section~\ref{sec:longitudinal}.
 
 \TODO{For treated repositories, compare monthly commits before vs.\ after the first AI config file commit. This absorbs all time-invariant confounders but conflates the treatment effect with any concurrent time trends (e.g., a general increase in AI-assisted development activity across all repositories).}
 
-\paragraph{Two-Way Fixed Effects.}
-\label{sec:twfe}
+\paragraph{Interrupted Time Series.}
+\label{sec:its}
 
-\TODO{Introduce the TWFE specification with repository and time fixed effects. Repository FEs absorb all time-invariant confounders (domain, long-term team composition, organizational culture---the unmeasured confounders that defeated the cross-sectional analysis). Time FEs absorb common shocks affecting all repositories in a given month. The identifying assumption is strict exogeneity (Table~\ref{tab:methods-summary}): Conditional on unit and time FEs, treatment timing is uncorrelated with time-varying unobservables.}
+\TODO{ITS models the pre-treatment trend explicitly and tests for a level shift and/or slope change at the adoption event, using only treated repositories (with repository fixed effects). This improves on the na\"ive before/after comparison by separating the treatment effect from secular trends. However, without a control group, ITS cannot distinguish the treatment effect from contemporaneous shocks---e.g., a GitHub platform change, a seasonal pattern, or a field-wide shift in development practices---that affect all repositories around the same time. This limitation motivates the addition of a control group, which is the key insight of design-based identification.}
 
-\paragraph{Two-Way Fixed Effects with Time-Varying Covariates.}
-\label{sec:twfe-covariates}
+\paragraph{Difference-in-Differences.}
+\label{sec:did}
 
-\TODO{Extend the TWFE model with time-varying covariates (e.g., monthly star growth, contributor count changes). Discuss which time-varying covariates are legitimate controls vs.\ potential mediators in the temporal DAG from Section~\ref{sec:temporal-dag}. Compare estimates with and without time-varying controls.}
+\TODO{The design-based leap: Adding a control group of repositories that did not adopt AI tools. Build DiD intuition in two steps. First, the classic 2$\times$2 diagram (treated vs.\ control $\times$ pre vs.\ post): The double difference $({\bar Y}^{\text{post}}_{\text{treated}} - {\bar Y}^{\text{pre}}_{\text{treated}}) - ({\bar Y}^{\text{post}}_{\text{control}} - {\bar Y}^{\text{pre}}_{\text{control}})$ subtracts out the common time trend using the control group---exactly what ITS could not do. Second, the TWFE regression specification $Y_{it} = \alpha_i + \gamma_t + \tau D_{it} + \varepsilon_{it}$, where $\alpha_i$ absorbs time-invariant confounders, $\gamma_t$ absorbs common shocks, and $\hat\tau$ is the DiD estimate. Note immediately that in our staggered adoption setting (different repos adopt at different times), the classic TWFE estimator uses already-treated units as implicit controls for later-treated units, producing biased estimates when treatment effects are heterogeneous~\cite{goodman2021difference, dechaisemartin2020two, sun2021estimating}. Refer readers to \citet{roth2023whats} for the full landscape of recent DiD methodology.}
 
-\paragraph{Staggered Difference-in-Differences.}
-\label{sec:staggered-did}
+\TODO{Present two complementary modern DiD estimators. (1) \textbf{Borusyak et al.\ (2024) imputation DiD} with time-varying covariates: Fit a model for $Y(0)$ using only untreated observations (never-treated + not-yet-treated), impute the counterfactual for each treated $(i,t)$ cell, and average the residuals. This avoids the negative-weighting problem of TWFE. Include time-varying covariates (log contributors, stars, issues, forks, releases) in the first-stage imputation model. (2) \textbf{Callaway \& Sant'Anna (2021) outcome-regression DiD} without covariates: estimate group-time ATTs using only unit and time effects, then aggregate.}
 
-\TODO{AI tool adoption is staggered: Different repositories adopt at different times, creating natural variation in treatment timing. Apply modern DiD estimators (Callaway \& Sant'Anna) that avoid the negative weighting problems of TWFE under staggered adoption. Assess parallel trends using pre-treatment event-study plots. Discuss what the parallel trends assumption means in this setting and how pre-treatment trend tests provide (partial) evidence for or against it.}
+\TODO{The comparison between the two estimators is pedagogically valuable and makes for the central interpretive discussion of this subsection. The Borusyak estimate (ATT $\approx$ 0.28) is substantially lower than the CS estimate (ATT $\approx$ 0.42). Two mechanisms explain this gap. First, \textbf{covariate attenuation}: Borusyak's first-stage model includes time-varying covariates and plugs in their \emph{post-treatment} values when imputing $Y(0)$ for treated cells. If these covariates are post-treatment mediators (e.g., AI adoption increases contributors/stars, which in turn increase commits), the imputed counterfactual is inflated, shrinking the estimated treatment effect. The CS specification omits covariates entirely and is unaffected. Second, \textbf{aggregation weights}: Borusyak weights each treated $(i,t)$ cell equally, while CS averages within cohort-time cells then across cohorts weighted by group size. With heterogeneous effects across cohorts, different weighting produces different aggregates. Together the two estimates bracket a plausible range for the ATT.}
+
+\TODO{Present a combined event-study plot (Figure~\ref{fig:event-study}) overlaying both estimators. Pre-treatment coefficients near zero for both support the parallel trends assumption; assess pre-trends formally (Borusyak: joint Wald test, $p = 0.70$; CS: simultaneous confidence bands, 0/12 periods significant). Post-treatment coefficients show the dynamic treatment effect with CS consistently above Borusyak, consistent with the covariate attenuation mechanism.}
+
+\TODO{Robustness: Assess sensitivity of the Borusyak ATT to control group composition: compare estimates across the full sample and a trimmed sample (dropping structurally inactive repos with $<$ 10 total commits). Stability of the ATT across these samples addresses concerns about the parallel trends assumption being driven by a specific subset of controls.}
 
 \paragraph{Longitudinal Takeaway.}
 \label{sec:longitudinal-takeaway}
 
-\TODO{The longitudinal analysis demonstrates how design-based identification addresses the specific threats that defeated the cross-sectional approach. Repository fixed effects absorb the unmeasured time-invariant confounders; staggered adoption provides quasi-random variation in treatment timing. The remaining threats---time-varying confounders, anticipation effects, parallel trends violations---are more transparent and partially testable than the all-confounders-measured assumption required by cross-sectional methods. Compare the cross-sectional and longitudinal estimates and discuss what the difference reveals about the magnitude and direction of selection bias.}
+\TODO{Compare all longitudinal estimates (before/after, ITS, Borusyak DiD, CS DiD) side by side. The progression illustrates the core message: the \emph{design} matters more than the estimator. Before/after and ITS, which lack a control group, produce estimates confounded by secular trends. DiD, by introducing a control group and exploiting staggered adoption as quasi-random variation, absorbs both time-invariant confounders (via unit FE) and common shocks (via the control group counterfactual). The gap between the Borusyak and CS estimates illustrates a second lesson: when time-varying covariates are potential post-treatment mediators, conditioning on them attenuates the estimate. The pair of DiD estimates brackets a plausible ATT range (0.28--0.42). The remaining threats---anticipation effects, parallel trends violations---are more transparent and partially testable than the all-confounders-measured assumption required by cross-sectional methods. Contrast the DiD range with the cross-sectional estimates from Section~\ref{sec:cross-sectional}: the difference quantifies the magnitude of selection bias in the cross-section.}
 
 \section{Discussion and Conclusion}
 \label{sec:discussion}

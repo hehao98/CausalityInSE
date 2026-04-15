@@ -66,10 +66,16 @@ To achieve this vision, the paper provides:
      - Takeaway: Cross-sectional MSR data suffers from temporal collapse; only within-repo longitudinal variation can make progress.
 
    - **4.2 Longitudinal Methods** --- *TODO*
-     - Basic before/after comparison.
-     - TWFE without time-varying covariates.
-     - TWFE with time-varying covariates.
-     - Modern DiD estimators.
+     - Before/after comparison (most naive: no trend adjustment, no control group).
+     - Interrupted time series (ITS): models the pre-treatment trend explicitly, tests for level shift and slope change at adoption; still no control group, so contemporaneous shocks remain confounded. Motivates the need for a control group (Figure: ITS box plot).
+     - Difference-in-differences (DiD): The design-based leap. Build intuition through (a) the classic 2×2 diagram and (b) the TWFE regression specification as exposition only (no results shown). Flag TWFE's known limitations under staggered treatment with heterogeneous effects (Goodman-Bacon 2021, de Chaisemartin & D'Haultfoeuille 2020).
+     - Two complementary modern DiD estimators:
+       1. Borusyak et al. (2024) imputation DiD with time-varying covariates.
+       2. Callaway & Sant'Anna (2021) outcome-regression DiD without covariates.
+     - The comparison is pedagogically valuable: Borusyak's time-varying covariates are post-treatment mediators that attenuate the ATT; CS without covariates avoids this but relies on unconditional parallel trends. The two estimators also use different aggregation weights. Together they bracket a plausible range for the ATT.
+     - Combined event study plot (Figure) with pre-trends assessment for both estimators (Borusyak: joint Wald test; CS: simultaneous confidence bands).
+     - Robustness: trimmed control group (dropping inactive repos), PSM-matched panel.
+     - Longitudinal takeaway: Compare all estimates (before/after, ITS, Borusyak DiD, CS DiD) and contrast with cross-sectional estimates to quantify selection bias.
 
 5. **Discussion and Conclusion** (Section 5) --- *TODO*
    - For reviewers: If a clear intervention-outcome RQ is posed, stop accepting correlation analyses without an explicit discussion of the extent to which they may support a causal claim and the assumptions under which they do so.
