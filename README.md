@@ -2,7 +2,7 @@
 
 **Target Venue:** ACM Transactions on Software Engineering and Methodology (TOSEM)
 
-**Status:** Sections 1--3 drafted and revised; Section 4 (worked example) and Section 5 (discussion/conclusion) TODO. Appendices A--D drafted.
+**Status:** All sections (1--5) and appendices (A--D) drafted. Sections 1--3 revised; Sections 4--5 in first-draft form.
 
 ## Repository Organization
 
@@ -53,19 +53,19 @@ To achieve this vision, the paper provides:
      - *Design-based identification* (Section 3.3.3): DiD, IV, RDD, Panel FE --- each with SE examples. Summary table of methods, estimands, and key identification assumptions (Table 2). Data features mapped to design-based strategies (Table 3).
    - **3.4 A Pragmatic Stance for SE Research.** Synthesized guide: build on prior research; use counterfactual reasoning to frame designs; use DAGs for mechanisms and covariate selection; use design-based identification when possible; iterate between question, assumptions, and design; engage with alternative explanations; when clean identification is unavailable, be transparent. Concludes with promises and perils of causal inference specific to SE research (panel data abundance, compound treatments, SUTVA violations, noisy proxies). References an empirical standard for causal inquiries (Appendix D).
 
-4. **Worked Example: The Impact of AI Coding Tools in Open-Source Software** (Section 4) --- *TODO*
+4. **Worked Example: The Impact of AI Coding Tools in Open-Source Software** (Section 4) --- *Drafted.*
 
    **Setting:** ~1,000 popular GitHub repos across 10 programming languages; ~300 with AI config files (treatment) and ~600 without (control).
 
    **Research Question:** How does adopting AI coding tools systematically (as signaled by AI config files in the repository) affect the repository's development velocity, measured by monthly commits?
 
-   - **4.1 Cross-Sectional Methods** --- *TODO*
+   - **4.1 Cross-Sectional Methods** --- *Drafted.*
      - Stage 1: Naive comparison and kitchen-sink regression (descriptive comparison table, baseline OLS).
      - Stage 2: Diagnose selection bias and temporal collapse (true temporal DAG vs. collapsed cross-sectional graph; classify covariates as structurally pre-treatment vs. temporally ambiguous; OLS comparison table; sensitivity analysis with Oster bounds and sensemakr).
      - Stage 3: Estimator convergence (OLS vs. PSM vs. IPW with pre-treatment covariates converge --- the estimator is not the bottleneck, the identifying assumption is).
      - Takeaway: Cross-sectional MSR data suffers from temporal collapse; only within-repo longitudinal variation can make progress.
 
-   - **4.2 Longitudinal Methods** --- *TODO*
+   - **4.2 Longitudinal Methods** --- *Drafted.*
      - Before/after comparison (most naive: no trend adjustment, no control group).
      - Interrupted time series (ITS): models the pre-treatment trend explicitly, tests for level shift and slope change at adoption; still no control group, so contemporaneous shocks remain confounded. Motivates the need for a control group (Figure: ITS box plot).
      - Difference-in-differences (DiD): The design-based leap. Build intuition through (a) the classic 2×2 diagram and (b) the TWFE regression specification as exposition only (no results shown). Flag TWFE's known limitations under staggered treatment with heterogeneous effects (Goodman-Bacon 2021, de Chaisemartin & D'Haultfoeuille 2020).
@@ -77,10 +77,60 @@ To achieve this vision, the paper provides:
      - Robustness: trimmed control group (dropping inactive repos), PSM-matched panel.
      - Longitudinal takeaway: Compare all estimates (before/after, ITS, CS DiD, Borusyak DiD) and contrast with cross-sectional estimates to quantify selection bias.
 
-5. **Discussion and Conclusion** (Section 5) --- *TODO*
-   - For reviewers: If a clear intervention-outcome RQ is posed, stop accepting correlation analyses without an explicit discussion of the extent to which they may support a causal claim and the assumptions under which they do so.
-   - For researchers: Clear directions and pointers for learning these methods.
-   - Limitation: Raising empirical standards cannot prevent superficial adoption of methods (analogous to the grounded theory adoption problem in SE).
+5. **Discussion and Conclusion** (Section 5) --- *Drafted.*
+   - Lessons from the worked example: design-driven shrinkage, temporal collapse as a systemic MSR problem, the substantive AI finding.
+   - Implications for reviewers/editors (require identification arguments; adopt empirical standard), researchers (learning pointers, iterative workflow), and data miners (build panel datasets).
+   - SE's comparative advantages for causal inference (inherent panel data, rich quasi-experimental variation, qualitative--quantitative bridge).
+   - Limitations: superficial adoption risk, specification searching, compound treatments and SUTVA as open frontiers, measurement validity, tutorial scope.
+   - Conclusion: cumulative causal knowledge through triangulation; closing vision on transparent assumptions.
+
+## Worked Example: Key Findings and Story (Meeting TLDR)
+
+### The Headline
+
+**Systematic AI coding tool adoption increases monthly commits by 32--52% (ATT), but naive cross-sectional analysis inflates this to +911%.** The gap between these numbers *is* the story: it demonstrates why identification strategy matters more than estimator choice.
+
+### The Estimate Progression (Table 7)
+
+| Method | Estimate | What it removes |
+|--------|----------|-----------------|
+| Naive comparison (no controls) | **+911%** | Nothing --- pure selection bias + treatment effect |
+| Kitchen-sink OLS (all snapshot covariates) | **+158%** | Some confounding, but temporally ambiguous controls introduce collider/mediator bias |
+| DAG-justified OLS (pre-treatment covariates only) | **+101%** | Temporal ambiguity resolved, but unobserved confounders (team skill) remain |
+| PSM / IPW (same pre-treatment covariates) | **+66--78%** | Slightly different estimands (ATT vs ATE), but same identifying assumption --- switching estimator doesn't fix identification |
+| Before/after (within-repo, no control group) | **+156%** | Time-invariant confounders gone, but secular trends inflate the estimate |
+| ITS with repo fixed effects | **+120%** | Secular trends modeled, but no control group to absorb contemporaneous shocks |
+| DiD: Callaway & Sant'Anna (no covariates) | **+52%** | Common shocks differenced out via control group; unconditional parallel trends |
+| DiD: Borusyak (with time-varying covariates) | **+32%** | Covariates sharpen counterfactual, but absorb part of effect via mediator bias |
+
+### Key Pedagogical Takeaways
+
+- **Design > estimator.** OLS, PSM, and IPW with the same covariates give similar answers (+66--101%). The big jumps happen when you change the *design* (cross-section → panel → DiD), not when you swap the estimator.
+- **Temporal collapse is a systemic MSR problem.** Cross-sectional GitHub API snapshots destroy the temporal ordering that DAGs require. Stars, forks, PRs, issues --- all are confounders *before* treatment and colliders *after*. A single snapshot mixes both, making principled covariate selection impossible. This affects virtually every MSR study that queries the API once and regresses.
+- **The temporal DAG resolves the ambiguity.** Splitting each time-varying covariate into pre-treatment (confounder) and post-treatment (collider) nodes yields an unambiguous adjustment set via the back-door criterion. This alone drops the estimate from +158% to +101%.
+- **Sensitivity analysis exposes fragility.** The Oster δ* = 0.12 (far below 1) for the DAG-justified cross-sectional estimate means a relatively weak unobserved confounder could eliminate the remaining effect. Team skill is the obvious candidate --- and it's unmeasurable from GitHub data.
+- **Longitudinal data is the escape route.** Within-repo comparisons (before vs. after AI adoption) absorb *all* time-invariant confounders by construction --- the exact variables (team skill, project culture) that made the cross-section non-credible.
+- **DiD is the design-based leap.** Adding a control group of never-adopters absorbs common time shocks that ITS cannot distinguish from the treatment. The parallel trends assumption is weaker and partially testable (event study + pre-trend diagnostics).
+- **CS vs. Borusyak divergence teaches mediator bias.** Borusyak conditions on post-treatment covariates (contributors, stars) that lie on the causal pathway, absorbing part of the treatment effect. CS omits covariates and captures the total effect. Together they bracket a plausible ATT range (32--52%).
+
+### The Substantive AI Finding
+
+- **What we estimate:** The effect of *systematic, project-level AI tool integration* (signaled by AI config files like `AGENTS.md`, `.cursorrules`, `copilot-instructions.md`) on monthly commits.
+- **What it is NOT:** The effect of individual developers using Copilot/ChatGPT. That's unobservable and not what the treatment captures.
+- **Compound treatment:** The estimate bundles (1) AI tools themselves, (2) workflow reorganization, and (3) self-selection of teams willing to adopt. We cannot decompose these.
+- **Conservative estimate:** Control group contamination (individual AI use in "untreated" repos) attenuates the estimate toward zero.
+- **Pre-trends look clean:** 0/12 CS pre-treatment periods significant under simultaneous confidence bands; Borusyak joint Wald test p = 0.70.
+- **Robust to control group composition:** Trimming inactive repos and PSM-matching the panel barely change the DiD estimates.
+
+### The Story Arc for the Paper
+
+1. **Start naive** → +911%. Looks dramatic, but it's selection bias: AI adopters are bigger, more active, more resourced projects.
+2. **Add controls** → +158%. Kitchen-sink regression helps, but temporal collapse makes covariate roles ambiguous.
+3. **Use a DAG** → +101%. Temporal DAG resolves the ambiguity, but sensitivity analysis reveals fragility to unobserved confounders.
+4. **Switch estimators** → +66--78%. PSM/IPW don't help much. The bottleneck is the identifying *assumption*, not the estimator.
+5. **Go longitudinal** → +156% (before/after) → +120% (ITS). Within-repo comparison removes time-invariant confounders, but secular trends and shocks inflate the estimate.
+6. **Add a control group (DiD)** → +32--52%. The design-based leap. Common shocks differenced out. Pre-trends support parallel trends assumption.
+7. **Reflect** → The design matters more than the method. Every step trades a strong assumption for a weaker one, and the estimate shrinks accordingly.
 
 **Appendices:**
 - **Appendix A:** A Case Study on Downstream Misinterpretation: Ray et al. (2014/2017) citation analysis showing 2:1 ratio of causal to hedged interpretations among papers engaging substantively with the PL--quality finding. --- *Drafted.*
