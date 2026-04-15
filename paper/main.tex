@@ -1206,7 +1206,22 @@ This well-documented problem (see \citet{roth2023whats} for a survey) motivates 
 
 We apply two complementary modern DiD estimators that avoid the negative-weighting problem.
 
-\textbf{Borusyak et al.\ (2024) imputation DiD}~\cite{borusyak2024revisiting} estimates what outcomes \emph{would have been} without treatment, then compares to what actually happened.
+\textbf{Callaway \& Sant'Anna (2021) DiD}~\cite{callaway2021difference} is the most direct extension of the 2$\times$2 idea: it estimates separate treatment effects for each adoption cohort (group of repositories adopting in the same month), then aggregates.
+For each cohort $g$ and time period $t$:
+\begin{equation}
+\label{eq:cs-att-gt}
+ATT(g, t) = E[Y_t - Y_{g-1} \mid \text{cohort } g] - E[Y_t - Y_{g-1} \mid \text{never-treated}]
+\end{equation}
+This is a difference in outcome changes between cohort-$g$ repositories and never-treated repositories, measured from baseline~$g\!-\!1$.
+We use no covariates, so this reduces to simple differences in means---the same double-differencing logic as Equation~\ref{eq:did-2x2}, applied separately to each cohort.
+The overall ATT averages the group-time effects, weighting by cohort size.
+The estimate is $\hat{\tau} = 0.416$ ($\text{SE} = 0.090$), i.e., 52\% ($\pm$14\%).
+
+This unconditional specification relies on parallel trends holding \emph{without} conditioning on covariates.
+A natural question arises: can we sharpen the estimate by conditioning on time-varying repository characteristics---contributor counts, stars, issues---to make the parallel trends assumption more plausible?
+
+\textbf{Borusyak et al.\ (2024) imputation DiD}~\cite{borusyak2024revisiting} does exactly this.
+Rather than differencing group means, it estimates what outcomes \emph{would have been} without treatment, using a covariate-adjusted counterfactual model, then compares to what actually happened.
 The procedure has three steps.
 First, fit a counterfactual model on all untreated observations (never-treated repositories plus pre-treatment periods of treated repositories):
 \begin{equation}
@@ -1219,26 +1234,16 @@ Third, compute the ATT as the average residual $\hat{\tau} = \text{mean}(Y_{it} 
 Only untreated observations contribute to the counterfactual model; treated cells are never used as controls for other treated cells, avoiding the negative-weighting problem of TWFE\@.
 The estimate is $\hat{\tau} = 0.281$ ($\text{SE} = 0.060$), i.e., 32\% ($\pm$8\%).
 
-\textbf{Callaway \& Sant'Anna (2021) DiD}~\cite{callaway2021difference} estimates separate treatment effects for each adoption cohort (group of repositories adopting in the same month), then aggregates.
-For each cohort $g$ and time period $t$:
-\begin{equation}
-\label{eq:cs-att-gt}
-ATT(g, t) = E[Y_t - Y_{g-1} \mid \text{cohort } g] - E[Y_t - Y_{g-1} \mid \text{never-treated}]
-\end{equation}
-This is a difference in outcome changes between cohort-$g$ repositories and never-treated repositories, measured from baseline~$g\!-\!1$.
-We use no covariates, so this reduces to simple differences in means.
-The overall ATT averages the group-time effects, weighting by cohort size.
-This weighting differs from Borusyak's equal cell-weighting: CS gives each \emph{cohort} equal per-unit weight, while Borusyak gives each \emph{treated cell} equal weight.
+Surprisingly, adding covariates \emph{lowers} the estimate rather than sharpening it.
+CS without covariates gives 52\%; Borusyak with covariates gives 32\%.
+This counterintuitive result motivates closer inspection of what the covariates are doing.
+Note also that the two estimators weight heterogeneous cohort-level effects differently: CS gives each \emph{cohort} equal per-unit weight, while Borusyak gives each \emph{treated cell} equal weight.
 With heterogeneous effects, different weights produce different aggregates.
-The estimate is $\hat{\tau} = 0.416$ ($\text{SE} = 0.090$), i.e., 52\% ($\pm$14\%).
 
 \paragraph{Why the Estimates Diverge.}
 \label{sec:divergence}
 
-The Borusyak estimate (32\%) is substantially lower than the CS estimate (52\%).
-Two mechanisms explain this gap, and understanding them is pedagogically valuable because they connect directly to the DAG reasoning from Section~\ref{sec:primer-dags}.
-
-First, \textbf{covariate attenuation}.
+The primary explanation is \textbf{covariate attenuation}---a direct application of the DAG reasoning from Section~\ref{sec:primer-dags}.
 In the imputation step (Equation~\ref{eq:borusyak-first-stage}), the Borusyak model plugs in the \emph{post-treatment} values of the covariates $X_{it}$ to predict the counterfactual $\hat{Y}_{it}(0)$.
 If AI adoption causes an increase in contributors or stars---because the tool makes the project more productive and visible---and those in turn drive more commits, then the covariates sit on the \emph{causal pathway}: adoption $\to$ covariates $\to$ commits.
 Conditioning on them absorbs part of the treatment's effect, inflating the imputed counterfactual and shrinking the estimated ATT\@.
@@ -1247,8 +1252,7 @@ The Borusyak estimate of 32\% captures only the effect of AI adoption that does 
 The CS specification omits covariates entirely, so it is unaffected by this mechanism.
 Its estimate of 52\% targets the total effect under unconditional parallel trends---but this comes with its own trade-off: if parallel trends holds only \emph{conditional} on covariates, the unconditional estimate may be biased.
 
-Second, \textbf{aggregation weights}.
-Even without covariate attenuation, the two estimators would differ because they weight heterogeneous cohort-level effects differently---a well-known issue in the recent DiD literature~\cite{roth2023whats}.
+A secondary factor is \textbf{aggregation weights}: even without covariate attenuation, the two estimators would differ because they weight heterogeneous cohort-level effects differently---a well-known issue in the recent DiD literature~\cite{roth2023whats}.
 Together, the pair of estimates brackets a plausible ATT range of 32--52\%.
 The divergence is informative, not a failure: it teaches readers that methodological choices about covariate handling and aggregation have substantive consequences.
 
@@ -1272,8 +1276,8 @@ Error bars show 95\% confidence intervals.}
 Figure~\ref{fig:event-study} overlays the event-study estimates from both approaches.
 Pre-treatment coefficients cluster near zero for both estimators, supporting the parallel trends assumption.
 We assess pre-trends formally with two complementary tests.
-For Borusyak, a joint Wald test pools the 12 pre-treatment coefficients ($H_0\!: \tau_{-12} = \cdots = \tau_{-1} = 0$; $p = 0.70$).
 For CS, we use simultaneous confidence bands from the \texttt{did} package~\cite{callaway2021difference}, which control the family-wise error rate across all pre-treatment periods---a more conservative test than pointwise confidence intervals; 0 of 12 periods are significant under simultaneous bands.
+For Borusyak, a joint Wald test pools the 12 pre-treatment coefficients ($H_0\!: \tau_{-12} = \cdots = \tau_{-1} = 0$; $p = 0.70$).
 Post-treatment coefficients show the CS estimate consistently above Borusyak, consistent with the covariate attenuation mechanism.
 We note that passing a pre-trends test does not \emph{prove} parallel trends~\cite{roth2022pretest}---it only fails to reject a necessary condition.
 
@@ -1290,6 +1294,15 @@ These robustness checks probe specific threats to internal validity but cannot p
 \paragraph{Longitudinal Takeaway.}
 \label{sec:longitudinal-takeaway}
 
+The longitudinal analysis demonstrates the power of design-based identification: by comparing the \emph{same} repository before and after AI adoption, every time-invariant confounder---team skill, project culture, codebase complexity---cancels out by construction, eliminating the single biggest threat to the cross-sectional analysis.
+The three-stage progression from before/after (156\%) through ITS (120\%) to DiD (32--52\%) shows that each additional design element---trend modeling, a control group---shrinks the estimate substantially, indicating that secular trends and common shocks inflated the simpler estimates.
+Within DiD, the CS--Borusyak comparison (52\% vs.\ 32\%) illustrates a subtle but important lesson: conditioning on post-treatment covariates that lie on the causal pathway attenuates the total effect---a concrete instance of the mediator bias from Section~\ref{sec:primer-dags}.
+The remaining threats---parallel trends violations, anticipation effects, and SUTVA violations---are \emph{more transparent and partially testable} (via event studies and pre-trends tests) than the ``all confounders measured'' assumption required by cross-sectional methods.
+This transparency is the central advantage of design-based identification.
+
+\subsection{Summary}
+\label{sec:summary}
+
 Table~\ref{tab:all-estimates} compares all estimates from Sections~\ref{sec:cross-sectional} and~\ref{sec:longitudinal}, along with each method's identifying assumption and its key vulnerability.
 Two lessons emerge from this progression.
 
@@ -1297,7 +1310,7 @@ Two lessons emerge from this progression.
 \centering
 \caption{Summary of all effect estimates from the cross-sectional (Section~\ref{sec:cross-sectional}) and longitudinal (Section~\ref{sec:longitudinal}) analyses.
 The estimate is on the $\log(1 + \text{monthly commits})$ scale; the percentage change is $(e^{\text{Estimate}} - 1) \times 100\%$, with $\pm$ computed via the delta method ($e^{\text{Estimate}} \times \text{SE} \times 100\%$).
-OLS approximates the ATE; PSM and IPW target the ATT; all longitudinal methods target the ATT.}
+All OLS specifications approximate the ATE; PSM and IPW target the ATT; all longitudinal methods target the ATT.}
 \label{tab:all-estimates}
 \small
 \begin{tabular}{llrrr}
@@ -1305,27 +1318,30 @@ OLS approximates the ATE; PSM and IPW target the ATT; all longitudinal methods t
 Method & Identifying assumption & Estimate & SE & \% change \\
 \midrule
 \multicolumn{5}{l}{\emph{Cross-sectional (Section~\ref{sec:cross-sectional})}} \\
-OLS (DAG-justified) & Conditional ignorability & 0.696 & 0.090 & +101\% ($\pm$18\%) \\
-PSM (1:1 NN) & Conditional ignorability & 0.574 & 0.094 & +78\% ($\pm$17\%) \\
-IPW (ATT) & Conditional ignorability & 0.509 & 0.091 & +66\% ($\pm$15\%) \\
+Na\"ive comparison (no controls) & As-if random assignment & 2.314 & 0.124 & +911\% ($\pm$125\%) \\
+Kitchen-sink OLS (snapshot covariates) & Cond.\ ignorability (temporally ambiguous) & 0.946 & 0.116 & +158\% ($\pm$30\%) \\
+OLS (DAG-justified, pre-treatment) & Cond.\ ignorability (pre-treatment) & 0.696 & 0.090 & +101\% ($\pm$18\%) \\
+PSM (1:1 NN) & Cond.\ ignorability (pre-treatment) & 0.574 & 0.094 & +78\% ($\pm$17\%) \\
+IPW (ATT) & Cond.\ ignorability (pre-treatment) & 0.509 & 0.091 & +66\% ($\pm$15\%) \\
 \addlinespace
 \multicolumn{5}{l}{\emph{Longitudinal (Section~\ref{sec:longitudinal})}} \\
 Before/after & Counterfactual outcome stays flat & 0.940 & 0.120 & +156\% ($\pm$31\%) \\
 ITS with repo FE & Correct trend; no contemporaneous shocks & 0.790 & 0.120 & +120\% ($\pm$26\%) \\
-DiD: Borusyak (with covariates) & Parallel trends (conditional on $X_{it}$) & 0.281 & 0.060 & +32\% ($\pm$8\%) \\
 DiD: CS (no covariates) & Parallel trends (unconditional) & 0.416 & 0.090 & +52\% ($\pm$14\%) \\
+DiD: Borusyak (with covariates) & Parallel trends (conditional on $X_{it}$) & 0.281 & 0.060 & +32\% ($\pm$8\%) \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
 First, the \emph{design} matters more than the estimator.
-Within the cross-section, switching from OLS to PSM to IPW barely moves the estimate (66--101\%)---all three share the conditional ignorability assumption, so the estimator is not the bottleneck.
-Across designs, however, the estimates change dramatically: the before/after estimate (156\%) drops to 120\% with ITS (which absorbs secular trends) and further to 32--52\% with DiD (which absorbs common shocks via a control group).
+The na\"ive comparison ($+911\%$) drops to $+158\%$ once we add snapshot controls, and further to $+101\%$ once we condition only on pre-treatment confounders justified by the temporal DAG---each step removes a different source of bias.
+Yet within the DAG-justified cross-section, switching from OLS to PSM to IPW barely moves the estimate (66--101\%): all three share the conditional ignorability assumption, so the estimator is not the bottleneck.
+Across designs, the estimates change dramatically: the before/after estimate (156\%) drops to 120\% with ITS (which absorbs secular trends) and further to 32--52\% with DiD (which absorbs common shocks via a control group).
 Each step trades a strong assumption for a weaker one, and the estimates shrink accordingly.
 The gap between the before/after estimate and the DiD range quantifies how much of the na\"ive effect was driven by trends and selection, not treatment.
 The further gap between the cross-sectional estimates (66--101\%) and the DiD range (32--52\%) quantifies the magnitude of selection bias in the cross-section---the residual confounding by time-invariant unobservables like team skill that no cross-sectional method could address.
 
-Second, within DiD, the Borusyak--CS gap (32\% vs.\ 52\%) illustrates the mediator bias from Section~\ref{sec:primer-dags}: conditioning on post-treatment covariates that lie on the causal pathway attenuates the total effect estimate.
+Second, within DiD, the CS--Borusyak gap (52\% vs.\ 32\%) illustrates the mediator bias from Section~\ref{sec:primer-dags}: conditioning on post-treatment covariates that lie on the causal pathway attenuates the total effect estimate.
 This is a concrete, numbers-in-hand demonstration of the DAG reasoning applied to a real analysis, reinforcing the practical importance of distinguishing confounders from mediators when selecting covariates.
 
 The remaining threats to the DiD estimates---parallel trends violations (partially testable via event studies but never provable), anticipation effects, and SUTVA violations---are \emph{more transparent and partially testable} than the ``all confounders measured'' assumption required by cross-sectional methods.
