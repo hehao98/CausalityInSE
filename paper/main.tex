@@ -1084,35 +1084,252 @@ We turn to this approach in Section~\ref{sec:longitudinal}.
 \subsection{Longitudinal Methods}
 \label{sec:longitudinal}
 
-\TODO{Introductory paragraph: The cross-sectional analysis in Section~\ref{sec:cross-sectional} revealed that comparing \emph{different} repositories cannot credibly identify a causal effect because the groups differ in unmeasured ways. We now exploit the panel structure of our data---observing the \emph{same} repositories over time---to address this limitation through design-based identification (Section~\ref{sec:primer-design}).}
+The cross-sectional analysis in Section~\ref{sec:cross-sectional} revealed that the estimator is not the bottleneck---unobserved confounders are.
+OLS, PSM, and IPW all converged to similar estimates (66--101\%) because none can address time-invariant unobservables like team skill.
+The problem is identification, not estimation.
+
+We now exploit the panel structure of our data---observing the \emph{same} repositories over time---to address this limitation.
+Instead of comparing \emph{different} repositories (cross-section), we compare the \emph{same} repository before and after it adopts AI tools.
+When we look at the same repository over time, every time-invariant characteristic---team skill, project culture, codebase complexity, programming language---is held constant by construction.
+We do not need to measure or control for these factors; they cancel out in the within-unit comparison.
+This is the fundamental advantage of panel data and the core idea behind design-based identification (Section~\ref{sec:primer-design}).
+
+Our panel consists of 999 repositories observed over 27 months (January 2024 to March 2026), of which 240 adopted AI tools at staggered times (Figure~\ref{fig:treatment-timing}).
+We progress through three increasingly credible designs: (1)~a na\"ive before/after comparison, (2)~interrupted time series with repository fixed effects, and (3)~modern difference-in-differences.
+Each stage relaxes one strong assumption by introducing a new design element, at the cost of a different, weaker assumption.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{../plots/treatment_timing.pdf}
+\caption{Staggered adoption timing.
+Each bar shows the number of repositories that first committed an AI configuration file in that month.
+The 759 repositories that never adopted during the observation window serve as the control group for the difference-in-differences analysis.}
+\label{fig:treatment-timing}
+\end{figure}
 
 \paragraph{Before-and-After Comparison.}
 \label{sec:before-after}
 
-\TODO{For treated repositories, compare monthly commits before vs.\ after the first AI config file commit. This absorbs all time-invariant confounders but conflates the treatment effect with any concurrent time trends (e.g., a general increase in AI-assisted development activity across all repositories).}
+The simplest within-unit estimator compares, for each treated repository, mean monthly commits (log-scale) before versus after the first AI configuration file commit.
+This is the longitudinal analogue of the raw group comparison in Section~\ref{sec:naive-comparison}, but now within-unit rather than across units.
+
+A paired $t$-test yields a mean change of $0.940$ (95\% CI $[0.710, 1.180]$), i.e., treated repositories see a 156\% ($\pm$31\%) increase in monthly commits after adoption.
+The within-unit pairing absorbs all time-invariant confounders that plagued the cross-section---team skill, project type, organizational practices.
+These factors are identical before and after adoption for the same repository, so they cannot drive the observed change.
+This is exactly the shift from selection-on-observables to design-based identification that Section~\ref{sec:primer-design} advocates.
+
+However, the only way this estimate is causal is if \emph{nothing else} about the treated repositories changed between the pre and post periods, besides the treatment itself.
+In other words, the counterfactual outcome---what commits would have looked like without AI adoption---must have stayed flat.
+This is a very strong assumption.
+If all repositories are growing over 2024--2026 (e.g., due to platform growth, seasonal effects, or the general rise of AI-assisted development), then the before/after estimate captures the treatment effect \emph{plus} the secular trend.
+The 156\% figure is almost certainly too high.
+This motivates modeling the trend explicitly.
 
 \paragraph{Interrupted Time Series.}
 \label{sec:its}
 
-\TODO{ITS models the pre-treatment trend explicitly and tests for a level shift and/or slope change at the adoption event, using only treated repositories (with repository fixed effects). This improves on the na\"ive before/after comparison by separating the treatment effect from secular trends. However, without a control group, ITS cannot distinguish the treatment effect from contemporaneous shocks---e.g., a GitHub platform change, a seasonal pattern, or a field-wide shift in development practices---that affect all repositories around the same time. This limitation motivates the addition of a control group, which is the key insight of design-based identification.}
+ITS addresses the before/after comparison's key weakness by explicitly modeling the pre-treatment trend.
+The regression specification is:
+\begin{equation}
+\label{eq:its}
+Y_{it} = \alpha_i + \beta \cdot t + \delta \cdot \text{Post}_{it} + \gamma \cdot \text{TimeSince}_{it} + \varepsilon_{it}
+\end{equation}
+where $Y_{it}$ is $\log(1 + \text{monthly commits})$ for repository~$i$ in month~$t$; $\alpha_i$ is a repository fixed effect (one intercept per repository); $\beta \cdot t$ captures the common linear time trend; $\text{Post}_{it}$ equals~1 after adoption and~0 before; and $\text{TimeSince}_{it}$ counts months since adoption (zero before adoption), allowing the slope to change post-treatment.
+
+Each term in Equation~\ref{eq:its} addresses a specific source of confounding.
+The repository fixed effects $\alpha_i$ absorb \emph{all} time-invariant unobserved confounders---the exact variables (team skill, project culture, codebase complexity) that made the cross-sectional analysis in Section~\ref{sec:cross-sectional} non-credible.
+The time trend $\beta \cdot t$ models a common linear secular trend, so the estimate of $\delta$ is purged of the trend that contaminated the before/after comparison.
+ITS thus addresses \emph{two} of the cross-section's core problems simultaneously.
+The coefficient $\delta$ tests for a discrete level shift at adoption, while $\gamma$ tests whether the post-treatment growth rate differs from the pre-treatment trend.
+
+The level-shift estimate is $\hat{\delta} = 0.790$ (95\% CI $[0.550, 1.020]$), i.e., a 120\% ($\pm$26\%) increase.
+This is lower than the before/after estimate (156\%), confirming that some of the before/after effect was driven by secular trends that ITS now absorbs.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{../plots/its_boxplot.pdf}
+\caption{Distribution of $\log(1 + \text{monthly commits})$ by event time for treated repositories.
+Timelines are artificially aligned to each repository's own adoption date.
+ITS models the pre-treatment trend and tests for a level shift at adoption, but lacks a control group to distinguish the treatment effect from contemporaneous shocks.}
+\label{fig:its-boxplot}
+\end{figure}
+
+For $\hat{\delta}$ to have a causal interpretation, the pre-treatment linear trend must be correctly specified, and no other event must systematically coincide with AI adoption.
+Unlike the before/after comparison, ITS allows for a secular trend---but it assumes the trend is linear and that the \emph{only} thing that changes at the adoption date is the treatment itself.
+Since ITS uses only treated repositories---there is no control group---any shock that happens around the adoption date is indistinguishable from the treatment effect: a team expansion, a major release, a GitHub platform change, or a field-wide shift in development practices.
+If such events systematically co-occur with AI adoption, $\hat{\delta}$ absorbs them.
+Additionally, if the true pre-treatment dynamics are nonlinear (e.g., accelerating growth), the linear trend specification may itself be misspecified.
+
+Unlike DiD, ITS does not have a standard formalization through the potential outcomes framework~\cite{angrist2009mostly, cunningham2021causal}.
+The assumptions are stated as restrictions on the regression model rather than as properties of potential outcomes, which is one reason ITS is considered a weaker identification strategy---the assumptions are harder to state precisely and harder to test.
+No amount of trend modeling can substitute for the absence of a control group.
+This motivates the key design-based insight: we need a \emph{control group} to difference out common shocks.
 
 \paragraph{Difference-in-Differences.}
 \label{sec:did}
 
-\TODO{The design-based leap: Adding a control group of repositories that did not adopt AI tools. Build DiD intuition in two steps. First, the classic 2$\times$2 diagram (treated vs.\ control $\times$ pre vs.\ post): The double difference $({\bar Y}^{\text{post}}_{\text{treated}} - {\bar Y}^{\text{pre}}_{\text{treated}}) - ({\bar Y}^{\text{post}}_{\text{control}} - {\bar Y}^{\text{pre}}_{\text{control}})$ subtracts out the common time trend using the control group---exactly what ITS could not do. Second, the TWFE regression specification $Y_{it} = \alpha_i + \gamma_t + \tau D_{it} + \varepsilon_{it}$, where $\alpha_i$ absorbs time-invariant confounders, $\gamma_t$ absorbs common shocks, and $\hat\tau$ is the DiD estimate. Note immediately that in our staggered adoption setting (different repos adopt at different times), the classic TWFE estimator uses already-treated units as implicit controls for later-treated units, producing biased estimates when treatment effects are heterogeneous~\cite{goodman2021difference, dechaisemartin2020two, sun2021estimating}. Refer readers to \citet{roth2023whats} for the full landscape of recent DiD methodology.}
+We now add a control group of 759 repositories that never adopted AI tools during the observation window.
+The key idea is simple but powerful: any time-varying shock that affects both treated and control repositories equally is differenced out, \emph{even without modeling it explicitly}.
 
-\TODO{Present two complementary modern DiD estimators. (1) \textbf{Borusyak et al.\ (2024) imputation DiD} with time-varying covariates: Fit a model for $Y(0)$ using only untreated observations (never-treated + not-yet-treated), impute the counterfactual for each treated $(i,t)$ cell, and average the residuals. This avoids the negative-weighting problem of TWFE. Include time-varying covariates (log contributors, stars, issues, forks, releases) in the first-stage imputation model. (2) \textbf{Callaway \& Sant'Anna (2021) outcome-regression DiD} without covariates: estimate group-time ATTs using only unit and time effects, then aggregate.}
+In the simplest case (one treatment group, one control group, two periods), the DiD estimator is:
+\begin{equation}
+\label{eq:did-2x2}
+\hat{\tau}^{\text{DiD}} = \bigl(\bar{Y}^{\text{post}}_{\text{treated}} - \bar{Y}^{\text{pre}}_{\text{treated}}\bigr) - \bigl(\bar{Y}^{\text{post}}_{\text{control}} - \bar{Y}^{\text{pre}}_{\text{control}}\bigr)
+\end{equation}
+The first difference (within each pair of parentheses) removes unit fixed effects---just like the before/after comparison.
+The second difference (between the two parentheses) removes common time shocks---exactly what ITS cannot do.
+The double difference isolates the treatment effect.
 
-\TODO{The comparison between the two estimators is pedagogically valuable and makes for the central interpretive discussion of this subsection. The Borusyak estimate (ATT $\approx$ 0.28) is substantially lower than the CS estimate (ATT $\approx$ 0.42). Two mechanisms explain this gap. First, \textbf{covariate attenuation}: Borusyak's first-stage model includes time-varying covariates and plugs in their \emph{post-treatment} values when imputing $Y(0)$ for treated cells. If these covariates are post-treatment mediators (e.g., AI adoption increases contributors/stars, which in turn increase commits), the imputed counterfactual is inflated, shrinking the estimated treatment effect. The CS specification omits covariates entirely and is unaffected. Second, \textbf{aggregation weights}: Borusyak weights each treated $(i,t)$ cell equally, while CS averages within cohort-time cells then across cohorts weighted by group size. With heterogeneous effects across cohorts, different weighting produces different aggregates. Together the two estimates bracket a plausible range for the ATT.}
+The two-way fixed effects (TWFE) regression specification expresses the same idea compactly:
+\begin{equation}
+\label{eq:twfe}
+Y_{it} = \alpha_i + \gamma_t + \tau D_{it} + \varepsilon_{it}
+\end{equation}
+where $\alpha_i$ absorbs all time-invariant confounders (like ITS), $\gamma_t$ absorbs \emph{common time shocks}---the new element that the control group provides---and $\hat{\tau}$ is the DiD estimate.
+We present this specification for intuition only and do not report its estimate, for reasons we explain below.
 
-\TODO{Present a combined event-study plot (Figure~\ref{fig:event-study}) overlaying both estimators. Pre-treatment coefficients near zero for both support the parallel trends assumption; assess pre-trends formally (Borusyak: joint Wald test, $p = 0.70$; CS: simultaneous confidence bands, 0/12 periods significant). Post-treatment coefficients show the dynamic treatment effect with CS consistently above Borusyak, consistent with the covariate attenuation mechanism.}
+The identifying assumption is \emph{parallel trends}:
+\begin{equation}
+\label{eq:parallel-trends}
+E[Y_{it}(0) - Y_{is}(0) \mid \text{treated}] = E[Y_{it}(0) - Y_{is}(0) \mid \text{control}] \quad \forall\, t, s
+\end{equation}
+In plain language: absent treatment, treated and control repositories would have followed the same \emph{trend} in outcomes.
+This does not require the two groups to have the same \emph{level} of commits---only the same trend.
+Parallel trends is strictly weaker than the ITS assumption: common shocks are fine as long as they affect both groups similarly.
+It is also weaker than the before/after assumption: arbitrary trends are allowed, as long as they are parallel across groups.
+We also require a \emph{no-anticipation assumption}: repositories do not change their behavior before they adopt AI tools.
 
-\TODO{Robustness: Assess sensitivity of the Borusyak ATT to control group composition: compare estimates across the full sample and a trimmed sample (dropping structurally inactive repos with $<$ 10 total commits). Stability of the ATT across these samples addresses concerns about the parallel trends assumption being driven by a specific subset of controls.}
+In our setting, repositories adopt at different months, creating a \emph{staggered adoption} design.
+Classic TWFE (Equation~\ref{eq:twfe}) implicitly uses already-treated repositories as controls for later-treated ones.
+When treatment effects vary across cohorts or over time, this produces negative weights on some group-time ATTs, biasing $\hat{\tau}$~\cite{goodman2021difference, dechaisemartin2020two}.
+This well-documented problem (see \citet{roth2023whats} for a survey) motivates modern estimators designed for staggered adoption with heterogeneous effects.
+
+We apply two complementary modern DiD estimators that avoid the negative-weighting problem.
+
+\textbf{Borusyak et al.\ (2024) imputation DiD}~\cite{borusyak2024revisiting} estimates what outcomes \emph{would have been} without treatment, then compares to what actually happened.
+The procedure has three steps.
+First, fit a counterfactual model on all untreated observations (never-treated repositories plus pre-treatment periods of treated repositories):
+\begin{equation}
+\label{eq:borusyak-first-stage}
+Y_{it} = \alpha_i + \gamma_t + X_{it}\beta + \varepsilon_{it} \quad \text{for all } (i,t) \text{ with } D_{it} = 0
+\end{equation}
+This includes time-varying covariates $X_{it}$: $\log$ of contributors, stars, issues, forks, and releases.
+Second, for each treated observation, plug in the estimated coefficients to predict the counterfactual: $\hat{Y}_{it}(0) = \hat{\alpha}_i + \hat{\gamma}_t + X_{it}\hat{\beta}$.
+Third, compute the ATT as the average residual $\hat{\tau} = \text{mean}(Y_{it} - \hat{Y}_{it}(0))$ across all treated observations, weighting each treated (repository, month) cell equally.
+Only untreated observations contribute to the counterfactual model; treated cells are never used as controls for other treated cells, avoiding the negative-weighting problem of TWFE\@.
+The estimate is $\hat{\tau} = 0.281$ ($\text{SE} = 0.060$), i.e., 32\% ($\pm$8\%).
+
+\textbf{Callaway \& Sant'Anna (2021) DiD}~\cite{callaway2021difference} estimates separate treatment effects for each adoption cohort (group of repositories adopting in the same month), then aggregates.
+For each cohort $g$ and time period $t$:
+\begin{equation}
+\label{eq:cs-att-gt}
+ATT(g, t) = E[Y_t - Y_{g-1} \mid \text{cohort } g] - E[Y_t - Y_{g-1} \mid \text{never-treated}]
+\end{equation}
+This is a difference in outcome changes between cohort-$g$ repositories and never-treated repositories, measured from baseline~$g\!-\!1$.
+We use no covariates, so this reduces to simple differences in means.
+The overall ATT averages the group-time effects, weighting by cohort size.
+This weighting differs from Borusyak's equal cell-weighting: CS gives each \emph{cohort} equal per-unit weight, while Borusyak gives each \emph{treated cell} equal weight.
+With heterogeneous effects, different weights produce different aggregates.
+The estimate is $\hat{\tau} = 0.416$ ($\text{SE} = 0.090$), i.e., 52\% ($\pm$14\%).
+
+\paragraph{Why the Estimates Diverge.}
+\label{sec:divergence}
+
+The Borusyak estimate (32\%) is substantially lower than the CS estimate (52\%).
+Two mechanisms explain this gap, and understanding them is pedagogically valuable because they connect directly to the DAG reasoning from Section~\ref{sec:primer-dags}.
+
+First, \textbf{covariate attenuation}.
+In the imputation step (Equation~\ref{eq:borusyak-first-stage}), the Borusyak model plugs in the \emph{post-treatment} values of the covariates $X_{it}$ to predict the counterfactual $\hat{Y}_{it}(0)$.
+If AI adoption causes an increase in contributors or stars---because the tool makes the project more productive and visible---and those in turn drive more commits, then the covariates sit on the \emph{causal pathway}: adoption $\to$ covariates $\to$ commits.
+Conditioning on them absorbs part of the treatment's effect, inflating the imputed counterfactual and shrinking the estimated ATT\@.
+This is a concrete, numbers-in-hand instance of the mediator bias from Section~\ref{sec:primer-dags}: conditioning on a variable on the causal path between treatment and outcome attenuates the total effect (recall the discussion of colliders and mediators in the temporal DAG, Figure~\ref{fig:temporal-dag}).
+The Borusyak estimate of 32\% captures only the effect of AI adoption that does \emph{not} flow through the covariates.
+The CS specification omits covariates entirely, so it is unaffected by this mechanism.
+Its estimate of 52\% targets the total effect under unconditional parallel trends---but this comes with its own trade-off: if parallel trends holds only \emph{conditional} on covariates, the unconditional estimate may be biased.
+
+Second, \textbf{aggregation weights}.
+Even without covariate attenuation, the two estimators would differ because they weight heterogeneous cohort-level effects differently---a well-known issue in the recent DiD literature~\cite{roth2023whats}.
+Together, the pair of estimates brackets a plausible ATT range of 32--52\%.
+The divergence is informative, not a failure: it teaches readers that methodological choices about covariate handling and aggregation have substantive consequences.
+
+\paragraph{Event Study and Pre-Trends Assessment.}
+\label{sec:event-study}
+
+Both estimators support event-study decompositions that estimate a separate treatment effect $\tau_k$ for each month~$k$ relative to adoption.
+Pre-treatment coefficients ($k < 0$) should be zero under parallel trends---they serve as a diagnostic.
+Post-treatment coefficients ($k \geq 0$) trace the dynamic treatment effect over time.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{../plots/event_study_comparison.pdf}
+\caption{Combined event study overlaying both DiD estimators.
+Pre-treatment coefficients near zero for both estimators support the parallel trends assumption.
+Post-treatment coefficients show the CS estimate (no covariates) consistently above the Borusyak estimate (with covariates), consistent with the covariate attenuation mechanism discussed in Section~\ref{sec:divergence}.
+Error bars show 95\% confidence intervals.}
+\label{fig:event-study}
+\end{figure}
+
+Figure~\ref{fig:event-study} overlays the event-study estimates from both approaches.
+Pre-treatment coefficients cluster near zero for both estimators, supporting the parallel trends assumption.
+We assess pre-trends formally with two complementary tests.
+For Borusyak, a joint Wald test pools the 12 pre-treatment coefficients ($H_0\!: \tau_{-12} = \cdots = \tau_{-1} = 0$; $p = 0.70$).
+For CS, we use simultaneous confidence bands from the \texttt{did} package~\cite{callaway2021difference}, which control the family-wise error rate across all pre-treatment periods---a more conservative test than pointwise confidence intervals; 0 of 12 periods are significant under simultaneous bands.
+Post-treatment coefficients show the CS estimate consistently above Borusyak, consistent with the covariate attenuation mechanism.
+We note that passing a pre-trends test does not \emph{prove} parallel trends~\cite{roth2022pretest}---it only fails to reject a necessary condition.
+
+\paragraph{Robustness.}
+\label{sec:robustness}
+
+We probe two concerns about control group composition.
+First, we trim structurally inactive repositories (fewer than 10 total commits) from the control group, since repositories with flat outcomes may violate parallel trends by failing to track the counterfactual trend of treated repositories.
+The Borusyak ATT barely changes ($0.281 \to 0.280$), suggesting the result is not driven by inactive controls.
+Second, we restrict the control group to repositories matched on pre-treatment observables via propensity score matching, yielding a similar estimate ($0.301$).
+Both checks confirm that the DiD estimates are robust to control group composition.\footnote{Full details of the trimming and matching procedures are available in the replication notebook (Section~\ref{sec:data-availability}).}
+These robustness checks probe specific threats to internal validity but cannot prove the identifying assumptions; they are best understood as ruling out specific alternative explanations.
 
 \paragraph{Longitudinal Takeaway.}
 \label{sec:longitudinal-takeaway}
 
-\TODO{Compare all longitudinal estimates (before/after, ITS, Borusyak DiD, CS DiD) side by side. The progression illustrates the core message: the \emph{design} matters more than the estimator. Before/after and ITS, which lack a control group, produce estimates confounded by secular trends. DiD, by introducing a control group and exploiting staggered adoption as quasi-random variation, absorbs both time-invariant confounders (via unit FE) and common shocks (via the control group counterfactual). The gap between the Borusyak and CS estimates illustrates a second lesson: when time-varying covariates are potential post-treatment mediators, conditioning on them attenuates the estimate. The pair of DiD estimates brackets a plausible ATT range (0.28--0.42). The remaining threats---anticipation effects, parallel trends violations---are more transparent and partially testable than the all-confounders-measured assumption required by cross-sectional methods. Contrast the DiD range with the cross-sectional estimates from Section~\ref{sec:cross-sectional}: the difference quantifies the magnitude of selection bias in the cross-section.}
+Table~\ref{tab:all-estimates} compares all estimates from Sections~\ref{sec:cross-sectional} and~\ref{sec:longitudinal}, along with each method's identifying assumption and its key vulnerability.
+Two lessons emerge from this progression.
+
+\begin{table*}[t]
+\centering
+\caption{Summary of all effect estimates from the cross-sectional (Section~\ref{sec:cross-sectional}) and longitudinal (Section~\ref{sec:longitudinal}) analyses.
+The estimate is on the $\log(1 + \text{monthly commits})$ scale; the percentage change is $(e^{\text{Estimate}} - 1) \times 100\%$, with $\pm$ computed via the delta method ($e^{\text{Estimate}} \times \text{SE} \times 100\%$).
+OLS approximates the ATE; PSM and IPW target the ATT; all longitudinal methods target the ATT.}
+\label{tab:all-estimates}
+\small
+\begin{tabular}{llrrr}
+\toprule
+Method & Identifying assumption & Estimate & SE & \% change \\
+\midrule
+\multicolumn{5}{l}{\emph{Cross-sectional (Section~\ref{sec:cross-sectional})}} \\
+OLS (DAG-justified) & Conditional ignorability & 0.696 & 0.090 & +101\% ($\pm$18\%) \\
+PSM (1:1 NN) & Conditional ignorability & 0.574 & 0.094 & +78\% ($\pm$17\%) \\
+IPW (ATT) & Conditional ignorability & 0.509 & 0.091 & +66\% ($\pm$15\%) \\
+\addlinespace
+\multicolumn{5}{l}{\emph{Longitudinal (Section~\ref{sec:longitudinal})}} \\
+Before/after & Counterfactual outcome stays flat & 0.940 & 0.120 & +156\% ($\pm$31\%) \\
+ITS with repo FE & Correct trend; no contemporaneous shocks & 0.790 & 0.120 & +120\% ($\pm$26\%) \\
+DiD: Borusyak (with covariates) & Parallel trends (conditional on $X_{it}$) & 0.281 & 0.060 & +32\% ($\pm$8\%) \\
+DiD: CS (no covariates) & Parallel trends (unconditional) & 0.416 & 0.090 & +52\% ($\pm$14\%) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+First, the \emph{design} matters more than the estimator.
+Within the cross-section, switching from OLS to PSM to IPW barely moves the estimate (66--101\%)---all three share the conditional ignorability assumption, so the estimator is not the bottleneck.
+Across designs, however, the estimates change dramatically: the before/after estimate (156\%) drops to 120\% with ITS (which absorbs secular trends) and further to 32--52\% with DiD (which absorbs common shocks via a control group).
+Each step trades a strong assumption for a weaker one, and the estimates shrink accordingly.
+The gap between the before/after estimate and the DiD range quantifies how much of the na\"ive effect was driven by trends and selection, not treatment.
+The further gap between the cross-sectional estimates (66--101\%) and the DiD range (32--52\%) quantifies the magnitude of selection bias in the cross-section---the residual confounding by time-invariant unobservables like team skill that no cross-sectional method could address.
+
+Second, within DiD, the Borusyak--CS gap (32\% vs.\ 52\%) illustrates the mediator bias from Section~\ref{sec:primer-dags}: conditioning on post-treatment covariates that lie on the causal pathway attenuates the total effect estimate.
+This is a concrete, numbers-in-hand demonstration of the DAG reasoning applied to a real analysis, reinforcing the practical importance of distinguishing confounders from mediators when selecting covariates.
+
+The remaining threats to the DiD estimates---parallel trends violations (partially testable via event studies but never provable), anticipation effects, and SUTVA violations---are \emph{more transparent and partially testable} than the ``all confounders measured'' assumption required by cross-sectional methods.
+This transparency is the central advantage of design-based identification: it makes the identification strategy open to scrutiny, so the community can constructively engage with its assumptions and iteratively develop stronger designs---which is the central thesis of this paper.
 
 \section{Discussion and Conclusion}
 \label{sec:discussion}
