@@ -684,7 +684,7 @@ Three common patterns of alternative explanations arise in SE research.
 SE research faces distinctive measurement challenges that compound these threats: noisy proxies for latent constructs (e.g., bug-fix commits as a proxy for defect proneness), construct validity issues (e.g., lines of code as a measure of complexity), and potential SUTVA violations in interconnected software ecosystems where one project's treatment spills over to affect another's outcomes.
 The mark of a credible causal study is not the absence of limitations but the transparency and rigor with which they are addressed---and the degree to which honestly stated limitations chart a path for subsequent work to follow.
 
-\paragraph{Promises and Perils of Causal Inference in Empirical SE.}
+\paragraph{Promises and Perils of Causal Inference in Empirical SE}
 Some features of the SE research landscape make this synthesis particularly promising.
 First, SE data is inherently \emph{panel data}: Repositories have temporal structure, developers contribute over time and across projects, and tools are adopted in staggered fashion---making DiD, panel FE, and synthetic control designs natural fits.
 Second, SE ecosystems generate rich quasi-experimental variation: Company policies mandate practices, projects adopt practices in staggered waves, and migrations create sharp treatment contrasts---all of which offer credible identification strategies that purely cross-sectional analysis cannot exploit.
@@ -738,7 +738,7 @@ All data collection scripts are available in the replication package (Section~\r
 
 \paragraph{Treatment: Systematic AI Coding Tool Adoption.}
 We operationalize AI coding tool adoption by scanning each repository's file tree for configuration files associated with AI coding assistants.
-These files---such as \Code{CLAUDE.md} and \Code{AGENTS.md} (Anthropic Claude), \Code{.cursorrules} and \Code{.cursor/rules/} (Cursor), and \Code{.github/copilot-instructions.md} (GitHub Copilot)---provide repository-specific instructions, coding conventions, and context to AI tools, signaling that the development team has made a deliberate decision to integrate AI coding assistants into their workflow.
+These files---such as \Code{AGENTS.md}, \Code{CLAUDE.md}  (Anthropic Claude), \Code{.cursorrules} and \Code{.cursor/rules/} (Cursor), and \Code{.github/copilot-instructions.md} (GitHub Copilot)---provide repository-specific instructions, coding conventions, and context to AI tools, signaling that the development team has made a deliberate decision to integrate AI coding assistants into their workflow.
 The full list of file-path patterns used for classification is available in the replication package (Section~\ref{sec:data-availability}).
 A repository is \emph{treated} if it contains any such AI configuration artifacts and \emph{untreated} otherwise.
 %As a supplementary treatment signal, we also scan each repository's contributor list for known AI bot accounts (e.g., accounts associated with Claude, Devin, CodeRabbit, or Copilot), which provide additional evidence of AI tool integration beyond configuration files.
@@ -817,7 +817,7 @@ Finally, we will use the same toolkit to demostrate the foundamental limitation 
   \bottomrule
   \end{tabular}
   \begin{tablenotes}\footnotesize
-  \item[a] We make a simplying assumption that organization ownership and primary language is pre-treatment with the intuition that both should be very rare for mature and established repositories in our observed time window (2024 - 2026). Technically, both can change over time (repositories may transfer between owners, and the primary language label may shift as the codebase evolves).
+  \item[a] We make a simplifying assumption that organization ownership and primary language is pre-treatment with the intuition that both should be very rare for mature and established repositories in our observed time window (2024 - 2026). Technically, both can change over time (repositories may transfer between owners, and the primary language label may shift as the codebase evolves).
   \item[b] Proportion of repositories owned by a GitHub organization rather than a personal account.
   \end{tablenotes}
   \end{threeparttable}
@@ -994,11 +994,11 @@ This is the only specification with a principled justification from the back-doo
 
 \begin{table}[t]
 \centering
-\caption{OLS estimates of the AI adoption effect on $\log(\text{monthly commits})$.
+\caption{OLS (ordinary least squares regression) estimates of systematic AI coding tool adoption effect on $\log(\text{monthly commits})$.
 The bivariate coefficient reflects raw selection.
 The kitchen-sink coefficient adds all snapshot covariates but is uninterpretable because the collapsed graph is cyclic.
 The DAG-justified specification conditions only on pre-treatment confounders identified by the temporal DAG (Figure~\ref{fig:temporal-dag}).
-All standard errors are heteroscedasticity-robust (HC1).}
+All standard errors are heteroscedasticity-robust (HC1)~\cite{mackinnon1985heteroskedasticity}.}
 \label{tab:ols-comparison}
 \small
 \begin{tabular}{lrrrr}
@@ -1034,46 +1034,51 @@ The Oster method's $\delta^* \geq 1$ threshold is a widely used heuristic, not a
 Alternative approaches---such as the E-value~\cite{vanderweele2017sensitivity} and partial-$R^2$ robustness value~\cite{cinelli2020making}---parameterize confounding strength differently, and each rests on its own assumptions.
 No single sensitivity measure is definitive; the pragmatic recommendation is to report multiple measures, state their assumptions transparently, and ultimately rely on domain knowledge to judge whether the unobserved confounders in a given SE setting are plausibly strong enough to alter the conclusions.}
 
-\paragraph{Estimator Convergence: OLS, PSM, and IPW.}
+\paragraph{Comparing Estimators: Regression, PSM, and IPW}
 \label{sec:estimator-convergence}
 
-A natural response to the fragility of the OLS estimate might be to try a ``better'' estimator.
-Propensity score matching (PSM) and inverse probability weighting (IPW) are increasingly popular in SE research, sometimes presented as though they automatically confer causal credibility.
-If the problem were model misspecification---nonlinearity, poor functional form, or lack of overlap---these methods might indeed help, because they relax the linearity assumptions of OLS\@.
-But if the problem is unobserved confounding, all three estimators will converge on the same biased answer, because they share the same identifying assumption: conditional ignorability given the observed pre-treatment covariates.
-
-Table~\ref{tab:three-estimators} confirms this prediction.
-Using the same DAG-justified pre-treatment covariates, OLS ($\hat{\tau} = 0.696$), 1:1 nearest-neighbor propensity score matching ($\hat{\tau} = 0.574$), and ATT-targeted inverse probability weighting ($\hat{\tau} = 0.509$) yield point estimates that are all positive, statistically significant ($p < 0.001$), and have overlapping confidence intervals.
-The three estimators target slightly different estimands---OLS approximates the ATE while PSM and IPW estimate the ATT---and operate on different effective samples (PSM retains 456 matched observations from the 999 available), which accounts for the modest variation in point estimates.
-But the substantive conclusion is identical: \emph{Switching from regression to matching to weighting changes nothing because all three share the same identifying assumption, and that assumption is violated by the unobserved confounders that no GitHub API data can capture.}
-Using PSM or IPW does not automatically make a study ``causal inference.''
+Another common response to the limitations of linear regression is to try a ``better'' estimator that are ``known to be a causal inference method,'' among which two popular methods are propensity score matching (PSM)~\cite{rosenbaum1983central} and inverse probability weighting (IPW)~\cite{horvitz1952generalization}.
+The main advantage of these methods is that they reduce dependence on the parametric specification of the outcome model~\cite{ho2007matching}: By balancing the covariate distributions between treatment and control groups through matching or reweighting, they lessen the sensitivity of the estimate to functional-form choices such as linearity.
+However, and more importantly, PSM and IPW still belong to the selection-on-observables family~\cite{imbens2009recent}, which shares the same identifying assumption as linear regression: conditional ignorability given the observed pre-treatment covariates.
+With the problem is unobserved confounding, all three estimators will still have omitted variable bias that can be aribitarily large in either direction.
+In other words, using PSM or IPW does not automatically make a study ``causal inference,'' and the researcher would still need to argue the plausibility of the identifying assumption through a DAG-encoded causal theory.
 
 \begin{table}[t]
-\centering
-\caption{Three estimators using the same DAG-justified pre-treatment covariates.
-All three yield positive, significant estimates with overlapping confidence intervals, confirming that the estimator is not the bottleneck---the identifying assumption is.
-All standard errors are heteroscedasticity-robust (HC1).}
-\label{tab:three-estimators}
-\small
-\begin{tabular}{lrrrr}
-\toprule
-Method & Coeff.\ & Robust SE & $p$-value & $N$ \\
-\midrule
-OLS (DAG-justified) & 0.696 & 0.090 & ${<}0.001$ & 999 \\
-PSM (1:1 nearest neighbor) & 0.574 & 0.094 & ${<}0.001$ & 456 \\
-IPW (ATT) & 0.509 & 0.091 & ${<}0.001$ & 999 \\
-\bottomrule
-\end{tabular}
-\end{table}
+  \centering
+  \caption{The estimated effect of systematic AI coding tool adoption on log-transformed monthly commits using the same DAG-justified pre-treatment covariates from three estimators: OLS (ordinary least squares regression), PSM (propensity score matching), and IPW (inverse probability weighting).
+  \label{tab:three-estimators}
+  All standard errors are heteroscedasticity-robust (HC1)~\cite{mackinnon1985heteroskedasticity}.}
+  \begin{threeparttable}
+  \small
+  \begin{tabular}{lrrrr}
+  \toprule
+  Method & Coeff.\ & Robust SE & $p$-value & $N$ \\
+  \midrule
+  OLS (DAG-justified) & 0.696 & 0.090 & ${<}0.001$ & 999\tnote{a} \\
+  PSM (1:1 nearest neighbor) & 0.574 & 0.094 & ${<}0.001$ & 456 \\
+  IPW (ATT) & 0.509 & 0.091 & ${<}0.001$ & 999\tnote{a} \\
+  \bottomrule
+  \end{tabular}
+  \begin{tablenotes}
+  \footnotesize
+  \item[a] One repository from the original 1,000 was deleted between the collection of cross-sectional and panel data, reducing the sample to 999.
+  \end{tablenotes}
+  \end{threeparttable}
+  \end{table}
+
+Table~\ref{tab:three-estimators} compares the three estimators using the same DAG-justified pre-treatment covariates, in which OLS gets $\hat{\tau} = 0.696$ (+100.57\%), 1:1 nearest-neighbor propensity score matching gets $\hat{\tau} = 0.574$ (+77.54\%), and ATT-targeted inverse probability weighting gets $\hat{\tau} = 0.509$ (+66.36\%).
+The three estimators target slightly different estimands---OLS approximates the ATE while PSM and IPW estimate the ATT---and operate on different effective samples (PSM retains 456 matched observations from the 999 available), which accounts for the variation in effect estimates.
+However, if we compare the estimates with the DiD estimates in Section~\ref{sec:twfe}, it would be reasonable to infer that the OLS, PSM, and IPW esimaters are all still inflated because of the unobserved coundefenders like Team Skill.
 
 \paragraph{Cross-Sectional Takeaway.}
 \label{sec:cross-sectional-takeaway}
 
-The cross-sectional analysis demonstrates a general problem for MSR studies that seek causal conclusions from snapshot data.
-Cross-sectional designs suffer from \emph{temporal collapse}: The measurement design destroys the temporal ordering that DAGs require, making principled covariate selection impossible for time-varying covariates.
-Even when panel data are available to recover pre-treatment covariate values, the resulting estimates remain fragile to unobserved confounding by unmeasurable factors such as developer skill and team culture.
-And switching to a more sophisticated selection-on-observables estimator (PSM, IPW) does not help, because the bottleneck is the identifying assumption---conditional ignorability given observables---not the choice of estimator.
-Only within-repository longitudinal variation---comparing the \emph{same} project before and after adoption, thereby absorbing all time-invariant confounders---can make progress on identification.
+The cross-sectional analysis illustrates two challenges that empirical SE researchers should be aware of when drawing causal conclusions from cross-sectional snapshot data.
+First, cross-sectional designs suffer from \emph{temporal collapse}: The measurement design destroys the temporal ordering that DAGs require, making principled covariate selection difficult for time-varying covariates.
+Second, even when panel data are available to recover pre-treatment covariate values, the resulting estimates may be sensitive to unobserved confounding by factors such as developer skill and team culture that no repository-level API data can capture.
+Switching to another selection-on-observables estimator such as PSM or IPW does not resolve this limitation, because the bottleneck is the identifying assumption---conditional ignorability given observables---not the choice of estimator.
+Despite the limitations, cross-sectional studies remain valuable---and in many settings they are the only feasible design---but researchers should pair them with sensitivity analyses that transparently assess how robust the conclusions are to plausible unobserved confounders.
+On the other hand, with longitudinal data, research designs that exploit within-unit variation---comparing the \emph{same} project before and after adoption, thereby absorbing all time-invariant confounders---are particualry powerful and can strengthen identification in the presence of unobserved confounders.
 We turn to this approach in Section~\ref{sec:longitudinal}.
 
 \subsection{Longitudinal Methods}
