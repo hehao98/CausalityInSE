@@ -1290,6 +1290,16 @@ Within DiD, the CS--Borusyak comparison (52\% vs.\ 32\%) illustrates a subtle bu
 The remaining threats---parallel trends violations, anticipation effects, and SUTVA violations---are \emph{more transparent and partially testable} (via event studies and pre-trends tests) than the ``all confounders measured'' assumption required by cross-sectional methods.
 This transparency is the central advantage of design-based identification.
 
+\paragraph{External Triangulation with Experimental Evidence.}
+\label{sec:triangulation}
+
+Beyond methodological defensibility, the DiD estimates gain credibility through comparison with independent experimental evidence on AI coding tools.
+The closest construct-matched study is \citet{cui2025effects}, which pools three firm-level field randomized trials ($N = 4{,}867$ developers at Microsoft, Accenture, and a Fortune-100 company) and reports a $+26\%$ increase in completed tasks ($\text{SE} \approx 10\%$).
+Shorter-horizon controlled task experiments find larger per-task speedups---\citet{peng2023impact} report a $55.8\%$ reduction in task-completion time on a single JavaScript task ($N = 95$), and \citet{DBLP:conf/icse-seip/ParadisGMNMMZFC25} report an $\approx 21\%$ time reduction on an enterprise coding task at Google ($N = 96$)---though these measure task speed rather than sustained output volume, so their magnitudes are not directly comparable to monthly commits.
+The experimental evidence is not uniformly positive: \citet{becker2025measuring} report a $+19\%$ \emph{slowdown} on 16 experienced maintainers working on 246 issues in mature open-source repositories, and a follow-up with late-2025 data reversed the direction (non-significant speedups of $-4\%$ to $-18\%$) but was flagged by its authors as unreliable due to control-arm attrition~\cite{metr2026uplift}, leaving the effect on experienced open-source maintainers of mature codebases poorly identified as of early 2026.
+Our $+32\%$ to $+52\%$ ATT is consistent with the firm-level RCT anchor of \citet{cui2025effects} and sits within the broader range established by these controlled experiments; the na\"ive cross-sectional $+911\%$ is inconsistent with every RCT on record by roughly an order of magnitude.
+External triangulation does not validate our DiD estimate in a construct-matched sense---task-time and commit-volume outcomes differ, and open-source and enterprise populations differ---but it shows that the design-based and controlled-experimental evidence agree on the plausible magnitude range, while the na\"ive cross-sectional estimate does not.
+
 \subsection{Summary}
 \label{sec:summary}
 
@@ -1327,6 +1337,7 @@ Yet within the DAG-justified cross-section, switching from OLS to PSM to IPW sti
 Across longitudinal designs, the estimates change dramatically: the before/after estimate (156\%) drops to 120\% with ITS (which absorbs secular trends) and further to 32--52\% with DiD (which absorbs common shocks via a control group).
 Each step trades a strong assumption for a weaker one, and the estimates shrink accordingly.
 The identifying assumption is progressively weaker and more plausible as we move from the cross-sectional to the longitudinal designs.
+The design-based estimates are not only methodologically defensible; they are also the only estimates in Table~\ref{tab:all-estimates} consistent with the magnitude range reported by field experiments on AI coding tools (Section~\ref{sec:triangulation}).
 
 \section{Discussion}
 \label{sec:discussion}
@@ -1340,6 +1351,8 @@ The progression of estimates in Table~\ref{tab:all-estimates} is the paper's mos
 The na\"ive cross-sectional comparison yields $+911\%$; adding snapshot controls reduces this to $+158\%$; conditioning only on DAG-justified pre-treatment covariates further reduces it to $+101\%$; and the staggered DiD estimates land at $+32\%$ to $+52\%$.
 Each step removes a specific, named source of bias---temporal ambiguity, collider conditioning, time-invariant confounding, secular trends, common shocks---and each reduction is substantial.
 The design, not the estimator, drives the change: Within the cross-sectional family, switching from OLS to PSM to IPW may improve the estimate but they are all plagued by the same conditional ignorability assumption violated by unmeasured confounders.
+The magnitude of this shrinkage matters beyond methodological tidiness.
+For many intervention-appraisal questions---how to allocate resources, whether to invest in a technology, whether to adopt a practice---the decision-relevant quantity is \emph{how much}, not merely the direction of the effect~\cite{lundberg2021estimand}, and an order-of-magnitude-inflated estimate can lead to qualitatively different conclusions even when the sign is preserved.
 
 This pattern is unlikely to be unique to our setting.
 Many MSR studies query the GitHub API once, obtain a cross-sectional snapshot, regress an outcome on a treatment indicator with available controls, and report the surviving coefficient as suggestive of an effect.
@@ -1353,6 +1366,8 @@ This estimates the effect of the \emph{entire bundle}: The AI tools themselves, 
 It does not isolate the effect of AI code generation alone.
 Pre-treatment trend tests support the parallel trends assumption, but the estimate is likely conservative due to control-group contamination: Individual developers using AI tools without project-level configuration files are unobservable, blurring the treated--control contrast and attenuating the estimate toward zero.
 We offer this as a credible first estimate that future work can refine with richer treatment definitions, complementary identification strategies, or alternative outcome measures.
+The $+32\%$ to $+52\%$ range is also consistent with the field-experimental evidence base on AI coding tools (Section~\ref{sec:triangulation}), most directly with the $+26\%$ pooled estimate from the three firm-level randomized trials in \citet{cui2025effects}, and sits above the null-to-slowdown findings of \citet{becker2025measuring} on experienced maintainers of mature open-source repositories.
+The na\"ive cross-sectional $+911\%$ is inconsistent with every published RCT by roughly an order of magnitude, illustrating that the design-based estimates are not only methodologically defensible but also the only estimates in this paper that triangulate with independent experimental evidence.
 
 \subsection{Implications}
 

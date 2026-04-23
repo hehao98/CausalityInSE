@@ -121,6 +121,7 @@ To achieve this vision, the paper provides:
 - **Conservative estimate:** Control group contamination (individual AI use in "untreated" repos) attenuates the estimate toward zero.
 - **Pre-trends look clean:** 0/12 CS pre-treatment periods significant under simultaneous confidence bands; Borusyak joint Wald test p = 0.70.
 - **Robust to control group composition:** Trimming inactive repos and PSM-matching the panel barely change the DiD estimates.
+- **Triangulates with controlled experiments:** The +32–52% range is consistent with the +26% pooled estimate from three firm-level RCTs on ~4,867 devs (Cui et al. 2025, *Management Science*), and within the broader range of controlled task experiments (Peng et al. 2023 at −55.8% task time; Paradis et al. 2025 at ~−21% task time). Contrarian evidence on experienced OSS maintainers (Becker/METR 2025) is acknowledged. The naive +911% is inconsistent with every published RCT by roughly an order of magnitude.
 
 ### The Story Arc for the Paper
 
