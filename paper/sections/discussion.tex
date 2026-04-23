@@ -1,0 +1,78 @@
+\section{Discussion}
+\label{sec:discussion}
+
+This tutorial argued that the SE community should adopt the modern causal inference toolkit as the standard for intervention-outcome questions involving observational data.
+We now reflect on what the worked example reveals about current practice, discuss implications for different audiences, and acknowledge limitations and open frontiers.
+
+\subsection{Lessons from the Worked Example}
+
+The progression of estimates in Table~\ref{tab:all-estimates} is the paper's most concrete argument for why identification strategy matters.
+The na\"ive cross-sectional comparison yields $+911\%$; adding snapshot controls reduces this to $+158\%$; conditioning only on DAG-justified pre-treatment covariates further reduces it to $+101\%$; and the staggered DiD estimates land at $+32\%$ to $+52\%$.
+Each step removes a specific, named source of bias---temporal ambiguity, collider conditioning, time-invariant confounding, secular trends, common shocks---and each reduction is substantial.
+The design, not the estimator, drives the change: Within the cross-sectional family, switching from OLS to PSM to IPW may improve the estimate but they are all plagued by the same conditional ignorability assumption violated by unmeasured confounders.
+The magnitude of this shrinkage matters beyond methodological tidiness.
+For many intervention-appraisal questions---how to allocate resources, whether to invest in a technology, whether to adopt a practice---the decision-relevant quantity is \emph{how much}, not merely the direction of the effect~\cite{lundberg2021estimand}, and an order-of-magnitude-inflated estimate can lead to qualitatively different conclusions even when the sign is preserved.
+
+This pattern is unlikely to be unique to our setting.
+Many MSR studies query the GitHub API once, obtain a cross-sectional snapshot, regress an outcome on a treatment indicator with available controls, and report the surviving coefficient as suggestive of an effect.
+The temporal DAG analysis (Section~\ref{sec:temporal-collapse}) revealed that this workflow destroys the temporal ordering required for principled covariate selection: Variables that are confounders in their pre-treatment incarnation become colliders in their post-treatment incarnation, and a single snapshot conflates the two.
+A practical recommendation follows: MSR researchers should invest in constructing longitudinal datasets---mining git histories, leveraging GHArchive time series, recording adoption timing---rather than relying on atemporal snapshots.
+The marginal cost of building a panel is modest; the marginal gain in identification is large.
+
+The worked example also produces a substantive finding.
+Under the staggered DiD design, systematic AI coding tool adoption---as signaled by AI configuration files committed to the repository---is associated with a 32--52\% increase in monthly commits (ATT).
+This estimates the effect of the \emph{entire bundle}: The AI tools themselves, the workflow reorganization that accompanies structured adoption, and the team characteristics that lead to early integration (Section~\ref{sec:study-setting}).
+It does not isolate the effect of AI code generation alone.
+Pre-treatment trend tests support the parallel trends assumption, but the estimate is likely conservative due to control-group contamination: Individual developers using AI tools without project-level configuration files are unobservable, blurring the treated--control contrast and attenuating the estimate toward zero.
+We offer this as a credible first estimate that future work can refine with richer treatment definitions, complementary identification strategies, or alternative outcome measures.
+The $+32\%$ to $+52\%$ range is also consistent with the field-experimental evidence base on AI coding tools (Section~\ref{sec:triangulation}), most directly with the $+26\%$ pooled estimate from the three firm-level randomized trials in \citet{cui2025effects}, and sits above the null-to-slowdown findings of \citet{becker2025measuring} on experienced maintainers of mature open-source repositories.
+The na\"ive cross-sectional $+911\%$ is inconsistent with every published RCT by roughly an order of magnitude, illustrating that the design-based estimates are not only methodologically defensible but also the only estimates in this paper that triangulate with independent experimental evidence.
+
+\subsection{Implications}
+
+\paragraph{For Reviewers and Editors.}
+When a paper poses an intervention-outcome research question, reviewers should require an explicit discussion of the extent to which the evidence supports a causal claim and the assumptions under which it does so.
+A regression coefficient presented as ``the effect of $X$ on $Y$'' without an identification argument is not a causal finding---it is a descriptive association whose causal content is unknown.
+The empirical standard in Appendix~\ref{sec:appendix-standard} provides a concrete checklist: Does the study state its causal question? Articulate a target trial? Define the estimand? Name the identification strategy and its assumptions? Conduct sensitivity analysis? Engage with alternative explanations?
+We encourage editorial boards of SE venues to formally adopt this standard---or one like it---into the ACM SIGSOFT Empirical Standards collection, following the precedent of editor-endorsed guidance in respiratory and critical care medicine~\cite{lederer2019control} and emerging norms in psychology~\cite{grosz2020taboo} and epidemiology~\cite{hernan2018cword}.
+This does not mean that every empirical SE paper must become a causal study; descriptive, predictive, and qualitative studies remain indispensable.
+The standard applies specifically when a study asks a causal question, and a lot more empirical SE papers can possibly reframe their research question to be causal, as many of them already have a causal motivation in mind (see Section~\ref{sec:bg-adoption}).
+
+\paragraph{For Researchers.}
+The causal inference toolkit can seem daunting, but the barrier to entry is lower than it appears.
+The pragmatic stance in Section~\ref{sec:guide} provides a workflow; the FAQ in Appendix~\ref{sec:appendix-faq} addresses common objections and recommends software tools; and a new generation of accessible textbooks~\cite{cunningham2021causal, huntingtonklein2021effect, hernan2020causal, angrist2009mostly} makes self-study feasible.
+The most important first step is not mastering a specific method but adopting a way of thinking: Before fitting a model, articulate the target trial, sketch a DAG, ask what variation in the data identifies the causal effect, and reason whether the identification assumption would be plausible in the specific study setting.
+This exercise alone---even without changing the statistical method---often reveals problems invisible to the standard regression workflow: a key covariate is a mediator, the treatment is poorly defined, or the research question conflates two distinct estimands.
+Causal inquiry is inherently iterative: The first identification strategy will have gaps, and revision is the norm, not the exception.
+
+\subsection{SE's Advantages for Causal Inference}
+
+Our message is not that SE is behind---it is that SE has untapped potential.
+Several structural features of SE data make it unusually well suited to the design-based methods this tutorial advocates.
+First, SE data is inherently \emph{panel data}: Repositories have commit histories spanning years, developers contribute across projects over time, and tools and practices are adopted in staggered fashion---precisely the structure that DiD, panel fixed effects, and synthetic control designs exploit.
+Second, SE has the data infrastructure---version control systems, public repositories, platform event streams---that researchers in economics, psychology, or epidemiology often cannot access.
+Finally, SE ecosystems generate rich \emph{quasi-experimental variation}: Platform policies (GitHub Actions rollout, npm security mandates, language deprecation announcements), organizational mandates, and ecosystem-wide shocks create exogenous variation that resembles natural experiments.
+The field is rich in settings where design-based identification is feasible; it has simply not been exploited at scale.
+
+The causal inference framework also creates a productive bridge between qualitative and quantitative SE research.
+Every step of a causal inquiry---framing the question, proposing a DAG, choosing covariates, interpreting results---requires \emph{domain knowledge} that cannot be derived from data alone (Section~\ref{sec:stance-prior-research}).
+Interviews, case studies, practitioner postmortems, and gray literature become the theory-generating engine that proposes causal structures; rigorous quantitative designs then test them; and the findings refine theory for the next iteration.
+Far from marginalizing qualitative research, the toolkit makes its role in theory-building explicit and essential.
+
+\subsection{Limitations and Open Frontiers}
+
+Raising empirical standards cannot prevent the superficial or ritualistic adoption of methods---applying DiD without understanding parallel trends, or drawing a DAG without genuine engagement with the causal structure.
+This concern is not hypothetical: The SE community has experienced analogous problems with the adoption of qualitative methods, where the label is adopted but the disciplined reasoning behind the method is not~\cite{DBLP:journals/tosem/RobillardAEGLNNSSS24}.
+The antidote is peer review informed by the empirical standard (Appendix~\ref{sec:appendix-standard}) and a culture of substantive engagement with identification assumptions---evaluating whether a study's parallel trends argument is plausible, not merely whether the words ``parallel trends'' appear.
+
+Several SE-specific challenges deserve particular attention as open research frontiers.
+First, SE treatments are often \emph{compound}: ``Adopting AI coding tools'' bundles the tools themselves, the workflow reorganization, and the team characteristics that drive adoption (Section~\ref{sec:study-setting}).
+Developing decomposition strategies for disentangling bundled interventions in SE settings is an important methodological direction.
+Second, interconnected software ecosystems create \emph{SUTVA violations}: Shared libraries propagate effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
+Adapting causal inference methods under network interference~\cite{savje2021average, forastiere2021identification} to SE's sociotechnical dependency structures is an open frontier where SE-specific methodological contributions could flow back to the broader causal inference community.
+Third, our worked example reports a single ATT, but the effect of AI coding tools is almost certainly \emph{heterogeneous}---varying across programming languages, team sizes, project maturity, and adoption cohorts.
+Machine-learning estimators for conditional average treatment effects---causal forests~\cite{wager2018estimation} and double/debiased machine learning~\cite{chernozhukov2018double}---offer tools for characterizing this heterogeneity, but they inherit the identifying assumptions of simpler estimators and are therefore most useful once identification has been established.
+Systematically mapping effect heterogeneity in SE settings---where treatment effects may interact with ecosystem position, developer experience, or project governance structures---is a natural next step for studies that have cleared the identification bar.
+Finally, even as the community improves identification, corresponding investment in measurement validity---construct definition, proxy validation, and triangulation across multiple outcome measures~\cite{lawlor2016triangulation}---is essential.
+A perfectly identified design with a bad outcome proxy still produces misleading conclusions.
+Identification and measurement are orthogonal challenges (Section~\ref{sec:primer-stance}); this tutorial addresses the former, but the latter demands equal attention.

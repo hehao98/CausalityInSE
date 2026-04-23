@@ -1,0 +1,63 @@
+\section{Introduction}
+\label{sec:introduction}
+
+\emph{"Correlation does not imply causation"} is among the most widely repeated methodological maxims in empirical software engineering (SE) and broadly many parts of empirical science~\cite{hernan2018cword, haber2022causal}. 
+It is technically correct, but, as typically deployed, not particularly useful.\footnote{
+  % As one concrete example, \citet{DBLP:conf/sigsoft/RayPFD14, DBLP:journals/cacm/RayPDF17} reported a modest but significant association between language class and defect proneness, framing their findings as correlational.
+  % Yet, our citation analysis of 451 papers citing this study reveals that, among papers that engage with the finding substantively, causal interpretations outnumber hedged ones roughly 2:1---a striking ratio given the authors' explicit and appropriate hedging (Appendix~\ref{sec:appendix-misinterpretation}).
+  % This is not an isolated incident but a systemic field-level pattern consistent with \citeauthor{hernan2018cword}'s~\cite{hernan2018cword} observation that associational euphemisms do not prevent causal interpretation.
+  As argued by \citet{hernan2018cword}, \emph{associational euphemisms do not improve observational causal inference}.
+  The psychology and epidemiology literature experiences the same problem (see Appendix~\ref{sec:appendix-psych-reform}): For example, \citet{haber2022causal} found that 52\% of epidemiology abstracts imply causality despite ostensibly associational language.
+  The methodological reformers in these fields responded by shifting from associational euphemisms to explicit causal framing---requiring authors to state target estimands, construct DAGs to justify covariate selection, and openly argue for identification assumptions~\cite{grosz2020taboo, lundberg2021estimand, rohrer2018thinking, rohrer2024causal}.
+}
+In empirical SE papers, the phrase tends to appear in a limitations section, after which the paper's findings are left for readers to interpret as they see fit.
+This is understandable: Associational evidence is valuable, and a significant part of the knowledge in empirical SE has been built from it. 
+The difficulty arises on the receiving end. 
+For example, when a study reports that teams using certain tools, practices, or processes (e.g., AI coding, continuous integration, code review) ship features faster than teams that do not, readers (especially practitioners deciding whether to invest in such tools) naturally want to read this as evidence that adoption causes the improvement.
+Whether or not the authors intended a causal interpretation, the practical questions motivating much empirical SE research are causal in nature: They concern the consequences of decisions, interventions, and changes to practice.
+
+This creates a productive tension. 
+The questions we care about most (e.g., does code review reduce defects? does remote work affect coordination? does AI-assisted development improve velocity?) are questions about causal effects, yet the studies we can feasibly conduct are often observational, because randomized experiments in software engineering are frequently impractical, expensive, or ethically constrained. 
+It does not mean that we cannot conduct credible causal inference on observational SE data.
+In fact, observational evidence has supported credible causal conclusions across many sciences, from epidemiology's landmark work linking smoking to cancer~\cite{samet2016epidemiology} to economics' studies of policy interventions~\cite{abadie2018econometric}.
+In those fields, researchers have developed systematic frameworks for deriving the assumptions under which certain type of observational evidence can support a causal interpretation, communicating those assumptions transparently so that readers can evaluate them, and iteratively developing stronger observational designs by scrutizing and relaxing assumptions from prior studies (see, e.g., \citet{angrist2010credibility, pearl2009causality, cunningham2021causal}).
+
+Empirical SE has not yet widely adopted such frameworks (see Section~\ref{sec:bg-adoption} for a literature review). 
+The discipline draws researchers from computer science and engineering backgrounds where training emphasizes building and evaluating technical artifacts, not designing observational studies of human behavior. 
+Many of the methodological conventions in empirical SE have been developed organically, borrowing from neighboring fields as needs arose~\cite{DBLP:journals/jss/TichyLPH95, DBLP:books/sp/08/EasterbrookSSD08}.
+The result is that our community has strong norms around certain aspects of empirical rigor (replication packages~\cite{DBLP:journals/corr/abs-2010-03525}, statistical testing~\cite{DBLP:books/sp/WohlinRHORW24}, threats-to-validity sections~\cite{DBLP:journals/tosem/RobillardAEGLNNSSS24}) but comparatively less shared vocabulary for reasoning about when and why a particular study design supports a causal claim versus a purely descriptive one.
+
+We believe the field is ready for this conversation, and that having it constructively can strengthen the impact of empirical SE research. 
+The goal is to offer a practical framework that helps researchers (a) clarify what kind of claim (descriptive, predictive, or causal) their study is intended to support, (b) identify the assumptions connecting their study design and analysis to that claim, and (c) communicate those assumptions openly so that readers and reviewers can appropriately interpret the study's contributions and follow-up studies can constructively engage with them.
+
+To this end, we provide a tutorial on causal inference for empirical SE, drawing on three intellectual pillars that have proven broadly useful across different fields of empirical sciences.
+First, the \emph{potential outcomes framework}~\cite{neyman1923application, rubin1974estimating} lay the mathematical foundations for defining what causal quantity to estimate (i.e., the \emph{target estimand}) and under which formal conditions the causal quantity can be estimated \emph{unbiasedly} from a specific statistical model and study design (i.e., the \emph{identifying assumptions}).
+Second, the \emph{directed acyclic graphs (DAGs)} from \citet{pearl2009causality} provide a visual language for articulating the researcher's belief on what might be an underlying causal theory that can approximate the true data-generating process; for a family of methods (e.g., regression, matching, invert probability weighting), it is the only way to argue that the identifying assumption is plausible in a specific study setting.
+Finally, \emph{design-based identification}~\cite{angrist2010credibility, cunningham2021causal} provides systematic frameworks to find \emph{natural experiment} settings~\cite{dunning2012natural} in which the causal quantity can be estimated without complete and accurate articulation of the underlying causal theory.
+We will introduce all three pillars at a level accessible to researchers without formal training in causal inference.
+
+We illustrate their use through a running example: \emph{estimating the impact of systematic AI coding tool adoption on development velocity}.
+We begin with the most direct approach, comparing measured outcomes between a sample of open-source projects that adopted AI tools and open-source projects that did not, and use a DAG-encoded causal theory to surface the assumptions this comparison requires. 
+We then show how plausible violations of those assumptions (i.e., AI-adopting projects differ in important ways that affect development velocity) motivate progressively stronger designs: multivariate regressions, longitudinal comparisons, and staggered difference-in-differences that builds a natural experiment setting from variations in adoption timing. 
+At each stage, the theory makes visible which sources of confounding are addressed by the design, which remain, and what the researcher must assume for the analysis to yield a credible causal estimate. 
+\emph{Each design involves a different constellation of assumptions and trade-offs, and reasoning about these explicitly is more productive than retreating to the blanket disclaimer that correlation does not imply causation.}
+
+Importantly, the credibility of a causal argument rests on more than the appropriate application of a specific method or framework. 
+For the family of regression, matching, and invert probability weighting methods, a researcher would need deep SE domain knowledge and data analysis expertise to argue that all the confounders are sufficiently controlled and no bad controls (i.e., mediators and colliders~\cite{angrist2009mostly}) are included in the model.
+For design-based identification, a researcher would also need similar knowledge to construct a compelling argument for the validity of the quasi-experimental setting so that the key assumptions (e.g., parallel trends~\cite{roth2023whats}, continuity at the threshold~\cite{cunningham2021causal}) are met.
+The modern causal inference toolkit enhances but is not a substitute for domain expertise.
+
+Our perspective builds on and complements recent calls for greater transparency in empirical software engineering methodology~\cite{DBLP:conf/icse/SiegmundSA15, DBLP:journals/tosem/RobillardAEGLNNSSS24}. 
+\citet{DBLP:conf/icse/SiegmundSA15} demonstrated a lack of consensus in the SE community on the trade-off between internal and external validity, and \citet{DBLP:journals/tosem/RobillardAEGLNNSSS24} argued that threats-to-validity sections should evolve into explicit discussions of study design trade-offs, with stated rationale and implications. 
+We extend this idea to the specific domain of causal inference, focusing on the assumptions that connect a study's design to the inferential claims it can support. 
+This approach is also inspired by \citet{rohrer2018thinking}, who demonstrated how the same causal inference frameworks used here can help psychologists (another field where observational studies are common and causal questions are central) move from implicit causal reasoning to explicit, assumption-transparent arguments.
+
+The contribution of this paper is methodological and pedagogical. 
+We do not introduce new statistical methods; we aim to enrich how the SE community reasons and communicates about the inferential reach of empirical studies, moving from a binary framing ("experiment = causal, observational = not") toward a more graduated understanding in which the strength of a causal argument depends on the plausibility of its assumptions. 
+We provide concrete guidance on identifying, representing, and refining those assumptions, with the hope that this leads to research in which the causal reasoning is laid out plainly, so the community can engage with it constructively.
+
+The remainder of this paper is organized as follows.
+Section~\ref{sec:background} reviews the background and related work, including a literature review on the state of causal inference adoption in SE.
+Section~\ref{sec:primer} presents our causal inference primer, concluding with a pragmatic guide for conducting credible causal inquiry in SE (Section~\ref{sec:guide}).
+Section~\ref{sec:worked-example} presents the worked example on AI coding tools in open-source software, demonstrating the full arc from na\"ive comparison through cross-sectional methods to design-based longitudinal identification.
+Section~\ref{sec:discussion} discusses implications and concludes.
