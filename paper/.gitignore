@@ -4,5 +4,7 @@ main.aux
 main.out
 main.blg
 main.synctex.gz
+main.fdb_latexmk
+main.fls
 comment.cut
 *.bbl
