@@ -1,10 +1,10 @@
 \section{A Primer on Causal Inference for Software Engineering Researchers}
 \label{sec:primer}
 
-Our review in Section~\ref{sec:background} established two facts: The causal inference toolkit has matured over a century of cross-disciplinary development into a set of principled methods for answering intervention-outcome questions, yet fewer than 2\% of SE papers employ any recognized causal inference method despite 29\% carrying an ambition to investigate intervention-outcome questions.
-This section equips the reader with the conceptual and technical foundations needed to close that gap.
+Our review in Section~\ref{sec:background} shows that, while the causal inference toolkit has matured over a century of cross-disciplinary development into a set of principled methods for answering intervention-outcome questions, fewer than 2\% of SE papers employ any recognized causal inference method despite 29\% carrying an ambition to investigate intervention-outcome questions.
+In this section, we will introduce the reader to the conceptual and technical foundations that we believe should be useful to close that gap.
 We cover the three pillars most relevant to empirical SE research---counterfactual reasoning and potential outcomes, graphical causal models, and design-based identification---and argue for a pragmatic synthesis suited to the field's observational data.
-We do not cover causal discovery algorithms~\cite{journals/ese/HulseEM25}, machine-learning-based heterogeneous treatment effect estimation~\cite{chernozhukov2018double, athey2016recursive}, or formal verification of causal claims~\cite{halpern2016actual}; readers interested in these topics should consult the references cited and the textbooks listed in Section~\ref{sec:bg-causal-history}.
+Due to space constraints, we do not cover advanced topics and recent emerging research directions, such as causal discovery algorithms~\cite{journals/ese/HulseEM25}, machine-learning-based heterogeneous treatment effect estimation~\cite{chernozhukov2018double, athey2016recursive}, and formal verification of causal claims~\cite{halpern2016actual}; readers interested in these topics should consult the references cited and the textbooks listed in Section~\ref{sec:bg-causal-history}.
 
 \subsection{What Does It Mean Exactly for X to Cause Y?}
 \label{sec:primer-causality}
