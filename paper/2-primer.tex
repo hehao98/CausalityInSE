@@ -131,69 +131,95 @@ The two quantities differ whenever the association between $X$ and $Y$ is partia
 A DAG encodes \emph{the researcher's beliefs about the true data-generating process} and it consists of nodes (variables) and directed edges ($\to$) representing direct causal effects.
 Every arrow is a substantive claim; every absent arrow asserts no direct effect.
 This transparency is the central value of DAGs for applied research: Rather than debating vaguely about ``omitted variables'' or ``lurking confounders,'' researchers can argue about specific edges.
+
+\paragraph{Constructing a DAG from Prior Theory.}
+Because a DAG encodes the researcher's substantive theory of the data-generating process---not knowledge extracted from the data itself---each node and edge should rest on a specific source of prior evidence: published quantitative studies, controlled experiments, qualitative investigations, or, where these are absent, explicit domain knowledge that can be challenged.
+To illustrate this discipline, we construct a pedagogical DAG for the AI coding tools--velocity question (Figure~\ref{fig:ai-dag}) by anchoring each node in the relevant literature, and we deliberately keep the figure to one mediator and one collider so that the construction exercise is transparent end-to-end.
+\emph{The treatment $\to$ mediator $\to$ outcome path.}
+A growing body of randomized experiments establishes that AI coding tools accelerate per-task code production: \citet{cui2025effects} pool three firm-level field trials ($N = 4{,}867$ developers across Microsoft, Accenture, and a Fortune-100 company) and report a $+26\%$ increase in completed tasks; \citet{peng2023impact} find a $55.8\%$ reduction in completion time on a controlled JavaScript task; and \citet{DBLP:conf/icse-seip/ParadisGMNMMZFC25} report an $\approx 21\%$ time reduction on an enterprise task at Google.
+This convergent experimental evidence motivates \emph{Code Generation} as the load-bearing mediator on the AI Tool Adoption $\to$ Dev.\ Velocity path.
+\emph{The collider.}
+\citet{DBLP:conf/icse/FangLHV22} use a difference-in-differences design to show that visibility shocks (specifically, social-media promotion) causally increase a GitHub project's star count and contributor inflow; a symmetric argument applies to development activity, as actively-developed projects---like AI-adopting ones---are differentially likely to attract attention in 2024--2026 commentary on developer-tool trends.
+Popularity is therefore a \emph{collider} on the AI Tool Adoption $\to$ Popularity $\leftarrow$ Dev.\ Velocity path, and conditioning on it would open a spurious association rather than close one.
+\emph{The confounders.}
+We include three confounders that domain knowledge identifies as likely to drive both adoption and velocity: \emph{Project Maturity}, \emph{Domain} (primary programming language), and \emph{Team Skill}.
+The first two are structurally pre-treatment characteristics that adopters and non-adopters differ on substantially---we will see in Section~\ref{sec:naive-comparison} (Table~\ref{tab:descriptive}) that adopters are younger (SMD~$=-0.37$) and heavily skewed toward TypeScript (SMD~$=+0.50$), consistent with the practitioner expectation that AI tools work unevenly across language ecosystems and that younger projects are typical early adopters of new developer tools.
+\emph{Team Skill}---encompassing developer expertise, team culture, and organizational practice---is the canonical unobserved confounder in this setting, since GitHub repository data captures no proxy for it; Figure~\ref{fig:ai-dag} marks Team Skill with a dashed border to make this unobservability visually explicit, and Section~\ref{sec:cross-sectional-sensitivity} shows that the cross-sectional estimate is highly sensitive to its plausible magnitude.
 %In the programming language debate, the unproductive back-and-forth between \citeauthor{DBLP:conf/sigsoft/RayPFD14} and \citeauthor{DBLP:journals/toplas/BergerHMVV19}~\cite{DBLP:journals/corr/abs-1911-07393, DBLP:journals/corr/abs-1911-11894} could have been channeled into a productive discussion about \emph{which edges belong in the DAG} and \emph{which confounders are unmeasured}.
-As a pedagogical example (without aiming for completeness), Figure~\ref{fig:ai-dag} presents a plausible DAG for the causal question of whether adopting AI coding tools affects a project's development velocity.
-In this DAG, AI Tool Adoption affects Dev.\ Velocity through two \emph{mediators}---Code Generation and Workflow Automation; Team Size, Domain, Team Skill, and Project Maturity each influence both AI Tool Adoption and Dev.\ Velocity, making them \emph{confounders}; and both AI Tool Adoption and Dev.\ Velocity influence Popularity, making Popularity a \emph{collider}.
-Since we care about the AI tools--velocity question, we do not show other potential edges between displayed nodes that are not relevant to the central causal question.\footnote{The sharp reader may have already noticed the fact that the DAG presented in Figure~\ref{fig:ai-dag} is ambiguous without considering the temporal nature of software engineering data: For example, the number of stars received can be a confounder \emph{before} AI tools adoption (more popular projects both exhibit higher velocity and are more likely to adopt AI tools) and a collider \emph{after} AI tools adoption (higher-velocity and AI-enabled projects are more likely to receive more stars).
+Other mediators (e.g., workflow automation, code review acceleration) and confounders (e.g., team size, organization ownership) are plausible but omitted from the pedagogical figure; the temporal DAG in Section~\ref{sec:temporal-dag} reintroduces the time-varying ones in their proper temporal incarnations.\footnote{The sharp reader may have already noticed the fact that the DAG presented in Figure~\ref{fig:ai-dag} is ambiguous without considering the temporal nature of software engineering data: For example, the number of stars received can be a confounder \emph{before} AI tools adoption (more popular projects both exhibit higher velocity and are more likely to adopt AI tools) and a collider \emph{after} AI tools adoption (higher-velocity and AI-enabled projects are more likely to receive more stars).
 We construct the proper temporal DAG and diagnose this problem formally in Section~\ref{sec:temporal-dag}.}
 
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-    var/.style={draw, rounded corners, minimum width=2.6cm, minimum height=0.55cm, font=\small, align=center},
-    arr/.style={->, >=stealth, semithick},
+    >=latex, font=\scriptsize,
+    confbox/.style={draw, rounded corners, fill=gray!12, align=left,
+                    text width=4.2cm, inner sep=4pt},
+    tnode/.style={draw, rounded corners, fill=green!20, very thick,
+                  minimum height=0.75cm, minimum width=2.4cm,
+                  align=center, font=\bfseries\scriptsize},
+    mnode/.style={draw, rounded corners, fill=yellow!25,
+                  minimum height=0.75cm, minimum width=2.4cm, align=center},
+    ynode/.style={draw, rounded corners, fill=blue!10,
+                  minimum height=0.75cm, minimum width=2.4cm, align=center},
+    cnode/.style={draw, rounded corners, fill=orange!15,
+                  minimum height=0.75cm, minimum width=2.4cm, align=center},
+    unobs/.style={draw, rounded corners, dashed, fill=gray!5,
+                  minimum height=0.75cm, minimum width=2.4cm, align=center,
+                  font=\itshape\scriptsize},
+    cedge/.style={->, gray, dashed, semithick},
+    medge/.style={->, black, semithick},
+    coledge/.style={->, orange!70!black, semithick},
 ]
-% Main causal chain (middle row)
-\node[var] (treat) at (0, 0) {AI Tool Adoption};
-\node[var] (codegen) at (5.2, 0.45) {Code Generation};
-\node[var] (workflow) at (5.2, -0.45) {Workflow Autom.};
-\node[var] (outcome) at (10.4, 0) {Dev.\ Velocity};
-% Confounders (top row)
-\node[var] (skill) at (0, 2) {Team Skill};
-\node[var] (lang) at (3.5, 2) {Domain};
-\node[var] (teamsize) at (6.9, 2) {Team Size};
-\node[var] (maturity) at (10.4, 2) {Project Maturity};
-% Collider (bottom)
-\node[var] (stars) at (5.2, -1.7) {Popularity};
-% Causal paths through mediators
-\draw[arr] (treat) -- (codegen);
-\draw[arr] (treat) -- (workflow);
-\draw[arr] (codegen) -- (outcome);
-\draw[arr] (workflow) -- (outcome);
-% Confounders → Treatment
-\draw[arr] (skill) -- (treat);
-\draw[arr] (lang) -- (treat);
-\draw[arr] (teamsize) -- (treat);
-\draw[arr] (maturity) -- (treat);
-% Confounders → Outcome
-\draw[arr] (skill) -- (outcome);
-\draw[arr] (lang) -- (outcome);
-\draw[arr] (teamsize) -- (outcome);
-\draw[arr] (maturity) -- (outcome);
-% Collider paths
-\draw[arr] (treat) -- (stars);
-\draw[arr] (outcome) -- (stars);
+% Top row: unobserved + observable confounders
+\node[unobs] (skill) at (1.8, 2.2) {Team Skill\\\emph{(unobserved)}};
+\node[confbox] (Conf) at (7.8, 2.2) {%
+    \textbf{Observable confounders}\\[1pt]
+    $\bullet$ Project Maturity\\
+    $\bullet$ Domain (programming language)
+};
+
+% Middle row: causal chain
+\node[tnode] (D) at (0, 0) {AI Tool\\Adoption};
+\node[mnode] (M) at (5, 0) {Code\\Generation};
+\node[ynode] (Y) at (10, 0) {Dev.\\Velocity};
+
+% Bottom row: collider
+\node[cnode] (C) at (5, -1.8) {Popularity};
+
+% Back-door edges (dashed gray)
+\draw[cedge] (skill.south) -- (D.north);
+\draw[cedge] (skill.east) to[bend left=8] (Y.north west);
+\draw[cedge] (Conf.south west) to[bend right=8] (D.north east);
+\draw[cedge] (Conf.south) -- (Y.north);
+
+% Causal mechanism (solid black)
+\draw[medge] (D) -- (M);
+\draw[medge] (M) -- (Y);
+
+% Collider edges (solid orange)
+\draw[coledge] (D.south) to[bend right=15] (C.west);
+\draw[coledge] (Y.south) to[bend left=15] (C.east);
 \end{tikzpicture}
-\caption{An example causal DAG for the AI coding tools and development velocity problem.
-Arrows represent hypothesized direct causal effects.
-The causal paths of interest run through two mediators: AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Dev.\ Velocity.
-Back-door paths through common causes (e.g., AI Tool Adoption $\leftarrow$ Team Skill $\to$ Dev.\ Velocity) must be blocked for causal identification.
-Popularity is a \emph{collider} (AI Tool Adoption $\to$ Popularity $\leftarrow$ Dev.\ Velocity): Conditioning on it opens a spurious path and must be avoided.}
+\caption{An example DAG for the AI coding tools and development velocity question, with each node anchored in the literature cited in the text.
+Solid black arrows trace the identified causal path: AI Tool Adoption $\to$ Code Generation $\to$ Dev.\ Velocity.
+Dashed gray arrows mark back-door paths through the three confounders---two observable (Project Maturity, Domain) and one unobserved (Team Skill, dashed border)---each of which a valid selection-on-observables analysis must block by conditioning on the observable ones and sensitivity-analyzing the unobservable one.
+Solid orange arrows mark the collider relationship around Popularity (AI Tool Adoption $\to$ Popularity $\leftarrow$ Dev.\ Velocity); conditioning on Popularity \emph{opens} this back-door path rather than closing it.}
 \label{fig:ai-dag}
 \end{figure}
 
 \paragraph{Back-Door Paths and the Back-Door Criterion.}
-In a DAG, \emph{causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:ai-dag}, the causal paths run AI Tool Adoption $\to$ Code Generation/Workflow Automation $\to$ Dev.\ Velocity.
-These paths transmit the genuine causal effect.
+In a DAG, \emph{causal paths} follow arrows from treatment to outcome; in Figure~\ref{fig:ai-dag}, the causal path runs AI Tool Adoption $\to$ Code Generation $\to$ Dev.\ Velocity.
+This path transmits the genuine causal effect.
 A \emph{back-door path}, by contrast, connects treatment to outcome through a common cause without following the direction of the arrows---for example, AI Tool Adoption $\leftarrow$ Team Skill $\rightarrow$ Dev.\ Velocity.
 These back-door paths transmit spurious associations: Even if AI tools had zero effect on Dev.\ Velocity, the fact that skilled teams both adopt AI tools earlier and inherently exhibit higher velocity creates an observed correlation between AI adoption and development velocity.
 A naive comparison conflates the genuine causal effect that flows through the causal paths with the spurious associations that flow through the back-door paths.
 
 The \emph{back-door criterion}~\cite{pearl2009causality} provides a principled rule for which variables to condition on in order to block all back-door paths without inadvertently blocking the causal paths.
 A set $Z$ satisfies the criterion if (1)~no variable in $Z$ is a descendant of the treatment, and (2)~conditioning on $Z$ blocks every back-door path.
-In Figure~\ref{fig:ai-dag}, $Z = \{\text{Team Size},\, \text{Domain},\, \text{Team Skill},\, \text{Project Maturity}\}$ satisfies this criterion: Each is a common cause of AI Tool Adoption and Dev.\ Velocity, and conditioning on all four blocks every spurious path.
+In Figure~\ref{fig:ai-dag}, $Z = \{\text{Team Skill},\, \text{Project Maturity},\, \text{Domain}\}$ satisfies this criterion: Each is a common cause of AI Tool Adoption and Dev.\ Velocity, and conditioning on all three blocks every back-door path; however, Team Skill is unobserved, so the feasible adjustment set is $Z_{\text{obs}} = \{\text{Project Maturity},\, \text{Domain}\}$, and the residual confounding from the unblocked Team Skill back-door must be addressed through sensitivity analysis (Section~\ref{sec:cross-sectional-sensitivity}) rather than conditioning.
 Two types of variables must \emph{not} be included in $Z$.
-Code Generation and Workflow Automation are \emph{mediators} on the causal path: Conditioning on either blocks the very effect the researcher seeks to estimate.
+Code Generation is a \emph{mediator} on the causal path: Conditioning on it blocks the very effect the researcher seeks to estimate.
 Popularity is a \emph{collider}: Conditioning on it \emph{opens} a spurious path rather than closing one.
 When $Z$ satisfies the back-door criterion, it provides a justifiable basis that a selection-on-observables method satisfies the conditional ignorability assumption derived from the potential outcomes framework (Section~\ref{sec:primer-po}).
 
