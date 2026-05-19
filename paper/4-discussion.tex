@@ -1,6 +1,8 @@
 \section{Discussion}
 \label{sec:discussion}
 
+\TODO{Replace this with a bullet point list of what we want to say in this section, remove AI-generated text that is not sufficiently human reviewed and edited.}
+
 This tutorial argued that the SE community should adopt the modern causal inference toolkit as the standard for intervention-outcome questions involving observational data.
 We now reflect on what the worked example reveals about current practice, discuss implications for different audiences, and acknowledge limitations and open frontiers.
 
@@ -9,7 +11,7 @@ We now reflect on what the worked example reveals about current practice, discus
 The progression of estimates in Table~\ref{tab:all-estimates} is the paper's most concrete argument for why identification strategy matters.
 The na\"ive cross-sectional comparison yields $+911\%$; adding snapshot controls reduces this to $+158\%$; conditioning only on DAG-justified pre-treatment covariates further reduces it to $+101\%$; and the staggered DiD estimates land at $+32\%$ to $+52\%$.
 Each step removes a specific, named source of bias---temporal ambiguity, collider conditioning, time-invariant confounding, secular trends, common shocks---and each reduction is substantial.
-The design, not the estimator, drives the change: Within the cross-sectional family, switching from OLS to PSM to IPW may improve the estimate but they are all plagued by the same conditional ignorability assumption violated by unmeasured confounders.
+The design, not the estimator, drives the change: Within the cross-sectional family, switching from OLS to PSM to IPW may improve the estimate but they are all plagued by the same conditional ignorability assumption---that all confounders are measured and adjusted for---which is violated whenever an unobserved confounder remains.
 The magnitude of this shrinkage matters beyond methodological tidiness.
 For many intervention-appraisal questions---how to allocate resources, whether to invest in a technology, whether to adopt a practice---the decision-relevant quantity is \emph{how much}, not merely the direction of the effect~\cite{lundberg2021estimand}, and an order-of-magnitude-inflated estimate can lead to qualitatively different conclusions even when the sign is preserved.
 
@@ -20,7 +22,7 @@ A practical recommendation follows: MSR researchers should invest in constructin
 The marginal cost of building a panel is modest; the marginal gain in identification is large.
 
 The worked example also produces a substantive finding.
-Under the staggered DiD design, systematic AI coding tool adoption---as signaled by AI configuration files committed to the repository---is associated with a 32--52\% increase in monthly commits (ATT).
+Under the staggered DiD design, systematic AI coding tool adoption---as signaled by AI configuration files committed to the repository---is associated with a 32--52\% increase in monthly commits (the ATT, i.e., the average effect among the adopting projects).
 This estimates the effect of the \emph{entire bundle}: The AI tools themselves, the workflow reorganization that accompanies structured adoption, and the team characteristics that lead to early integration (Section~\ref{sec:study-setting}).
 It does not isolate the effect of AI code generation alone.
 Pre-treatment trend tests support the parallel trends assumption, but the estimate is likely conservative due to control-group contamination: Individual developers using AI tools without project-level configuration files are unobservable, blurring the treated--control contrast and attenuating the estimate toward zero.
@@ -68,10 +70,10 @@ The antidote is peer review informed by the empirical standard (Appendix~\ref{se
 Several SE-specific challenges deserve particular attention as open research frontiers.
 First, SE treatments are often \emph{compound}: ``Adopting AI coding tools'' bundles the tools themselves, the workflow reorganization, and the team characteristics that drive adoption (Section~\ref{sec:study-setting}).
 Developing decomposition strategies for disentangling bundled interventions in SE settings is an important methodological direction.
-Second, interconnected software ecosystems create \emph{SUTVA violations}: Shared libraries propagate effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
+Second, interconnected software ecosystems create \emph{SUTVA violations}---i.e., one project's treatment status affects another project's outcomes, breaking the no-interference assumption that standard estimators rely on: Shared libraries propagate effects across projects, developer mobility carries practices between teams, and upstream changes spill over into downstream dependencies.
 Adapting causal inference methods under network interference~\cite{savje2021average, forastiere2021identification} to SE's sociotechnical dependency structures is an open frontier where SE-specific methodological contributions could flow back to the broader causal inference community.
 Third, our worked example reports a single ATT, but the effect of AI coding tools is almost certainly \emph{heterogeneous}---varying across programming languages, team sizes, project maturity, and adoption cohorts.
-Machine-learning estimators for conditional average treatment effects---causal forests~\cite{wager2018estimation} and double/debiased machine learning~\cite{chernozhukov2018double}---offer tools for characterizing this heterogeneity, but they inherit the identifying assumptions of simpler estimators and are therefore most useful once identification has been established.
+Machine-learning estimators for conditional average treatment effects---which estimate how the treatment effect varies with covariates rather than reporting a single average---such as causal forests~\cite{wager2018estimation} and double/debiased machine learning~\cite{chernozhukov2018double}, offer tools for characterizing this heterogeneity, but they inherit the identifying assumptions of simpler estimators and are therefore most useful once identification has been established.
 Systematically mapping effect heterogeneity in SE settings---where treatment effects may interact with ecosystem position, developer experience, or project governance structures---is a natural next step for studies that have cleared the identification bar.
 Finally, even as the community improves identification, corresponding investment in measurement validity---construct definition, proxy validation, and triangulation across multiple outcome measures~\cite{lawlor2016triangulation}---is essential.
 A perfectly identified design with a bad outcome proxy still produces misleading conclusions.

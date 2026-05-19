@@ -32,7 +32,7 @@ The goal of this paper is to offer a practical framework that helps SE researche
 
 To this end, we provide a tutorial on causal inference for empirical SE, drawing on three intellectual pillars that have proven broadly useful across different fields of empirical sciences.
 First, the \emph{potential outcomes framework}~\cite{neyman1923application, rubin1974estimating} lay the mathematical foundations for defining what causal quantity to estimate (i.e., the \emph{target estimand}) and under which formal conditions the causal quantity can be estimated \emph{unbiasedly} from a specific statistical model and study design (i.e., the \emph{identifying assumptions}).
-Second, the \emph{directed acyclic graphs (DAGs)} from \citet{pearl2009causality} provide a visual language for articulating the researcher's belief on what might be an underlying causal theory that can approximate the true data-generating process; for a family of methods (e.g., regression, matching, invert probability weighting), it is the only way to argue that the identifying assumption is plausible in a specific study setting.
+Second, the \emph{directed acyclic graphs (DAGs)} from \citet{pearl2009causality} provide a visual language for articulating the researcher's belief on what might be an underlying causal theory that can approximate the true data-generating process; for a family of methods (e.g., regression, matching, inverse probability weighting), it is the only way to argue that the identifying assumption is plausible in a specific study setting.
 Finally, \emph{design-based identification}~\cite{angrist2010credibility, cunningham2021causal} provides systematic frameworks to find \emph{natural experiment} settings~\cite{dunning2012natural} in which the causal quantity can be estimated without complete and accurate articulation of the underlying causal theory.
 We will introduce all three pillars at a level accessible to researchers without formal training in causal inference.
 
@@ -43,8 +43,8 @@ At each stage, the theory makes visible which sources of confounding are address
 \emph{Each design involves a different constellation of assumptions and trade-offs, and reasoning about these explicitly is more productive than retreating to the blanket disclaimer that correlation does not imply causation.}
 
 Importantly, the credibility of a causal argument rests on more than the appropriate application of a specific method or framework. 
-For the family of regression, matching, and invert probability weighting methods, a researcher would need deep SE domain knowledge and data analysis expertise to argue that all the confounders are sufficiently controlled and no bad controls (i.e., mediators and colliders~\cite{angrist2009mostly}) are included in the model.
-For design-based identification, a researcher would also need similar knowledge to construct a compelling argument for the validity of the quasi-experimental setting so that the key assumptions (e.g., parallel trends~\cite{roth2023whats}, continuity at the threshold~\cite{cunningham2021causal}) are met.
+For the family of regression, matching, and inverse probability weighting methods, a researcher would need deep SE domain knowledge and data analysis expertise to argue that the relevant \emph{confounders}---common causes of treatment and outcome---are sufficiently controlled, while \emph{bad controls} (such as \emph{mediators} on the causal pathway, or \emph{colliders} that are common effects of both treatment and outcome) are kept out of the model~\cite{angrist2009mostly}.
+For design-based identification, a researcher would also need similar knowledge to argue for the validity of the quasi-experimental setting so that the key assumptions---e.g., \emph{parallel trends}~\cite{roth2023whats} between treated and control groups in a difference-in-differences design, or continuity of outcomes at the assignment threshold~\cite{cunningham2021causal} in a regression discontinuity design---are met.
 The modern causal inference toolkit enhances but is not a substitute for domain expertise.
 
 Our perspective builds on and complements recent calls for greater transparency in empirical software engineering methodology~\cite{DBLP:conf/icse/SiegmundSA15, DBLP:conf/icse/MailachSAS26, DBLP:journals/tosem/RobillardAEGLNNSSS24}.
@@ -67,6 +67,8 @@ Section~\ref{sec:discussion} discusses implications and concludes.
 
 \subsection{The Causal Inference Toolkit: Origins and Scope}
 \label{sec:bg-causal-history}
+
+This subsection sketches the historical development of the causal inference toolkit at a high level; formal definitions of the technical terms used here (potential outcomes, target estimand, identifying assumptions, DAGs, design-based identification) are deferred to Section~\ref{sec:primer}.
 
 The modern causal inference toolkit emerged over a century through contributions from three intellectual traditions, each addressing a distinct aspect of the problem.
 Statisticians developed the \emph{potential outcomes} framework~\cite{neyman1923application, rubin1974estimating}, which defines \emph{what} causal quantities to estimate---formalizing the counterfactual contrast between treatment and control worlds.
@@ -97,6 +99,8 @@ Our tutorial fills this gap with an integrative treatment, covering multiple int
 
 \subsection{Causal Inference Adoption in Software Engineering to Date}
 \label{sec:bg-adoption}
+
+\TODO{Replace this section with a story discussing the current practices in SE, like how people do this kind of work right now, to get rid of causal language, review our own studies, put anonymous review comments, one example of type of causal research in SE, etc.}
 
 The preceding sections document a growing awareness of causal reasoning in SE, but how widespread is its actual use?
 To quantify the gap between causal ambition and methodological practice, we conducted a classification of all main-research-track papers published at three premier SE venues---ICSE, FSE, and ASE---from 2015 to 2025.

@@ -6,6 +6,46 @@ In this section, we will introduce the reader to the conceptual and technical fo
 We cover the three pillars most relevant to empirical SE research---counterfactual reasoning and potential outcomes, graphical causal models, and design-based identification---and argue for a pragmatic synthesis suited to the field's observational data.
 Due to space constraints, we do not cover advanced topics and recent emerging research directions, such as causal discovery algorithms~\cite{journals/ese/HulseEM25}, machine-learning-based heterogeneous treatment effect estimation~\cite{chernozhukov2018double, athey2016recursive}, and formal verification of causal claims~\cite{halpern2016actual}; readers interested in these topics should consult the references cited and the textbooks listed in Section~\ref{sec:bg-causal-history}.
 
+Throughout this section, we use a few causal inference terms with technical precision.
+The \emph{estimand} is the population quantity a study aims to learn; the \emph{estimator} is the procedure (e.g., a regression coefficient, a matched-pair difference) that maps data to a number; and the \emph{estimate} is the specific number that procedure produces on a particular sample.
+\emph{Identification} is the bridge between them---the conditions under which the estimator's expected output equals the estimand---and these conditions are made concrete through a set of \emph{identifying assumptions} (random assignment, conditional ignorability, parallel trends, etc.) that the researcher argues for using domain knowledge and features of the research design.
+When the identifying assumptions fail, the resulting systematic gap between the estimator's expected output and the estimand is called \emph{bias}, and no amount of data corrects for it.
+Table~\ref{tab:glossary} compiles these and other recurring terms into a compact reference for the rest of this section.
+
+\begin{table}[t]
+\centering
+\caption{Compact glossary of recurring causal inference terms used in this paper.
+The ``See'' column points to the section that introduces each term in detail.}
+\label{tab:glossary}
+\footnotesize
+\begin{tabular}{@{} p{3.0cm} p{8.5cm} p{1.5cm} @{}}
+\toprule
+\textbf{Term} & \textbf{Plain-English Description} & \textbf{See} \\
+\midrule
+Estimand & The population quantity a study aims to learn (the target). & \S\ref{sec:primer} \\
+Estimator & A procedure that maps a dataset to a number (the recipe). & \S\ref{sec:primer} \\
+Estimate & The specific number produced by running an estimator on a sample. & \S\ref{sec:primer} \\
+Identification & The conditions under which the estimator's expected output equals the estimand. & \S\ref{sec:primer} \\
+Identifying assumption & A specific, study-level claim that secures identification (e.g., random assignment, parallel trends). & \S\ref{sec:primer} \\
+Bias & The systematic gap between an estimator's expected output and the estimand when identifying assumptions fail. & \S\ref{sec:primer} \\
+\addlinespace
+Potential outcome & The would-have-been outcome of a unit under a given treatment status ($Y(1)$, $Y(0)$). & \S\ref{sec:primer-po} \\
+ATE & Average treatment effect across the entire population. & \S\ref{sec:primer-po} \\
+ATT & Average treatment effect among units that actually received treatment. & \S\ref{sec:primer-po} \\
+\addlinespace
+Confounder & A common cause of treatment and outcome that creates spurious association. & \S\ref{sec:primer-dags} \\
+Mediator & A variable on the causal pathway from treatment to outcome. & \S\ref{sec:primer-dags} \\
+Collider & A common effect of two variables; conditioning on it opens a spurious path. & \S\ref{sec:primer-dags} \\
+DAG & Directed acyclic graph encoding the assumed causal structure among variables. & \S\ref{sec:primer-dags} \\
+\addlinespace
+Conditional ignorability & Identifying assumption for regression, matching, and IPW: treatment is independent of potential outcomes given the observed covariates. & \S\ref{sec:primer-po} \\
+Parallel trends & Identifying assumption for difference-in-differences: absent treatment, treated and control groups would have followed the same outcome trajectory. & \S\ref{sec:primer-design} \\
+SUTVA & Stable Unit Treatment Value Assumption: no interference between units and a well-defined treatment. & \S\ref{sec:primer-po} \\
+Target trial & The hypothetical randomized experiment that an observational study attempts to emulate. & \S\ref{sec:guide-question} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{What Does It Mean Exactly for X to Cause Y?}
 \label{sec:primer-causality}
 
@@ -105,7 +145,7 @@ We therefore treat effect heterogeneity as a secondary concern downstream of ide
 Which estimand to target is a substantive decision, not a statistical one: The researcher must decide whether the question concerns the average effect across all projects (ATE), the effect on adopters (ATT), the effect on the subpopulation induced to adopt by a specific mechanism (LATE), or the heterogeneity of effects across different subgroups (CATEs).
 
 One particular power of the potential outcomes formalism is that it allows researchers to derive the \emph{identifying assumptions} required for the study's results to have a causal interpretation.
-For example, in a \emph{randomized controlled trial} (RCT), the formal identifying assumption is $(Y(1), Y(0)) \perp D$ (i.e., treatment is as-if randomly assigned), so selection bias vanishes and the naive comparison identifies the ATE\@.
+For example, in a \emph{randomized controlled trial} (RCT), the formal identifying assumption is that treatment is statistically independent of the potential outcomes (i.e., treatment is as-if randomly assigned, written $(Y(1), Y(0)) \perp D$), so selection bias vanishes and the naive comparison identifies the ATE\@.
 A valid RCT additionally requires the \emph{Stable Unit Treatment Value Assumption} (SUTVA), i.e., no interference between units and a well-defined treatment, and \emph{full compliance}, i.e., the research units are truly following their assigned treatment status.
 For the family of regression, matching, and inverse probability weighting methods (for which we jointly refer to as the \emph{selection-on-observables} family), the formal identifying assumption is \emph{conditional ignorability}---the assumption that, conditional on observed covariates $X$, treatment assignment is independent of potential outcomes: $(Y(1), Y(0)) \perp D \mid X$.
 Under this assumption, plus overlap ($0 < P(D\!=\!1 \mid X\!=\!x) < 1$ for all $x$ in the support of $X$), the ATE is identified through differencing the predicted outcome based on $X$:
@@ -221,8 +261,7 @@ First, DAGs require \emph{domain knowledge} to construct---they encode the resea
 In SE specifically, \citet{journals/ese/HulseEM25} showed that causal graph generators are unstable, with over half the discovered edges changing across minor data perturbations.
 We take the stance that domain knowledge remains essential for constructing credible DAGs, though data-driven methods are an important research frontier that can complement expert judgment by suggesting edges to investigate.}
 Second, a DAG's validity depends on the completeness of the variables included; omitting an important confounder renders the back-door criterion unreliable.\footnote{Sensitivity analysis tools partially address this limitation by quantifying how strong an unmeasured confounder would need to be to alter a study's conclusions---see Rosenbaum bounds~\cite{rosenbaum2002observational}, coefficient stability~\cite{oster2019unobservable}, and the robustness value~\cite{cinelli2020making}, discussed in detail in Section~\ref{sec:primer-po}.}
-Third, DAGs encode qualitative causal structure (which variables affect which) but say nothing about the \emph{magnitude} or functional form of effects.\footnote{Pearl's broader structural causal model (SCM) framework~\cite{pearl2009causality} augments the qualitative DAG with functional equations and derives nonparametric identification formulas via the do-calculus.
-Semiparametric estimators such as double/debiased machine learning~\cite{chernozhukov2018double} can then estimate these quantities without imposing strong functional form assumptions, bridging the gap between qualitative causal structure and quantitative effect estimation.}
+Third, DAGs encode qualitative causal structure (which variables affect which) but say nothing about the \emph{magnitude} or functional form of effects.\footnote{Pearl's broader structural causal model framework~\cite{pearl2009causality} augments the qualitative DAG with functional equations and derives nonparametric identification formulas, and semiparametric estimators such as double/debiased machine learning~\cite{chernozhukov2018double} can then estimate these quantities without imposing strong functional form assumptions, bridging the gap between qualitative causal structure and quantitative effect estimation.}
 Despite these limitations, DAGs remain the most practical tool for making causal assumptions transparent and debatable~\cite{rohrer2018thinking, tennant2021dags}.
 For selection-on-observables methods, DAGs are indispensable: The back-door criterion provides the only principled basis for deciding which covariates to include and which to exclude.
 When identification instead derives from features of the research design (Section~\ref{sec:primer-design}), DAGs play a supporting but still valuable role---providing a transparent ground for clarifying which confounders the design absorbs and which still remain as potential threats.

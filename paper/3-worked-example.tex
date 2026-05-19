@@ -312,9 +312,11 @@ The DAG-justified estimate is the most principled cross-sectional specification 
 No variable in the GitHub API data captures developer expertise, team culture, or organizational practices---the confounders most plausibly responsible for the residual association between AI adoption and development velocity.
 Faced with this uncertainty, the researcher can ask: \emph{How robust is the DAG-justified estimate to this unobserved confounding?}
 
-One possible method to probe this question is the Oster~\cite{oster2019unobservable} proportional selection method (Section~\ref{sec:primer-po}), which asks: Given how much the treatment coefficient changed when we added the observable pre-treatment controls, how strong would selection on unobservables need to be---relative to that same selection on observables---to drive the coefficient all the way to zero?
-The key quantity is the Oster proportional selection statistic $\delta^*$, and a possible diagnostic threshold is $\delta^* \geq 1$: If unobservables would need to be \emph{at least as strong as} all the observables combined to eliminate the effect, the result is considered robust.
-Moving from the bivariate to the DAG-justified specification, we obtain $\delta^* = 0.12$---far below the robustness threshold of~1.
+One possible method to probe this question is the proportional selection method of \citet{oster2019unobservable} (Section~\ref{sec:primer-po}).
+The intuition is to compare the observed shift in the treatment coefficient that resulted from adding the observable controls with the additional shift an unmeasured confounder would have to produce to drive the coefficient to zero.
+If unobservables would need to be \emph{at least as strong as} all the observables combined to eliminate the effect, the result is considered robust to omitted variable bias.
+This intuition is captured by the Oster proportional selection statistic $\delta^*$, with the heuristic threshold $\delta^* \geq 1$ marking the robustness boundary.
+Moving from the bivariate to the DAG-justified specification, we obtain $\delta^* = 0.12$---far below the threshold of~1.
 %Three reinforcing factors drive this fragility:
 %\begin{enumerate}[leftmargin=15pt]
 %    \item \textbf{Massive coefficient drop.} The treatment coefficient falls from $2.314$ to $0.696$---the observables already explain away 70\% of the na\"ive effect.
@@ -454,6 +456,7 @@ The parallel trends assumption (Section~\ref{sec:did}) requires only that treate
 \subsubsection{Difference-in-Differences.}
 \label{sec:did}
 
+Difference-in-differences (DiD) compares the change in outcomes over time between projects that adopted AI tools and a control group that did not, using the latter group to estimate the trend that the treated projects would have followed absent adoption.
 We now add an additional ``control'' group of 759 repositories that never adopted AI tools during the observation window.
 An immediate objection arises: The na\"ive comparison in Section~\ref{sec:naive-comparison} showed that adopters and non-adopters differ dramatically in size, activity, and visibility.
 How can such different repositories serve as a valid control group?
@@ -494,7 +497,32 @@ In our setting, repositories adopt at different months, creating a \emph{stagger
 Classic TWFE (Equation~\ref{eq:twfe}) implicitly uses already-treated repositories as controls for later-treated ones.
 When treatment effects vary across cohorts or over time, this produces negative weights on some group-time ATTs, biasing $\hat{\tau}$~\cite{goodman2021difference, dechaisemartin2020two}.
 This well-documented problem (see \citet{roth2023whats} for a survey) motivates modern estimators designed for staggered adoption with heterogeneous effects.
-We apply two complementary modern DiD estimators that avoid the negative-weighting problem.
+We apply two complementary modern DiD estimators that avoid the negative-weighting problem; Table~\ref{tab:longitudinal-estimators} summarizes the four longitudinal estimators discussed in this section before we detail the two new ones.
+
+\begin{table}[t]
+\centering
+\caption{Longitudinal estimators discussed in this section, ordered from least to most credible for staggered adoption.
+The first two are presented for intuition; the latter two are the modern estimators we actually report.}
+\label{tab:longitudinal-estimators}
+\footnotesize
+\begin{tabular}{@{} p{4.0cm} p{8.5cm} @{}}
+\toprule
+\textbf{Estimator} & \textbf{What it does} \\
+\midrule
+Two-way fixed effects (TWFE)
+  & A panel regression with one intercept per unit and one per time period; the simplest DiD specification, but biased under heterogeneous effects with staggered adoption~\cite{goodman2021difference, dechaisemartin2020two}. \\
+\addlinespace
+Controlled ITS (CITS)~\cite{bernal2017interrupted}
+  & Interrupted time series plus a control group; identification still requires correctly specifying the functional form of the pre-treatment trend for both groups. \\
+\addlinespace
+Callaway \& Sant'Anna (CS)~\cite{callaway2021difference}
+  & Estimates a separate ATT per adoption cohort against the never-treated repositories, then aggregates---avoiding the negative-weighting problem of TWFE. \\
+\addlinespace
+Borusyak et al.\ imputation~\cite{borusyak2024revisiting}
+  & Fits a counterfactual model on untreated observations, predicts what the treated repositories' outcomes would have been absent treatment, and averages the residuals as the ATT. \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \textbf{Callaway \& Sant'Anna (2021) DiD}~\cite{callaway2021difference} is the most direct extension of the 2$\times$2 idea: it estimates separate treatment effects for each adoption cohort (group of repositories adopting in the same month), then aggregates.
 For each cohort $g$ and time period $t$:
