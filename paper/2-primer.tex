@@ -12,10 +12,8 @@ Due to space constraints, we do not cover advanced topics and recent emerging re
 Consider a question that is highly relevant to SE research: Does adopting AI coding tools increase a project's development velocity?
 At its core, this is a question about a contrast between two worlds---one in which a project adopts AI coding tools and one in which it does not---and whether development velocity differs between them.
 This deceptively simple framing conceals a deep conceptual question: What does it \emph{mean} for one thing to cause another?
-Two perspectives---one formal, one pragmatic---provide the conceptual foundation for the toolkit introduced in this section.\footnote{The philosophical literature offers additional accounts.
-The most intuitive, dating to \citet{hume1748enquiry}, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$---but regular association cannot distinguish genuine causal effects from systematic differences between compared groups (Section~\ref{sec:primer-naive} makes this failure concrete).
-A complementary perspective, developed by \citet{woodward2003making} and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} \emph{do-calculus}, defines causation through \emph{intervention}: $X$ causes $Y$ if intervening on $X$---holding everything else fixed---changes $Y$.
-This interventionist view underpins the graphical causal model framework (Section~\ref{sec:primer-dags}), and its central insight---the difference between \emph{seeing} and \emph{doing}---recurs throughout this primer.}
+Two perspectives---one abstract, one operational---provide the conceptual foundation for the toolkit introduced in this section.\footnote{The most intuitive philosophical account, dating to \citet{hume1748enquiry}, holds that $X$ causes $Y$ if $X$ is regularly followed by $Y$---but regular association cannot distinguish genuine causal effects from systematic differences between compared groups (Section~\ref{sec:primer-naive} makes this failure concrete), motivating the more rigorous perspectives below.
+A complementary \emph{interventionist} account, developed by \citet{woodward2003making} and formalized through \citeauthor{pearl2009causality}'s~\cite{pearl2009causality} do-calculus, underpins the graphical causal model framework and is introduced alongside DAGs in Section~\ref{sec:primer-dags}.}
 
 \paragraph{Causation as Counterfactual Dependence.}
 The formal foundation of modern causal inference, developed by \citet{rubin1974estimating} building on philosophical work by \citet{lewis1973causation}, defines causation through \emph{counterfactuals}: $X$ causes $Y$ if $Y$ would not have occurred (or would have differed) had $X$ not occurred.
@@ -25,16 +23,13 @@ We observe the project's development velocity after adopting AI tools, or its ve
 The entire apparatus of causal inference---from randomized experiments to quasi-experimental designs---exists to overcome this fundamental observational limitation.
 Still, the counterfactual view is useful in that it helps the researcher derive \emph{estimands}---precise definitions of the causal quantities we seek to estimate---and is formalized through the potential outcomes framework (Section~\ref{sec:primer-po}).
 
-\paragraph{Causation as a Target Trial.}
-For applied researchers, \citeauthor{hernan2020causal}'s~\cite{hernan2020causal} \emph{target trial} framework offers a pragmatic operationalization of counterfactual reasoning: Every causal question implicitly describes a hypothetical randomized experiment.
-The framework asks the researcher to specify the trial they would \emph{ideally} run---the treatment, the population, the outcome, the timing, and the assignment mechanism---and then evaluate how far their observational analysis departs from this ideal.
-For the AI coding tools question, the target trial would randomly assign half of a set of comparable software projects to adopt AI coding tools and compare monthly commits after a fixed period.
-Articulating this trial immediately clarifies the research design and reveals threats to validity: We cannot randomly assign tool adoption, teams willing to adopt AI tools likely differ from those that do not, the ``treatment'' is ambiguous (which tools? how deeply integrated?), and commit counts may reflect development practices rather than genuine development velocity.
-Each of these concerns maps directly to a specific identification assumption that must be addressed.
-The target trial view also forces the researcher to confront the difference between \emph{observing} that AI-adopting projects have more commits ($P(Y \mid X\!=\!1)$) and \emph{intervening} to make a project adopt AI tools and measuring the result ($P(Y \mid do(X\!=\!1))$)---a distinction that all causal inference methods, in some sense, seek to resolve.
+\paragraph{Causation as Three Necessary Conditions.}
+A classical perspective on causation, with origins in \citet{hill1965environment} and formalized for modern observational studies by \citet{rosenbaum2002observational} and \citet{shadish2002experimental}, requires three conditions for a causal relationship to hold: \emph{temporal precedence} (the cause must precede the effect), \emph{empirical association} (a statistical relationship between cause and effect must be observable), and \emph{non-spuriousness} (the relationship must not be explained by confounding variables).
+This framing is the operational definition taught in graduate empirical SE methodology courses~\cite{vasilescu17803} and underpins a growing line of cohort-style observational studies in SE~\cite{DBLP:conf/esem/SaarimakiLVJ020}.
+Each condition maps to a distinct concern that the causal inference toolkit addresses: Temporal precedence motivates longitudinal and panel designs (Sections~\ref{sec:primer-design} and~\ref{sec:longitudinal}); empirical association is what statistical estimators recover under correct specification; and non-spuriousness is the target of both covariate adjustment justified by graphical causal models (Section~\ref{sec:primer-dags}) and design-based identification strategies (Section~\ref{sec:primer-design}).
+The three conditions are necessary but not sufficient---they can be derived as consequences of the counterfactual framework---and serve as a practical checklist for the empirical researcher to evaluate whether their observational design has a chance of supporting a causal claim.
 
-These two perspectives are complementary: The counterfactual view defines the \emph{target}---the causal quantity we seek to estimate---while the target trial view provides the \emph{research design template}---a concrete protocol for evaluating whether a study can credibly estimate it.
-Together, they form the conceptual backbone of the three technical pillars introduced in Section~\ref{sec:primer-toolkit}: Potential outcomes formalize the counterfactual view (Section~\ref{sec:primer-po}), DAGs encode the causal structure that connects the researcher's assumptions to identification (Section~\ref{sec:primer-dags}), and design-based identification operationalizes the target trial view by exploiting quasi-random variation in the observational setting (Section~\ref{sec:primer-design}).
+Together, these two perspectives motivate the three technical pillars of modern causal inference introduced in Section~\ref{sec:primer-toolkit}: potential outcomes formalize the counterfactual view (Section~\ref{sec:primer-po}), graphical causal models encode the structural assumptions that determine when the three conditions can be jointly satisfied (Section~\ref{sec:primer-dags}), and design-based identification exploits quasi-random variation in the observational setting to approximate the temporal precedence and non-spuriousness conditions that pure covariate adjustment often cannot deliver (Section~\ref{sec:primer-design}).
 
 \subsection{Why Cannot We Use Descriptive and Correlational Evidence?}
 \label{sec:primer-naive}
@@ -131,7 +126,10 @@ None of these methods can \emph{prove} that all confounders are measured, but th
 
 For the selection-on-observables family of methods---regression, matching, inverse probability weighting---the potential outcomes framework defines the estimand but offers limited guidance on \emph{which} variables to condition on.
 As Section~\ref{sec:primer-naive} illustrated, conditioning on the wrong variables can introduce bias rather than remove it.
-\citeauthor{pearl2009causality}'s~\cite{pearl2009causality} graphical framework addresses this gap by encoding causal assumptions as \emph{directed acyclic graphs} (DAGs), formalizing the interventionist view of causation introduced in Section~\ref{sec:primer-causality}.
+\citeauthor{pearl2009causality}'s~\cite{pearl2009causality} graphical framework addresses this gap through an \emph{interventionist} view of causation~\cite{woodward2003making}: $X$ causes $Y$ if intervening on $X$---holding everything else fixed---changes $Y$.
+Pearl formalizes this through the \emph{do-operator}, contrasting $P(Y \mid X\!=\!1)$---the conditional probability of $Y$ among units where $X$ happens to equal 1---with $P(Y \mid do(X\!=\!1))$---the probability of $Y$ when the researcher intervenes to set $X$ equal to 1.
+The two quantities differ whenever the association between $X$ and $Y$ is partially driven by common causes rather than by $X$ itself, and the central question of causal inference is precisely when observational data alone suffices to identify the interventional quantity.
+\emph{Directed acyclic graphs} (DAGs) encode the qualitative causal structure that determines when this identification is possible, providing the bridge between the data we observe and the interventions we wish to reason about.
 
 \paragraph{Directed Acyclic Graphs.}
 A DAG encodes \emph{the researcher's beliefs about the true data-generating process} and it consists of nodes (variables) and directed edges ($\to$) representing direct causal effects.
@@ -229,7 +227,7 @@ When identification instead derives from features of the research design (Sectio
 The preceding section showed how DAGs guide covariate selection for regression and matching---methods that identify causal effects under the assumption that \emph{all} confounders are observed and adjusted for.
 In many SE settings, where key confounders such as developer skill, team culture, and organizational practices are largely unmeasurable from repository data, justifying this assumption is challenging.
 \emph{Design-based identification} takes a fundamentally different approach: Rather than attempting to measure and adjust for all confounders, it exploits features of the research setting---temporal variation, natural experiments, assignment thresholds---that provide quasi-random variation in treatment assignment.
-This essentially creates a \emph{natural experiment} setting that would approximate the ideal target trial~\cite{dunning2012natural,hernan2020causal}.
+This essentially creates a \emph{natural experiment} setting that approximates an idealized randomized comparison~\cite{dunning2012natural,hernan2020causal}.
 The credibility of these methods derives not from the completeness of the causal theory but from the transparency and partial testability of their design-specific assumptions~\cite{angrist2010credibility}.
 
 \begin{table}[t]
@@ -328,10 +326,12 @@ These sources collectively generate the theories that causal methods then test, 
 
 \paragraph{Use Counterfactual Reasoning to Frame Research Designs.}
 \label{sec:guide-question}
-Before analyzing data, articulate the \emph{target trial}: What randomized experiment would you ideally run?
+Before analyzing data, articulate the \emph{target trial}~\cite{hernan2020causal}: Every causal question implicitly describes a hypothetical randomized experiment, and naming that trial concretely is the most effective way to expose what an observational study is actually trying to estimate.
 What is the treatment, the population, the outcome, and the timing?
 This exercise forces clarity about aspects that SE studies often leave implicit---for example, whether ``AI tool adoption'' refers to code generation, automated review, or the broader workflow changes that accompany the tools.
-The target trial framework is especially natural for SE researchers who are already familiar with controlled experiments~\cite{DBLP:books/sp/WohlinRHORW24}: It simply asks them to describe the experiment they wish they could run and then evaluate how far their observational design departs from this ideal.
+For the AI coding tools question, the target trial would randomly assign a set of comparable software projects to adopt AI coding tools and compare a chosen velocity outcome after a fixed period.
+Articulating this trial immediately reveals threats to validity that the observational design must address: we cannot randomly assign tool adoption, teams willing to adopt AI tools likely differ from those that do not, the ``treatment'' is ambiguous, and commit counts may reflect development practices rather than genuine velocity---each of these concerns maps directly to a specific identification assumption.
+The target trial framework is especially natural for SE researchers who are already familiar with controlled experiments~\cite{DBLP:books/sp/WohlinRHORW24}: it simply asks them to describe the experiment they wish they could run and then evaluate how far their observational design departs from this ideal.
 
 \paragraph{Use DAGs to Reason About Mechanisms and Covariate Selection.}
 \label{sec:guide-path-a}
