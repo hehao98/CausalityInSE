@@ -105,14 +105,22 @@ We do not aim to achieve methodological perfection in this analysis, but even a 
 \paragraph{Corpus and Classification.}
 For each venue (ICSE, FSE, ASE), we obtained a list of papers, paper titles, and DOIs from DBLP, and retrieved the paper abstracts via the Semantic Scholar batch API, using OpenAlex as a backfill source.
 This produced a corpus of 5,341 papers.
-Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study, %(2)~whether it is a mining software repositories (MSR) study, and 
+Each paper was classified by a large language model (Claude Opus 4.6, \Code{temperature\,=\,0}, structured JSON output) along three dimensions: (1)~whether the paper is an empirical SE study,\footnote{
+  We broadly define ``empirical SE'' as papers that collect and analyze data (quantitative or qualitative) to investigate software engineering phenomena.
+  This includes controlled experiments, case studies,
+  surveys, observational studies, mining studies, and field studies about
+  software development.
+  We exclude papers that mainly propose a tool, technique, or formal method with an empirical evaluation.
+}  %(2)~whether it is a mining software repositories (MSR) study, and 
 (2)~whether it is motivated by an causal research question (RQ) about interventions and outcomes, and (3) whether it claims to employ a causal inference method.
 For papers tagged as claiming to use causal inference methods, a follow-up pass assigned each paper to one or more categories in a 13-category taxonomy (Table~\ref{tab:taxonomy}).
-The first author manually audited a sample of 100 papers and all papers classified as using causal inference methods, finding a 95\% accuracy in paper classification and 81\% accuracy in method classification; the method classification errors are manually corrected before they are summarized in Table~\ref{tab:taxonomy}.
+The first author manually audited a sample of 100 papers and all papers classified as using causal inference methods, finding a 95\% accuracy in paper classificationand 81\% accuracy in method classification; the method classification errors are manually corrected before they are summarized in Table~\ref{tab:taxonomy}.
 We adopt deterministic decoding and an explicit classification schema to maximize reproducibility; all prompts, scripts, and classified data are available in the replication package (Section~\ref{sec:data-availability}).
 
 \paragraph{The Causal Ambition--Methodology Gap.}
-Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by a causal RQ about interventions and outcomes; but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
+Of the 5,341 papers, 2,136 (40\%) are empirical SE studies; 621 (29\%) explicitly ask or are implicitly motivated by a causal RQ about interventions and outcomes;\footnote{
+  We consider an empirical SE paper as having no implicit causal motivation if it describes an SE phenomenon (e.g., practices, tools, conventions) or mines a certain type of SE data (e.g., Stack Overflow, issue trackers, code review systems) without linking the study to some kind of causal outcomes, either implicitly or explicitly, \emph{in the abstract}. Thus, this number should be viewed as a lower bound as papers may only link this in the discussion.
+} but only 99 (1.9\%) papers claim to employ any recognizable causal inference method (Table~\ref{tab:taxonomy}).
 The dominating approach is to propose and investigate RQs that are framed ascorrelational, descriptive, or qualitative, and to only links back to the original causal motivation in the discussion.
 Figure~\ref{fig:causal-trends} plots this gap over time: While the absolute number of papers asking or motivated by causal RQs has grown steadily---from 23 in 2015 to 131 in 2025---the number claiming to employ causal inference methods has grown far more slowly, from 3 to 14 over the same period.
 The ratio of causal motivation to causal inference methods has remained roughly 7-to-1 throughout the decade, indicating that the gap is structural rather than transitional.
@@ -175,8 +183,7 @@ The graphical causal model tradition is better represented (7 papers using causa
 Structural equation modeling (2 papers), Granger causality (2 papers), and causal impact analysis (1 paper) round out the remaining categories.
 
 \paragraph{Implications.}
-Three patterns emerge from this analysis.
-First, when SE researchers employ causal methods, they overwhelmingly use randomized controlled experiments, regression-based causal inference, or causal fault localization.
-Second, the design-based methods that powered the credibility revolution---difference-in-differences, instrumental variables, regression discontinuity, panel fixed effects---remain insufficiently explored in SE, despite the field's abundance of panel data (repositories with temporal structure, developers contributing across projects, tools adopted in staggered fashion) that is well suited to these methods.
-Third and most importantly, there is a consistent gap between causal ambition and causal methods in empirical SE, and the room for improvement is huge.
+This analysis reveals that when SE researchers employ causal methods, they overwhelmingly use randomized controlled experiments, regression-based causal inference, or causal fault localization, with the remaining realms of causal inference (e.g., design-based identification, causal DAGs, structural equation modeling) largely unexplored.
+Notably, there are ample opportunities to explore design-based methods that powered the credibility revolution (e.g., difference-in-differences, instrumental variables, regression discontinuity, and panel fixed effects), given the field's abundance of panel data (repositories with temporal structure, developers contributing across projects, tools adopted in staggered fashion) that is well suited to these methods.
+Most importantly, we observe a gap between causal ambition and causal methods in empirical SE, and the room for improvement is huge.
 This tutorial aims to bridge this gap.
