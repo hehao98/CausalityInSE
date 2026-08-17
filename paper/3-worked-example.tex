@@ -578,6 +578,7 @@ This shifts the burden from a binary pass/fail test to a continuous assessment o
 }
 
 \paragraph{Why Does the CS and Borusyak Estimator Diverge?}
+\label{sec:divergence}
 
 The primary explanation is \textbf{covariate attenuation}---a direct application of the DAG reasoning from Section~\ref{sec:primer-dags}.
 In the imputation step (Equation~\ref{eq:borusyak-first-stage}), the Borusyak model plugs in the \emph{post-treatment} values of the covariates $X_{it}$ to predict the counterfactual $\hat{Y}_{it}(0)$.
