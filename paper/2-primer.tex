@@ -18,7 +18,7 @@ Table~\ref{tab:glossary} compiles these and other recurring terms into a compact
 The ``See'' column points to the section that introduces each term in detail.}
 \label{tab:glossary}
 \footnotesize
-\begin{tabular}{@{} p{3.0cm} p{8.5cm} p{1.5cm} @{}}
+\begin{tabularx}{\linewidth}{@{} p{3.0cm} X p{1.5cm} @{}}
 \toprule
 \textbf{Term} & \textbf{Plain-English Description} & \textbf{See} \\
 \midrule
@@ -43,7 +43,7 @@ Parallel trends & Identifying assumption for difference-in-differences: absent t
 SUTVA & Stable Unit Treatment Value Assumption: no interference between units and a well-defined treatment. & \S\ref{sec:primer-po} \\
 Target trial & The hypothetical randomized experiment that an observational study attempts to emulate. & \S\ref{sec:guide-question} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsection{What Does It Mean Exactly for X to Cause Y?}
@@ -282,7 +282,7 @@ ATE = Average Treatment Effect; ATT = Average Treatment Effect on the Treated; L
 We use precise terminologies in this table; see the references for detailed explanations of these terminologies.}
 \label{tab:methods-summary}
 \footnotesize
-\begin{tabular}{@{} p{3.2cm} p{1.6cm} p{8.2cm} @{}}
+\begin{tabularx}{\linewidth}{@{} p{3.2cm} p{1.6cm} X @{}}
 \toprule
 \textbf{Method} & \textbf{Estimand} & \textbf{Key Identification Assumptions} \\
 \midrule
@@ -314,7 +314,7 @@ Panel Fixed Effects
 %  & ATT \scriptsize{(treated unit)}
 %  & Synthetic control tracks treated unit's counterfactual trajectory; no interference; no anticipation \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 Table~\ref{tab:methods-summary} summarizes the methods most relevant to SE research, along with their formal estimand and identifying assumptions derived from the potential outcomes framework (see \citet[Chs.~2--6]{angrist2009mostly} and \citet[Chs.~4--9]{cunningham2021causal} for formal proofs and detailed treatments of each method).
@@ -395,7 +395,7 @@ Every study navigates a tension between internal validity (causal confidence) an
 \caption{Mapping data features to design-based identification strategies.}
 \label{tab:design-features}
 \footnotesize
-\begin{tabular}{@{} p{3.8cm} p{2.2cm} p{6.5cm} @{}}
+\begin{tabularx}{\linewidth}{@{} p{3.8cm} p{2.2cm} X @{}}
 \toprule
 \textbf{Data Feature} & \textbf{Method} & \textbf{SE Example} \\
 \midrule
@@ -407,7 +407,7 @@ External shock affecting treatment & IV & Platform policy mandating a practice \
 [0.3em]
 Threshold-based assignment & RDD & Eligibility for a program based on project size or popularity\\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \paragraph{Iterate Between Question, Assumptions, and Design.}

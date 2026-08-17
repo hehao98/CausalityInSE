@@ -91,8 +91,9 @@ Finally, we will use the same toolkit to demostrate the foundamental limitation 
   Covariates are classified by temporal status: ``pre-treatment'' variables are determined at creation and cannot be affected by AI adoption under any timing; ``time-varying'' variables accumulate before and after adoption, making their cross-sectional values temporally ambiguous (Section~\ref{sec:temporal-collapse}).
   All count variables are log-transformed with $\log(1+x)$ to address skewness.}
   \label{tab:descriptive}
-  \small
-  \begin{tabular}{lrrrlrrr}
+  \footnotesize
+  \setlength{\tabcolsep}{2pt}
+  \begin{tabular}{@{} l rrr l rrr @{}}
   \toprule
   \multicolumn{4}{c}{Pre-treatment\tnote{a}} & \multicolumn{4}{c}{Time-varying} \\
   \cmidrule(r){1-4} \cmidrule(l){5-8}
@@ -505,7 +506,7 @@ We apply two complementary modern DiD estimators that avoid the negative-weighti
 The first two are presented for intuition; the latter two are the modern estimators we actually report.}
 \label{tab:longitudinal-estimators}
 \footnotesize
-\begin{tabular}{@{} p{4.0cm} p{8.5cm} @{}}
+\begin{tabularx}{\linewidth}{@{} p{4.0cm} X @{}}
 \toprule
 \textbf{Estimator} & \textbf{What it does} \\
 \midrule
@@ -521,7 +522,7 @@ Callaway \& Sant'Anna (CS)~\cite{callaway2021difference}
 Borusyak et al.\ imputation~\cite{borusyak2024revisiting}
   & Fits a counterfactual model on untreated observations, predicts what the treated repositories' outcomes would have been absent treatment, and averages the residuals as the ATT. \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \textbf{Callaway \& Sant'Anna (2021) DiD}~\cite{callaway2021difference} is the most direct extension of the 2$\times$2 idea: it estimates separate treatment effects for each adoption cohort (group of repositories adopting in the same month), then aggregates.
@@ -622,14 +623,15 @@ External triangulation does not validate our DiD estimate in a construct-matched
 \subsection{Summary}
 \label{sec:summary}
 
-\begin{table*}[t]
+\begin{table}[t]
 \centering
 \caption{Summary of all effect estimates from the cross-sectional (Section~\ref{sec:cross-sectional}) and longitudinal (Section~\ref{sec:longitudinal}) analyses.
 The estimate is on the $\log(1 + \text{monthly commits})$ scale; the percentage change is $(e^{\text{Estimate}} - 1) \times 100\%$, with $\pm$ computed via the delta method ($e^{\text{Estimate}} \times \text{SE} \times 100\%$).
 All OLS specifications approximate the ATE; PSM, IPW, and all longitudinal methods target the ATT.}
 \label{tab:all-estimates}
-\small
-\begin{tabular}{llrrr}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\linewidth}{@{} p{4.6cm} X r r r @{}}
 \toprule
 Method & Identifying assumption & Estimate & SE & \% change \\
 \midrule
@@ -646,8 +648,8 @@ ITS with repo FE & Correct trend; no contemporaneous shocks & 0.790 & 0.120 & +1
 DiD: CS (no covariates) & Parallel trends (unconditional) & 0.416 & 0.090 & +52\% ($\pm$14\%) \\
 DiD: Borusyak (with covariates) & Parallel trends (conditional on $X_{it}$) & 0.281 & 0.060 & +32\% ($\pm$8\%) \\
 \bottomrule
-\end{tabular}
-\end{table*}
+\end{tabularx}
+\end{table}
 
 Table~\ref{tab:all-estimates} compares all estimates from Sections~\ref{sec:cross-sectional} and~\ref{sec:longitudinal}, along with each method's identifying assumption and its key vulnerability.
 It is important to note that the \emph{design} matters more than the estimator.
